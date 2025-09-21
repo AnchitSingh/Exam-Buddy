@@ -15,7 +15,10 @@ const QuestionTypeRenderer = forwardRef(({
   useEffect(() => {
     // Always reset state first to prevent using old answers for different question types
     setTextAnswer('');
-    setFillBlanks(Array(question.question?.split('_______').length - 1).fill(''));
+    
+    // Fixed: Safe initialization of fill blanks
+    const blanksCount = question.question ? question.question.split('_______').length - 1 : 0;
+    setFillBlanks(Array(Math.max(0, blanksCount)).fill(''));
 
     if (selectedAnswer?.textAnswer) {
       if (question.type === 'Short Answer' && typeof selectedAnswer.textAnswer === 'string') {
@@ -67,12 +70,17 @@ const QuestionTypeRenderer = forwardRef(({
     }
   };
 
+  // Validate question structure
+  if (!question || !question.type) {
+    return <div className="text-red-500">Invalid question format</div>;
+  }
+
   switch (question.type) {
     case 'MCQ':
     case 'True/False':
       return (
         <div className="space-y-3 sm:space-y-4">
-          {question.options.map((option, index) => (
+          {question.options?.map((option, index) => (
             <AnswerOption
               key={index}
               option={option}
@@ -102,7 +110,11 @@ const QuestionTypeRenderer = forwardRef(({
             />
           </div>
           {immediateFeedback && !disabled && (
-            <button onClick={handleTextSubmit} disabled={!textAnswer.trim()} className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            <button 
+              onClick={handleTextSubmit} 
+              disabled={!textAnswer.trim()} 
+              className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
               Submit Answer
             </button>
           )}
@@ -113,7 +125,7 @@ const QuestionTypeRenderer = forwardRef(({
       return (
         <div className="space-y-4">
           <div className="text-lg leading-relaxed">
-            {question.question.split('_______').map((part, index, array) => (
+            {question.question?.split('_______').map((part, index, array) => (
               <span key={index}>
                 {part}
                 {index < array.length - 1 && (
@@ -130,7 +142,11 @@ const QuestionTypeRenderer = forwardRef(({
             ))}
           </div>
           {immediateFeedback && !disabled && (
-            <button onClick={handleFillBlankSubmit} disabled={!fillBlanks.every(blank => blank.trim())} className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            <button 
+              onClick={handleFillBlankSubmit} 
+              disabled={!fillBlanks.every(blank => blank.trim())} 
+              className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
               Submit Answer
             </button>
           )}
@@ -141,5 +157,7 @@ const QuestionTypeRenderer = forwardRef(({
       return <div>Unsupported question type: {question.type}</div>;
   }
 });
+
+QuestionTypeRenderer.displayName = 'QuestionTypeRenderer';
 
 export default QuestionTypeRenderer;
