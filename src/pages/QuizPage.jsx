@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import QuizHeader from '../components/quiz/QuizHeader';
-import AnswerOption from '../components/quiz/AnswerOption';
+import QuestionTypeRenderer from '../components/quiz/QuestionTypeRenderer';
 import ProgressBar from '../components/ui/ProgressBar';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import AIProcessingFeedback from '../components/ui/AIProcessingFeedback';
 import useQuizState from '../hooks/useQuizState';
-import QuestionTypeRenderer from '../components/quiz/QuestionTypeRenderer';
 
 const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const {
@@ -22,6 +21,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     error,
     showFeedback,
     selectedAnswer,
+    hasAnswered,
     isLastQuestion,
     progress,
     isBookmarked,
@@ -60,7 +60,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     const results = await stopQuiz();
     setQuizResults(results);
     setShowStopModal(false);
-
+    
     // Show AI processing for results
     if (results) {
       setAITask('feedback');
@@ -68,21 +68,23 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     }
   };
 
-  const handleAnswerSelect = (optionIndex) => {
-    if (selectedAnswer) return;
-
-    // Show AI processing for evaluation
-    setAITask('evaluation');
-    setShowAIProcessing(true);
-
-    // Simulate AI processing delay then select answer
-    setTimeout(() => {
-      setShowAIProcessing(false);
-      if (currentQuestion) {
-        const isCorrect = currentQuestion.options[optionIndex].isCorrect;
-        selectAnswer(optionIndex, isCorrect);
-      }
-    }, 2000);
+  const handleAnswerSelect = (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
+    if (selectedAnswer && !autoSelected) return;
+    
+    // For subjective questions with immediate feedback, show AI processing
+    if ((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Fill in Blank') && config.immediateFeedback) {
+      setAITask('evaluation');
+      setShowAIProcessing(true);
+      
+      // Simulate AI processing delay then select answer
+      setTimeout(() => {
+        setShowAIProcessing(false);
+        selectAnswer(optionIndex, isCorrect, autoSelected, textAnswer);
+      }, 2000);
+    } else {
+      // For MCQ/True-False or when immediate feedback is off
+      selectAnswer(optionIndex, isCorrect, autoSelected, textAnswer);
+    }
   };
 
   // Loading state
@@ -93,7 +95,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           <div className="text-center">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-amber-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
               </svg>
             </div>
             <p className="text-slate-600 font-medium">Generating your quiz...</p>
@@ -168,7 +170,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     return (
       <React.Suspense fallback={
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30 flex items-center justify-center">
-          <p>Loading results...</p>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
+              <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+            </div>
+            <p className="text-slate-600">Loading results...</p>
+          </div>
         </div>
       }>
         <QuizResultsPage results={quizResults} onNavigate={onNavigate} />
@@ -196,10 +205,10 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         <div className="flex justify-end">
           <button
             onClick={toggleImmediateFeedback}
-            className="text-xs text-slate-500 hover:text-slate-700 flex items-center space-x-1"
+            className="text-xs text-slate-500 hover:text-slate-700 flex items-center space-x-1 transition-colors"
           >
             <span>Immediate feedback:</span>
-            <span className={config.immediateFeedback ? 'text-green-600' : 'text-red-600'}>
+            <span className={`font-medium ${config.immediateFeedback ? 'text-green-600' : 'text-red-600'}`}>
               {config.immediateFeedback ? 'ON' : 'OFF'}
             </span>
           </button>
@@ -207,16 +216,16 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       </div>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10">
-
+        
         {/* Progress Bar */}
-        <ProgressBar
-          progress={progress}
+        <ProgressBar 
+          progress={progress} 
           label="Progress"
         />
 
         {/* Quiz Card */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-white/20 p-5 sm:p-8 mb-6 sm:mb-8">
-
+          
           {/* Question Section */}
           <div className="mb-6 sm:mb-8">
             <div className="flex items-start space-x-3 sm:space-x-4 mb-4 sm:mb-6">
@@ -226,51 +235,71 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 </span>
               </div>
               <div className="flex-1">
-                <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 leading-relaxed">
-                  {currentQuestion.question}
-                </h2>
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 leading-relaxed">
+                    {currentQuestion.question}
+                  </h2>
+                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                    {currentQuestion.type || 'MCQ'}
+                  </span>
+                </div>
                 <p className="text-slate-600 mt-2 text-xs sm:text-sm">
-                  Choose the best answer from the options below
+                  {currentQuestion.type === 'MCQ' ? 'Choose the best answer from the options below' :
+                   currentQuestion.type === 'True/False' ? 'Select True or False' :
+                   currentQuestion.type === 'Short Answer' ? 'Provide a detailed answer' :
+                   currentQuestion.type === 'Fill in Blank' ? 'Fill in the missing words' :
+                   'Answer the question below'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Answer Options */}
-          <QuestionTypeRenderer
-            question={currentQuestion}
-            selectedAnswer={selectedAnswer}
-            onAnswerSelect={handleAnswerSelect}
-            disabled={showFeedback}
-            showResult={showFeedback}
-          />
+          {/* Question Type Specific Renderer */}
+          <div className="mb-6 sm:mb-8">
+            <QuestionTypeRenderer
+              question={currentQuestion}
+              selectedAnswer={selectedAnswer}
+              onAnswerSelect={handleAnswerSelect}
+              disabled={showFeedback}
+              showResult={showFeedback}
+              immediateFeedback={config.immediateFeedback}
+            />
+          </div>
 
           {/* Feedback Section */}
           {showFeedback && (
             <div className="mb-6">
-              <div className={`border rounded-xl sm:rounded-2xl p-4 sm:p-6 ${selectedAnswer.isCorrect
-                  ? 'bg-green-50 border-green-200'
+              <div className={`border rounded-xl sm:rounded-2xl p-4 sm:p-6 ${
+                selectedAnswer?.isCorrect 
+                  ? 'bg-green-50 border-green-200' 
                   : 'bg-red-50 border-red-200'
-                }`}>
+              }`}>
                 <div className="flex items-start space-x-3 sm:space-x-4">
-                  <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${selectedAnswer.isCorrect ? 'bg-green-100' : 'bg-red-100'
-                    }`}>
-                    <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${selectedAnswer.isCorrect ? 'text-green-600' : 'text-red-600'
-                      }`} fill="currentColor" viewBox="0 0 20 20">
-                      {selectedAnswer.isCorrect ? (
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                  <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                    selectedAnswer?.isCorrect ? 'bg-green-100' : 'bg-red-100'
+                  }`}>
+                    <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${
+                      selectedAnswer?.isCorrect ? 'text-green-600' : 'text-red-600'
+                    }`} fill="currentColor" viewBox="0 0 20 20">
+                      {selectedAnswer?.isCorrect ? (
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
                       ) : (
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
                       )}
                     </svg>
                   </div>
                   <div>
-                    <h3 className={`font-semibold mb-1 sm:mb-2 text-sm sm:text-base ${selectedAnswer.isCorrect ? 'text-green-800' : 'text-red-800'
-                      }`}>
-                      {selectedAnswer.isCorrect ? 'Correct! Well done! 🎉' : 'Not quite right'}
+                    <h3 className={`font-semibold mb-1 sm:mb-2 text-sm sm:text-base ${
+                      selectedAnswer?.isCorrect ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {selectedAnswer?.isCorrect ? 'Correct! Well done! 🎉' : 'Not quite right'}
+                      {selectedAnswer?.aiEvaluated && (
+                        <span className="ml-2 text-xs text-purple-600">✨ AI Evaluated</span>
+                      )}
                     </h3>
-                    <p className={`text-xs sm:text-sm ${selectedAnswer.isCorrect ? 'text-green-700' : 'text-red-700'
-                      }`}>
+                    <p className={`text-xs sm:text-sm ${
+                      selectedAnswer?.isCorrect ? 'text-green-700' : 'text-red-700'
+                    }`}>
                       {currentQuestion.explanation}
                     </p>
                   </div>
@@ -287,20 +316,20 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               disabled={currentQuestionNumber === 1}
               icon={
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/>
                 </svg>
               }
             >
               <span className="hidden sm:inline">Previous</span>
               <span className="sm:hidden">Prev</span>
             </Button>
-
+            
             <Button
               onClick={isLastQuestion ? confirmStop : nextQuestion}
-              disabled={!showFeedback}
+              disabled={!hasAnswered}
               icon={
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 ml-1 sm:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
                 </svg>
               }
             >
@@ -320,8 +349,8 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           <div>
             <p className="text-slate-700 font-medium">Keep going! You're doing great!</p>
             <p className="text-sm text-slate-600">
-              {selectedAnswer?.isCorrect ?
-                "Excellent work! Ready for the next challenge?" :
+              {selectedAnswer?.isCorrect ? 
+                "Excellent work! Ready for the next challenge?" : 
                 "Don't worry, learning from mistakes makes you stronger!"
               }
             </p>
@@ -338,13 +367,13 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       />
 
       {/* Pause Modal */}
-      <Modal
+      <Modal 
         isOpen={showPauseModal}
         onClose={() => setShowPauseModal(false)}
         title="Quiz Paused"
         icon={
           <svg className="w-8 h-8 text-amber-600" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
           </svg>
         }
       >
@@ -362,13 +391,13 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       </Modal>
 
       {/* Stop Modal */}
-      <Modal
+      <Modal 
         isOpen={showStopModal}
         onClose={() => setShowStopModal(false)}
         title="Stop Quiz?"
         icon={
           <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 6h12v12H6z" />
+            <path d="M6 6h12v12H6z"/>
           </svg>
         }
       >
