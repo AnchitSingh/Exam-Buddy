@@ -71,7 +71,7 @@ const App = () => {
       )}
       
       {currentPage === 'home' && (
-        <HomePage onNavigate={navigateTo} />
+        <HomePage onNavigate={navigateTo} navigationData={navigationData} />
       )}
       
       {currentPage === 'quiz' && (

@@ -147,7 +147,7 @@ const BookmarksPage = ({ onNavigate }) => {
               </div>
               <h3 className="text-xl font-semibold text-slate-800 mb-2">No Bookmarked Questions</h3>
               <p className="text-slate-600 mb-6">Questions you bookmark during quizzes will appear here</p>
-              <Button onClick={() => onNavigate('quiz')}>
+              <Button onClick={() => onNavigate('home', { openQuizSetup: true })}>
                 Start a Quiz
               </Button>
             </div>

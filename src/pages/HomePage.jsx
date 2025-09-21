@@ -2,69 +2,22 @@ import React, { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
 import QuizSetupModal from '../components/quiz/QuizSetupModal';
 import examBuddyAPI from '../services/api';
-import { extractFromCurrentPage, extractFromPDFResult } from '../utils/contentExtractor';
+import { extractFromCurrentPage, extractFromPDFResult, normalizeManualTopic } from '../utils/contentExtractor';
 import { extractTextFromPDF } from '../utils/pdfExtractor';
-import extractionService from '../services/extraction';
+import { SOURCE_TYPE } from '../utils/messages';
 
-const HomePage = ({ onNavigate }) => {
+const HomePage = ({ onNavigate, navigationData }) => {
   const [showQuizSetup, setShowQuizSetup] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [extractionResult, setExtractionResult] = useState(null);
 
-  const handleTestExtraction = async () => {
-    try {
-      setExtractionResult('Getting page info...');
-      
-      const meta = await extractionService.getMeta();
-      const url = meta.url;
-
-      let finalResult;
-
-      if (url.toLowerCase().endsWith('.pdf')) {
-        setExtractionResult(`Detected PDF. Fetching and parsing...\nURL: ${url}`);
-        
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch PDF: ${response.statusText}`);
-        }
-        const pdfBlob = await response.blob();
-        
-        setExtractionResult('Parsing PDF text...');
-        const { text, meta: pdfMeta } = await extractTextFromPDF(pdfBlob);
-        
-        setExtractionResult('Finalizing source...');
-        finalResult = await extractFromPDFResult({
-          text: text,
-          fileName: url.substring(url.lastIndexOf('/') + 1),
-          pageCount: pdfMeta.pageCount
-        });
-
-      } else {
-        setExtractionResult('Detected HTML page. Extracting content...');
-        finalResult = await extractFromCurrentPage();
-      }
-
-      console.log('Extraction Result:', finalResult);
-      const displayResult = {
-        sourceType: finalResult.sourceType,
-        title: finalResult.title,
-        url: finalResult.url,
-        domain: finalResult.domain,
-        excerpt: finalResult.excerpt,
-        wordCount: finalResult.wordCount,
-        chunksCount: finalResult.chunks.length,
-      };
-      setExtractionResult(JSON.stringify(displayResult, null, 2));
-
-    } catch (error) {
-      console.error('Extraction failed:', error);
-      setExtractionResult(`Error: ${error.message}`);
+  useEffect(() => {
+    if (navigationData?.openQuizSetup) {
+      setShowQuizSetup(true);
     }
-  };
+  }, [navigationData]);
 
-  // Load user data on component mount
   useEffect(() => {
     loadUserData();
   }, []);
@@ -72,8 +25,6 @@ const HomePage = ({ onNavigate }) => {
   const loadUserData = async () => {
     try {
       setIsLoading(true);
-      
-      // Load user profile and recent activity
       const [profileResponse, historyResponse] = await Promise.all([
         examBuddyAPI.getUserProfile(),
         examBuddyAPI.getQuizHistory()
@@ -85,7 +36,6 @@ const HomePage = ({ onNavigate }) => {
       }
       
       if (historyResponse.success) {
-        // Merge with existing activity
         setRecentActivity(prev => [
           ...prev,
           ...historyResponse.data.slice(0, 3).map(quiz => ({
@@ -107,25 +57,60 @@ const HomePage = ({ onNavigate }) => {
   const handleStartQuiz = async (config) => {
     console.log('=== STARTING NEW QUIZ ===');
     console.log('Config submitted:', config);
-    console.log('========================');
-    
-    // Pass config to QuizPage
-    onNavigate('quiz', { quizConfig: config });
+
+    let extractedSource;
+
+    try {
+      switch (config.sourceType) {
+        case SOURCE_TYPE.PAGE:
+          extractedSource = await extractFromCurrentPage();
+          break;
+        
+        case SOURCE_TYPE.PDF:
+          if (config.pdfFile) {
+            const { text, meta } = await extractTextFromPDF(config.pdfFile);
+            extractedSource = await extractFromPDFResult({
+              text,
+              fileName: config.pdfFile.name,
+              pageCount: meta.pageCount
+            });
+          }
+          break;
+
+        case SOURCE_TYPE.URL:
+          extractedSource = normalizeManualTopic(config.sourceValue, `Content from ${config.sourceValue}`);
+          break;
+
+        case SOURCE_TYPE.MANUAL:
+        default:
+          extractedSource = normalizeManualTopic(config.topic, config.context);
+          break;
+      }
+
+      console.log('Extracted Source:', extractedSource);
+
+      const finalQuizConfig = {
+        ...config,
+        extractedSource,
+        topic: config.topic || extractedSource.title,
+      };
+
+      onNavigate('quiz', { quizConfig: finalQuizConfig });
+
+    } catch (error) {
+      console.error('Failed to prepare quiz source:', error);
+    }
   };
 
   const handleQuickAction = async (actionType) => {
     switch (actionType) {
       case 'paused':
-        console.log('=== NAVIGATING TO PAUSED QUIZZES ===');
         onNavigate('paused');
         break;
       case 'bookmarks':
-        console.log('=== NAVIGATING TO BOOKMARKS ===');
         onNavigate('bookmarks');
         break;
       case 'continue-activity':
-        // Handle continuing specific activity
-        console.log('=== CONTINUING ACTIVITY ===');
         onNavigate('quiz');
         break;
       default:
@@ -150,7 +135,6 @@ const HomePage = ({ onNavigate }) => {
 
   return (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -160,7 +144,6 @@ const HomePage = ({ onNavigate }) => {
               </div>
               <h1 className="text-xl font-semibold text-slate-800">Exam Buddy</h1>
             </div>
-            
             <div className="flex items-center space-x-4">
               <button 
                 onClick={() => handleQuickAction('bookmarks')}
@@ -175,10 +158,7 @@ const HomePage = ({ onNavigate }) => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-slate-800 mb-2">
             Welcome back{userProfile?.name ? `, ${userProfile.name}` : ''}! 👋
@@ -186,30 +166,7 @@ const HomePage = ({ onNavigate }) => {
           <p className="text-slate-600">Ready to continue your learning journey?</p>
         </div>
 
-        {/* EXTRACTION TEST SECTION */}
-        <div className="mb-8 p-4 border-2 border-dashed border-amber-400 rounded-2xl bg-amber-50/50">
-            <h3 className="text-lg font-bold text-slate-800 mb-2">Extraction Test</h3>
-            <p className="text-sm text-slate-600 mb-4">
-                Click the button below to test the content extraction from the current active browser tab.
-                Make sure you are on a page with some article content.
-            </p>
-            <Button onClick={handleTestExtraction} variant="secondary">
-                Test Page Extraction
-            </Button>
-            {extractionResult && (
-                <div className="mt-4 p-4 bg-slate-100 rounded-lg">
-                    <h4 className="font-bold text-slate-700">Extraction Result:</h4>
-                    <pre className="text-xs whitespace-pre-wrap overflow-x-auto mt-2">
-                        {extractionResult}
-                    </pre>
-                </div>
-            )}
-        </div>
-
-        {/* Quick Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          
-          {/* Start New Quiz */}
           <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-6 text-white relative overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-200" 
                onClick={() => setShowQuizSetup(true)}>
             <div className="relative z-10">
@@ -227,7 +184,6 @@ const HomePage = ({ onNavigate }) => {
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full transform translate-x-16 -translate-y-16"></div>
           </div>
 
-          {/* Continue Paused */}
           <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-white/20 shadow-lg cursor-pointer hover:scale-105 hover:shadow-xl transition-all duration-200"
                onClick={() => handleQuickAction('paused')}>
             <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
@@ -242,7 +198,6 @@ const HomePage = ({ onNavigate }) => {
             </span>
           </div>
 
-          {/* Review Bookmarks */}
           <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-white/20 shadow-lg cursor-pointer hover:scale-105 hover:shadow-xl transition-all duration-200"
                onClick={() => handleQuickAction('bookmarks')}>
             <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
@@ -256,22 +211,15 @@ const HomePage = ({ onNavigate }) => {
               View All →
             </span>
           </div>
-
         </div>
 
-        {/* Recent Activity */}
         {recentActivity.length > 0 && (
           <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-white/20 shadow-lg mb-8">
             <h3 className="text-xl font-semibold text-slate-800 mb-6">Recent Activity</h3>
-            
             <div className="space-y-4">
               {recentActivity.slice(0, 3).map((activity) => (
                 <div key={activity.id} className="flex items-center space-x-4 p-4 bg-slate-50 rounded-2xl">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                    activity.type === 'quiz_completed' ? 'bg-green-100' :
-                    activity.type === 'quiz_paused' ? 'bg-amber-100' :
-                    'bg-purple-100'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${activity.type === 'quiz_completed' ? 'bg-green-100' : activity.type === 'quiz_paused' ? 'bg-amber-100' : 'bg-purple-100'}`}>
                     {activity.type === 'quiz_completed' && (
                       <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
@@ -308,7 +256,6 @@ const HomePage = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* Study Stats */}
         {userProfile && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg text-center">
@@ -329,10 +276,8 @@ const HomePage = ({ onNavigate }) => {
             </div>
           </div>
         )}
-
       </main>
 
-      {/* Quiz Setup Modal */}
       <QuizSetupModal 
         isOpen={showQuizSetup}
         onClose={() => setShowQuizSetup(false)}

@@ -84,7 +84,7 @@ const PausedQuizzesPage = ({ onNavigate }) => {
             </div>
             <h3 className="text-xl font-semibold text-slate-800 mb-2">No Paused Quizzes</h3>
             <p className="text-slate-600 mb-6">You don't have any paused quizzes at the moment</p>
-            <Button onClick={() => onNavigate('quiz')}>
+            <Button onClick={() => onNavigate('home', { openQuizSetup: true })}>
               Start New Quiz
             </Button>
           </div>

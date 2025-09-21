@@ -1,18 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
+import { SOURCE_TYPE } from '../../utils/messages';
+
+// Constants moved outside component for better performance
+const difficultyLevels = [
+  { value: 'easy', label: 'Easy', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
+  { value: 'medium', label: 'Medium', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
+  { value: 'hard', label: 'Hard', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+  { value: 'mixed', label: 'Mixed', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
+];
+
+const questionTypesData = [
+  { value: 'MCQ', label: 'Multiple Choice', icon: '🔘' },
+  { value: 'True/False', label: 'True/False', icon: '✓' },
+  { value: 'Short Answer', label: 'Short Answer', icon: '✏️' },
+  { value: 'Fill in Blank', label: 'Fill in Blank', icon: '📝' },
+];
+
+const questionCounts = [3, 5, 10, 15, 20];
+
+// Use SOURCE_TYPE with fallbacks to prevent undefined key errors
+const sourceOptions = [
+  { value: SOURCE_TYPE?.MANUAL || 'MANUAL', label: 'Custom Topic', icon: '✏️' },
+  { value: SOURCE_TYPE?.PAGE || 'PAGE', label: 'Current Page', icon: '📄' },
+  { value: SOURCE_TYPE?.URL || 'URL', label: 'From URL', icon: '🔗' },
+  { value: SOURCE_TYPE?.PDF || 'PDF', label: 'From PDF', icon: '📎' },
+];
 
 const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState({});
+  const [pdfFile, setPdfFile] = useState(null);
+  const fileInputRef = useRef(null);
+
   const [config, setConfig] = useState({
-    // Basic Settings
+    sourceType: SOURCE_TYPE.MANUAL,
+    sourceValue: '', // URL or file name
     topic: '',
     context: '',
     questionCount: 5,
     difficulty: 'medium',
-    
-    // Advanced Settings
     questionTypes: ['MCQ'],
     immediateFeedback: true,
     customPrompt: '',
@@ -21,11 +49,79 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
     totalTimer: 600,
   });
 
+  // Cleanup on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      setPdfFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+  }, []);
+
+  // Dynamic step numbering based on source type
+  const getStepNumber = (step) => {
+    if (step === 'source') return 1;
+    if (step === 'describe') {
+      return config.sourceType === SOURCE_TYPE.MANUAL ? 2 : null;
+    }
+    if (step === 'configure') {
+      return config.sourceType === SOURCE_TYPE.MANUAL ? 3 : 2;
+    }
+    return null;
+  };
+
   const handleInputChange = (field, value) => {
+    // Validate timer logic
+    if (field === 'questionTimer' && config.timerEnabled) {
+      const maxQuestionTime = Math.floor(config.totalTimer / config.questionCount);
+      value = Math.min(value, maxQuestionTime);
+    }
+    
+    if (field === 'questionCount' && config.timerEnabled) {
+      // Adjust question timer if needed
+      const maxQuestionTime = Math.floor(config.totalTimer / value);
+      if (config.questionTimer > maxQuestionTime) {
+        setConfig(prev => ({ 
+          ...prev, 
+          [field]: value,
+          questionTimer: maxQuestionTime 
+        }));
+        return;
+      }
+    }
+
     setConfig(prev => ({ ...prev, [field]: value }));
-    // Clear error when user types
+    
+    // Clear errors for the field being edited
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleSourceTypeChange = (sourceType) => {
+    setConfig(prev => ({ 
+      ...prev, 
+      sourceType, 
+      topic: '', 
+      sourceValue: '',
+      context: '' 
+    }));
+    setPdfFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    setErrors({});
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      setPdfFile(file);
+      handleInputChange('sourceValue', file.name);
+      setErrors(prev => ({ ...prev, sourceValue: '' }));
+    } else {
+      setErrors(prev => ({ ...prev, sourceValue: 'Please select a valid PDF file.' }));
     }
   };
 
@@ -36,18 +132,32 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
         : [...prev.questionTypes, type];
       
       // Ensure at least one type is selected
-      return {
-        ...prev,
-        questionTypes: types.length > 0 ? types : ['MCQ']
-      };
+      if (types.length === 0) {
+        return prev;
+      }
+      
+      return { ...prev, questionTypes: types };
     });
+    
+    // Clear error if we now have valid selection
+    if (errors.questionTypes) {
+      setErrors(prev => ({ ...prev, questionTypes: '' }));
+    }
   };
 
   const validateForm = () => {
     const newErrors = {};
     
-    if (!config.topic.trim()) {
+    if (config.sourceType === SOURCE_TYPE.MANUAL && !config.topic.trim()) {
       newErrors.topic = 'Please enter a topic for your quiz';
+    }
+    
+    if (config.sourceType === SOURCE_TYPE.URL && !config.sourceValue.trim()) {
+      newErrors.sourceValue = 'Please enter a valid URL';
+    }
+    
+    if (config.sourceType === SOURCE_TYPE.PDF && !pdfFile) {
+      newErrors.sourceValue = 'Please select a PDF file';
     }
     
     if (config.questionTypes.length === 0) {
@@ -61,12 +171,16 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
   const handleStartQuiz = () => {
     if (!validateForm()) return;
     
-    console.log('Starting quiz with config:', config);
-    onStartQuiz(config);
+    const finalConfig = { ...config, pdfFile };
+    
+    console.log('Starting quiz with config:', finalConfig);
+    onStartQuiz(finalConfig);
     onClose();
     
     // Reset form
     setConfig({
+      sourceType: SOURCE_TYPE.MANUAL,
+      sourceValue: '',
       topic: '',
       context: '',
       questionCount: 5,
@@ -78,6 +192,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
       questionTimer: 60,
       totalTimer: 600,
     });
+    setPdfFile(null);
     setShowAdvanced(false);
     setErrors({});
   };
@@ -88,52 +203,11 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const difficultyLevels = [
-    { value: 'easy', label: 'Easy', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
-    { value: 'medium', label: 'Medium', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-    { value: 'hard', label: 'Hard', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
-    { value: 'mixed', label: 'Mixed', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
-  ];
-
-  const questionTypesData = [
-    { value: 'MCQ', label: 'Multiple Choice', icon: '🔘' },
-    { value: 'True/False', label: 'True/False', icon: '✓' },
-    { value: 'Short Answer', label: 'Short Answer', icon: '✏️' },
-    { value: 'Fill in Blank', label: 'Fill in Blank', icon: '📝' },
-  ];
-
-  return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title=""
-      size="lg"
-    >
-      <div className="space-y-0">
-        
-        {/* Header Section */}
-        <div className="text-center pb-6 border-b border-slate-100">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl mb-4">
-            <svg className="w-7 h-7 text-amber-600" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Create Your Quiz</h2>
-          <p className="text-sm text-slate-500 mt-1">Set up your personalized learning experience</p>
-        </div>
-
-        {/* Main Form Section */}
-        <div className="pt-6 space-y-6">
-          
-          {/* Step 1: Topic Section */}
+  const renderSourceInput = () => {
+    switch (config.sourceType) {
+      case SOURCE_TYPE.MANUAL:
+        return (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-8 h-8 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">
-                1
-              </div>
-              <h3 className="text-base font-semibold text-slate-900">What would you like to study?</h3>
-            </div>
-            
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Quiz Topic <span className="text-red-500">*</span>
@@ -142,60 +216,158 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
                 type="text"
                 value={config.topic}
                 onChange={(e) => handleInputChange('topic', e.target.value)}
-                placeholder="e.g., World War II, Python Programming, Photosynthesis..."
-                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all ${
-                  errors.topic ? 'border-red-300 bg-red-50' : 'border-slate-200 hover:border-slate-300'
+                placeholder="e.g., World War II, Python Programming..."
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 ${
+                  errors.topic ? 'border-red-300 bg-red-50' : 'border-slate-200'
                 }`}
               />
-              {errors.topic && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {errors.topic}
-                </p>
-              )}
+              {errors.topic && <p className="text-red-500 text-xs mt-1">{errors.topic}</p>}
             </div>
-
+            
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Additional Context
-                <span className="text-xs text-slate-400 font-normal ml-2">(Optional)</span>
+                Additional Context (Optional)
               </label>
               <textarea
                 value={config.context}
                 onChange={(e) => handleInputChange('context', e.target.value)}
-                placeholder="Specific areas to focus on or learning objectives..."
+                placeholder="Specific areas to focus on..."
                 rows={3}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all resize-none hover:border-slate-300"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500"
               />
             </div>
           </div>
+        );
+        
+      case SOURCE_TYPE.URL:
+        return (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Webpage URL <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="url"
+              value={config.sourceValue}
+              onChange={(e) => handleInputChange('sourceValue', e.target.value)}
+              placeholder="https://..."
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 ${
+                errors.sourceValue ? 'border-red-300 bg-red-50' : 'border-slate-200'
+              }`}
+            />
+            {errors.sourceValue && <p className="text-red-500 text-xs mt-1">{errors.sourceValue}</p>}
+          </div>
+        );
+        
+      case SOURCE_TYPE.PDF:
+        return (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Upload PDF <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="file" 
+              accept=".pdf" 
+              onChange={handleFileChange} 
+              ref={fileInputRef} 
+              className="hidden" 
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()} 
+              className={`w-full flex items-center justify-center px-4 py-3 border-2 border-dashed rounded-xl transition-all hover:bg-slate-50 ${
+                errors.sourceValue ? 'border-red-300 bg-red-50' : 'border-slate-300'
+              }`}
+            >
+              <span className="text-sm">
+                {pdfFile ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {pdfFile.name}
+                  </span>
+                ) : (
+                  <span className="text-slate-500">Click to choose a PDF file</span>
+                )}
+              </span>
+            </button>
+            {errors.sourceValue && <p className="text-red-500 text-xs mt-1">{errors.sourceValue}</p>}
+          </div>
+        );
+        
+      case SOURCE_TYPE.PAGE:
+        return (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm font-medium text-amber-800">
+                The current active browser tab will be used as the source for this quiz.
+              </p>
+            </div>
+          </div>
+        );
+        
+      default:
+        return null;
+    }
+  };
 
-          {/* Step 2: Basic Configuration */}
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="" size="lg">
+      <div className="space-y-0">
+        <div className="text-center pb-6 border-b border-slate-100">
+          <h2 className="text-2xl font-bold text-slate-900">Create Your Quiz</h2>
+          <p className="text-sm text-slate-500 mt-1">Set up your personalized learning experience</p>
+        </div>
+
+        <div className="pt-6 space-y-6">
+          {/* Step 1: Source Selection */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex items-center justify-center w-8 h-8 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">
-                2
+                {getStepNumber('source')}
+              </div>
+              <h3 className="text-base font-semibold text-slate-900">Choose your quiz source</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {sourceOptions.map(opt => (
+                <button 
+                  key={opt.value} 
+                  onClick={() => handleSourceTypeChange(opt.value)}
+                  className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                    config.sourceType === opt.value 
+                      ? 'border-amber-300 bg-amber-50' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-lg">{opt.icon}</span>
+                  <span className="text-sm font-medium text-slate-700">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="pt-4">{renderSourceInput()}</div>
+          </div>
+
+          {/* Step 2/3: Basic Configuration */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-8 h-8 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">
+                {getStepNumber('configure')}
               </div>
               <h3 className="text-base font-semibold text-slate-900">Configure your quiz</h3>
             </div>
-
-            {/* Question Count and Difficulty in a nice grid */}
             <div className="grid grid-cols-2 gap-4">
-              {/* Question Count */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
-                  Number of Questions
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-3">Number of Questions</label>
                 <div className="grid grid-cols-5 gap-2">
-                  {[3, 5, 10, 15, 20].map(count => (
+                  {questionCounts.map(count => (
                     <button
                       key={count}
                       onClick={() => handleInputChange('questionCount', count)}
                       className={`py-2 px-3 rounded-lg font-medium text-sm transition-all ${
-                        config.questionCount === count
-                          ? 'bg-amber-100 text-amber-700 border-2 border-amber-300'
+                        config.questionCount === count 
+                          ? 'bg-amber-100 text-amber-700 border-2 border-amber-300' 
                           : 'bg-white border-2 border-slate-200 text-slate-600 hover:border-slate-300'
                       }`}
                     >
@@ -204,20 +376,16 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
                   ))}
                 </div>
               </div>
-
-              {/* Difficulty */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
-                  Difficulty Level
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-3">Difficulty Level</label>
                 <div className="grid grid-cols-2 gap-2">
                   {difficultyLevels.map(level => (
                     <button
                       key={level.value}
                       onClick={() => handleInputChange('difficulty', level.value)}
                       className={`py-2 px-3 rounded-lg font-medium text-sm transition-all border-2 ${
-                        config.difficulty === level.value
-                          ? `${level.bg} ${level.color} ${level.border}`
+                        config.difficulty === level.value 
+                          ? `${level.bg} ${level.color} ${level.border}` 
                           : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                       }`}
                     >
@@ -231,9 +399,9 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
 
           {/* Advanced Settings Toggle */}
           <div>
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors group"
+            <button 
+              onClick={() => setShowAdvanced(!showAdvanced)} 
+              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
             >
               <svg 
                 className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} 
@@ -244,13 +412,12 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
               </svg>
               <span>Advanced Settings</span>
-              <span className="text-xs text-slate-400 ml-1">(Question types, timer, feedback)</span>
             </button>
           </div>
 
-          {/* Advanced Settings Panel */}
+          {/* Advanced Settings */}
           {showAdvanced && (
-            <div className="space-y-5 pt-5 border-t border-slate-100 animate-fade-in-up">
+            <div className="space-y-5 pt-5 border-t border-slate-100">
               
               {/* Question Types */}
               <div>
@@ -262,8 +429,8 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
                     <label 
                       key={type.value} 
                       className={`relative flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                        config.questionTypes.includes(type.value)
-                          ? 'border-amber-300 bg-amber-50'
+                        config.questionTypes.includes(type.value) 
+                          ? 'border-amber-300 bg-amber-50' 
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
@@ -271,7 +438,17 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
                         type="checkbox"
                         checked={config.questionTypes.includes(type.value)}
                         onChange={() => handleQuestionTypeToggle(type.value)}
-                        className="sr-only"
+                        style={{ 
+                          position: 'absolute', 
+                          width: '1px', 
+                          height: '1px', 
+                          padding: 0, 
+                          margin: '-1px', 
+                          overflow: 'hidden', 
+                          clip: 'rect(0,0,0,0)', 
+                          whiteSpace: 'nowrap', 
+                          border: 0 
+                        }}
                       />
                       <span className="text-lg">{type.icon}</span>
                       <span className="text-sm font-medium text-slate-700">{type.label}</span>
@@ -283,6 +460,9 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
                     </label>
                   ))}
                 </div>
+                {errors.questionTypes && (
+                  <p className="text-red-500 text-xs mt-2">{errors.questionTypes}</p>
+                )}
               </div>
 
               {/* Timer Settings */}
@@ -329,12 +509,17 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
                       <input
                         type="range"
                         min="30"
-                        max="300"
+                        max={Math.min(300, Math.floor(config.totalTimer / config.questionCount))}
                         step="15"
                         value={config.questionTimer}
                         onChange={(e) => handleInputChange('questionTimer', parseInt(e.target.value))}
                         className="w-full accent-amber-600"
                       />
+                      {config.questionTimer * config.questionCount > config.totalTimer && (
+                        <p className="text-amber-600 text-xs mt-1">
+                          ⚠️ Question time adjusted to fit total time
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -394,36 +579,11 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
           <Button 
             onClick={handleStartQuiz} 
             className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
-            disabled={!config.topic.trim()}
           >
-            <span className="flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Start Quiz
-            </span>
+            Start Quiz
           </Button>
         </div>
-
       </div>
-      
-      {/* Add animation styles */}
-      <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fade-in-up {
-          animation: fadeInUp 0.3s ease-out;
-        }
-      `}</style>
     </Modal>
   );
 };
