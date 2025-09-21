@@ -83,6 +83,14 @@ class ExamBuddyAPI {
         return this._mockRemoveBookmark(questionId);
     }
 
+    async removePausedQuiz(quizId) {
+        if (this.isProduction) {
+            return this._makeRequest(`/api/user/paused-quizzes/${quizId}`, { method: 'DELETE' });
+        }
+
+        return this._mockRemovePausedQuiz(quizId);
+    }
+
     async getPausedQuizzes() {
         if (this.isProduction) {
             return this._makeRequest('/api/user/paused-quizzes');
@@ -141,13 +149,30 @@ class ExamBuddyAPI {
     async _mockGetActiveQuiz(quizId) {
         await this._delay(500);
 
-        // Check if quiz exists in localStorage or return error
-        const savedQuiz = localStorage.getItem(`quiz_${quizId}`);
-        if (savedQuiz) {
-            return { success: true, data: JSON.parse(savedQuiz) };
+        const pausedQuizzes = JSON.parse(localStorage.getItem('exam_buddy_paused_quizzes') || '[]');
+        const quizData = pausedQuizzes.find(q => q.id === quizId);
+
+        if (quizData) {
+            return { success: true, data: quizData };
         }
 
-        return { success: false, error: 'Quiz not found' };
+        return { success: false, error: 'Paused quiz not found' };
+    }
+
+    async _mockSaveProgress(quizId, progress) {
+        await this._delay(200);
+        const pausedQuizzes = JSON.parse(localStorage.getItem('exam_buddy_paused_quizzes') || '[]');
+        
+        const existingIndex = pausedQuizzes.findIndex(q => q.id === quizId);
+
+        if (existingIndex > -1) {
+            pausedQuizzes[existingIndex] = progress;
+        } else {
+            pausedQuizzes.push(progress);
+        }
+
+        localStorage.setItem('exam_buddy_paused_quizzes', JSON.stringify(pausedQuizzes));
+        return { success: true };
     }
 
     async _mockSubmitAnswer(quizId, questionId, answer) {
@@ -260,6 +285,14 @@ class ExamBuddyAPI {
 
         const history = JSON.parse(localStorage.getItem('exam_buddy_quiz_history') || '[]');
         return { success: true, data: history.slice(-10) }; // Last 10 quizzes
+    }
+
+    async _mockRemovePausedQuiz(quizId) {
+        await this._delay(100);
+        const pausedQuizzes = JSON.parse(localStorage.getItem('exam_buddy_paused_quizzes') || '[]');
+        const updatedQuizzes = pausedQuizzes.filter(q => q.id !== quizId);
+        localStorage.setItem('exam_buddy_paused_quizzes', JSON.stringify(updatedQuizzes));
+        return { success: true };
     }
 
     // Helper methods

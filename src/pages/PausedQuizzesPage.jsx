@@ -1,16 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
-import { mockPausedQuizzes } from '../data/mockData';
+import examBuddyAPI from '../services/api';
 
 const PausedQuizzesPage = ({ onNavigate }) => {
-  const [pausedQuizzes] = useState(mockPausedQuizzes);
+  const [pausedQuizzes, setPausedQuizzes] = useState([]);
+
+  useEffect(() => {
+    const loadPausedQuizzes = async () => {
+      const response = await examBuddyAPI.getPausedQuizzes();
+      if (response.success) {
+        const sortedQuizzes = response.data.sort((a, b) => new Date(b.pausedAt) - new Date(a.pausedAt));
+        setPausedQuizzes(sortedQuizzes);
+      }
+    };
+    loadPausedQuizzes();
+  }, []);
 
   const resumeQuiz = (quizId) => {
     console.log('Resuming quiz:', quizId);
-    // In real app, load quiz state and navigate
-    onNavigate('quiz');
+    onNavigate('quiz', { quizConfig: { quizId: quizId } });
   };
 
   const restartQuiz = (quizId) => {

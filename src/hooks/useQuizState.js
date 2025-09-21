@@ -51,7 +51,11 @@ const useQuizState = (quizConfig = null) => {
   // Initialize quiz when config changes
   useEffect(() => {
     if (quizConfig) {
-      initializeQuiz(quizConfig);
+      if (quizConfig.quizId) {
+        loadExistingQuiz(quizConfig.quizId);
+      } else if (quizConfig.questions || quizConfig.topic) {
+        initializeQuiz(quizConfig);
+      }
     }
   }, [quizConfig]);
 
@@ -142,10 +146,28 @@ const useQuizState = (quizConfig = null) => {
       const response = await examBuddyAPI.getActiveQuiz(quizId);
 
       if (response.success) {
-        const existingQuiz = response.data;
-        setQuiz(existingQuiz);
+        const savedState = response.data;
+        
+        setQuiz({
+            id: savedState.id,
+            title: savedState.title,
+            subject: savedState.subject,
+            questions: savedState.questions,
+            totalQuestions: savedState.totalQuestions,
+        });
+        setConfig(savedState.config);
+        setCurrentQuestionIndex(savedState.currentQuestionIndex);
+        setUserAnswers(savedState.userAnswers);
+        setTimeRemaining(savedState.timeRemaining);
+        setQuestionTimeRemaining(savedState.questionTimeRemaining);
+        setBookmarkedQuestions(new Set(savedState.bookmarkedQuestions));
+        
+        setIsPaused(false);
         setIsQuizActive(true);
         quizIdRef.current = quizId;
+
+        await examBuddyAPI.removePausedQuiz(quizId);
+
       } else {
         setError('Could not load quiz');
       }
@@ -428,8 +450,22 @@ const useQuizState = (quizConfig = null) => {
       setIsPaused(true);
       setIsQuizActive(false);
 
+      const score = {
+        correct: userAnswers.filter(a => a && a.isCorrect).length,
+        total: userAnswers.filter(Boolean).length
+      };
+
       const quizState = {
         quizId: quizIdRef.current,
+        id: quizIdRef.current,
+        title: quiz.title,
+        subject: quiz.subject,
+        questions: quiz.questions,
+        totalQuestions: quiz.questions.length,
+        progress: Math.round(getProgress()),
+        currentQuestion: currentQuestionIndex + 1,
+        difficulty: config.difficulty,
+        score: score,
         currentQuestionIndex,
         userAnswers,
         timeRemaining,
