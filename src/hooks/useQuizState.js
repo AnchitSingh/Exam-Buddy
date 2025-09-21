@@ -33,6 +33,30 @@ const useQuizState = (quizConfig = null) => {
     }
   }, [quizConfig]);
 
+  // Effect to manage state when question changes
+  useEffect(() => {
+    const existingAnswer = userAnswers[currentQuestionIndex];
+    
+    if (existingAnswer) {
+      setSelectedAnswer({
+        optionIndex: existingAnswer.selectedOption,
+        isCorrect: existingAnswer.isCorrect,
+        textAnswer: existingAnswer.textAnswer, // For short answer etc.
+      });
+      
+      // Only show feedback if the setting is on
+      if (config.immediateFeedback) {
+        setShowFeedback(true);
+      } else {
+        setShowFeedback(false);
+      }
+    } else {
+      // No existing answer, so reset
+      setSelectedAnswer(null);
+      setShowFeedback(false);
+    }
+  }, [currentQuestionIndex]); // Runs only when the user navigates
+
   const initializeQuiz = async (config) => {
     try {
       setIsLoading(true);
@@ -238,27 +262,12 @@ const useQuizState = (quizConfig = null) => {
   const nextQuestion = () => {
     if (!isLastQuestion) {
       setCurrentQuestionIndex(prev => prev + 1);
-      setShowFeedback(false);
-      setSelectedAnswer(null);
     }
   };
 
   const previousQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
-      setShowFeedback(false);
-      setSelectedAnswer(null);
-      // Check if previous question was already answered
-      const prevAnswer = userAnswers[currentQuestionIndex - 1];
-      if (prevAnswer) {
-        setSelectedAnswer({
-          optionIndex: prevAnswer.selectedOption,
-          isCorrect: prevAnswer.isCorrect
-        });
-        if (config.immediateFeedback) {
-          setShowFeedback(true);
-        }
-      }
     }
   };
 
