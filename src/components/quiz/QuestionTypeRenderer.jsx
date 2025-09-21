@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AnswerOption from './AnswerOption';
 
 const QuestionTypeRenderer = ({ 
@@ -7,10 +7,32 @@ const QuestionTypeRenderer = ({
   onAnswerSelect, 
   disabled,
   showResult, 
-  immediateFeedback = true // Add this prop
+  immediateFeedback = true
 }) => {
   const [textAnswer, setTextAnswer] = useState('');
   const [fillBlanks, setFillBlanks] = useState(['', '']);
+
+  useEffect(() => {
+    if (question.type !== 'Fill in Blank' || immediateFeedback) {
+      return;
+    }
+
+    const allFilled = fillBlanks.every(blank => blank && blank.trim() !== '');
+    
+    if (allFilled) {
+      const isCorrect = question.acceptableAnswers?.some(acceptableSet =>
+        acceptableSet.every((acceptable, index) =>
+          fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+        )
+      ) || false;
+      
+      const timeoutId = setTimeout(() => {
+        onAnswerSelect(0, isCorrect, false, fillBlanks);
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [fillBlanks, question.type, immediateFeedback, onAnswerSelect, question.acceptableAnswers]);
 
   const handleBlankChange = (index, value) => {
     const newBlanks = [...fillBlanks];
@@ -27,7 +49,6 @@ const QuestionTypeRenderer = ({
   const handleFillBlankSubmit = () => {
     const allFilled = fillBlanks.every(blank => blank.trim() !== '');
     if (allFilled) {
-      // Check against acceptable answers
       const isCorrect = question.acceptableAnswers?.some(acceptableSet =>
         acceptableSet.every((acceptable, index) =>
           fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
@@ -37,11 +58,10 @@ const QuestionTypeRenderer = ({
       onAnswerSelect(0, isCorrect, false, fillBlanks);
     }
   };
-  // Auto-submit for subjective questions when immediate feedback is OFF
+
   const handleTextChange = (value) => {
     setTextAnswer(value);
     
-    // If immediate feedback is off, auto-submit on text change (with debounce)
     if (!immediateFeedback && value.trim()) {
       clearTimeout(window.textAnswerTimeout);
       window.textAnswerTimeout = setTimeout(() => {
@@ -123,7 +143,6 @@ const QuestionTypeRenderer = ({
 			  />
 			</div>
 			
-			{/* Show submit button only if immediate feedback is ON and not disabled */}
 			{immediateFeedback && !disabled && (
 			  <button
 				onClick={handleTextSubmit}
@@ -134,7 +153,6 @@ const QuestionTypeRenderer = ({
 			  </button>
 			)}
 			
-			{/* Show answer status */}
 			{!immediateFeedback && selectedAnswer?.textAnswer && (
 			  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
 				<p className="text-blue-800 font-medium">✓ Answer recorded</p>
@@ -174,7 +192,6 @@ const QuestionTypeRenderer = ({
 			  ))}
 			</div>
 			
-			{/* Show submit button only if immediate feedback is ON */}
 			{immediateFeedback && !disabled && (
 			  <button
 				onClick={handleFillBlankSubmit}

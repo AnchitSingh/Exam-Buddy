@@ -13,7 +13,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
     );
   }
 
-  const { score, totalQuestions, userAnswers, timeSpent, config } = results;
+  const { score, totalQuestions, answers, timeSpent, config } = results;
   const percentage = Math.round((score / totalQuestions) * 100);
 
   const getScoreColor = () => {
@@ -114,8 +114,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 
           {/* Questions List */}
           <div className="space-y-4">
-            {/* Add safety check for userAnswers */}
-            {(userAnswers || []).slice(0, showAllQuestions ? (userAnswers || []).length : 3).map((answer, index) => {
+            {(answers || []).slice(0, showAllQuestions ? (answers || []).length : 3).map((answer, index) => {
               const question = results.quiz?.questions?.[index] || {
                 id: `question_${index}`,
                 question: `Question ${index + 1}`,
@@ -212,27 +211,13 @@ const QuizResultsPage = ({ results, onNavigate }) => {
             })}
           </div>
 
-          {/* Fix the Show More Button */}
-          {!showAllQuestions && (userAnswers || []).length > 3 && (
+          {!showAllQuestions && (answers || []).length > 3 && (
             <div className="text-center mt-6">
               <Button
                 onClick={() => setShowAllQuestions(true)}
                 variant="ghost"
               >
-                Show {(userAnswers || []).length - 3} More Questions
-              </Button>
-            </div>
-          )}
-
-
-          {/* Show More Button */}
-          {!showAllQuestions && userAnswers.length > 3 && (
-            <div className="text-center mt-6">
-              <Button
-                onClick={() => setShowAllQuestions(true)}
-                variant="ghost"
-              >
-                Show {userAnswers.length - 3} More Questions
+                Show {(answers || []).length - 3} More Questions
               </Button>
             </div>
           )}
