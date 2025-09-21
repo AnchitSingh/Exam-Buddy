@@ -50,6 +50,98 @@ class ExamBuddyAPI {
         return this._mockCompleteQuiz(quizId, finalAnswers);
     }
 
+    // ————— Content Source helpers —————
+
+    async cacheLastSource(extractedSource) {
+        try {
+            localStorage.setItem('exam_buddy_last_source', JSON.stringify({
+                ...extractedSource,
+                cachedAt: new Date().toISOString()
+            }));
+        } catch { }
+    }
+
+    async prepareQuizSource(extractedSource) {
+        // Normalize and persist for quick re-use (e.g., "Use last source" CTA).
+        await this.cacheLastSource(extractedSource);
+        return { success: true, data: extractedSource };
+    }
+
+    // ————— Quiz generation & lifecycle —————
+
+    async generateQuiz(input) {
+        // input can be: { topic, difficulty, questionCount, ... } OR { extractedSource, ... }
+        if (this.isProduction) {
+            // TODO: wire to Prompt API with extractedSource.text/chunks to generate JSON
+            throw new Error('Production AI path not implemented in this mock.');
+        }
+
+        // Mock path: choose template by subject/topic heuristics
+        const { topic = '', difficulty = 'medium', questionCount = 5, extractedSource } = input || {};
+
+        const subject = this._detectSubject(extractedSource?.text || topic);
+        const template = getQuizByTopic(subject) || getDefaultQuiz();
+
+        const selected = template.questions.slice(0, questionCount);
+        const quiz = {
+            id: `quiz_${Date.now()}`,
+            title: `${topic || extractedSource?.title || 'Adaptive'} Quiz`,
+            subject,
+            difficulty,
+            totalQuestions: selected.length,
+            questions: selected,
+            config: {
+                ...input,
+                subject
+            },
+            source: extractedSource || null,
+            createdAt: new Date().toISOString(),
+            timeLimit: input?.timerEnabled ? input?.totalTimer || 600 : null
+        };
+
+        return { success: true, data: quiz };
+    }
+
+    async submitAnswer(quizId, questionId, answer) {
+        // For MCQ/True/False, we accept the UI's instant validation and enrich response.
+        // For subjective (Short Answer/Fill in Blank), you could simulate AI eval here if needed.
+        return {
+            success: true,
+            data: {
+                isCorrect: !!answer.isCorrect,
+                feedback: {
+                    message: answer.isCorrect ? 'Great job!' : 'Review the concept and try again.',
+                    explanation: answer.explanation || 'Explanation not available in mock.'
+                },
+                explanation: answer.explanation || 'Explanation not available in mock.',
+                score: answer.isCorrect ? 1 : 0
+            }
+        };
+    }
+
+    async completeQuiz(quizId, finalAnswers) {
+        const totalQuestions = finalAnswers.length;
+        const correctAnswers = finalAnswers.filter(a => a?.isCorrect).length;
+        const scorePct = Math.round((correctAnswers / totalQuestions) * 100);
+        const timeSpent = finalAnswers.reduce((acc, a) => acc + (a?.timeSpent || 0), 0);
+
+        const results = {
+            quizId,
+            score: correctAnswers,
+            totalQuestions,
+            percentage: scorePct,
+            timeSpent,
+            answers: finalAnswers,
+            completedAt: new Date().toISOString(),
+            insights: this._generateInsights(finalAnswers),
+            recommendations: this._generateRecommendations(scorePct, finalAnswers)
+        };
+
+        this._saveToHistory(results);
+        return { success: true, data: results };
+    }
+
+
     // User Data
     async getUserProfile() {
         if (this.isProduction) {
@@ -162,7 +254,7 @@ class ExamBuddyAPI {
     async _mockSaveProgress(quizId, progress) {
         await this._delay(200);
         const pausedQuizzes = JSON.parse(localStorage.getItem('exam_buddy_paused_quizzes') || '[]');
-        
+
         const existingIndex = pausedQuizzes.findIndex(q => q.id === quizId);
 
         if (existingIndex > -1) {
@@ -244,19 +336,19 @@ class ExamBuddyAPI {
         await this._delay(300);
 
         const bookmarks = JSON.parse(localStorage.getItem('exam_buddy_bookmarks') || '[]');
-            const bookmark = {
-              id: `bookmark_${Date.now()}`,
-              questionId,
-              question: questionData.question,
-              options: questionData.options,
-              type: questionData.type,
-              correctAnswer: questionData.correctAnswer,
-              explanation: questionData.explanation,
-              subject: questionData.subject || 'General',
-              difficulty: questionData.difficulty || 'Medium',
-              bookmarkedAt: new Date().toISOString(),
-              source: questionData.quizTitle || 'Unknown Quiz'
-            };
+        const bookmark = {
+            id: `bookmark_${Date.now()}`,
+            questionId,
+            question: questionData.question,
+            options: questionData.options,
+            type: questionData.type,
+            correctAnswer: questionData.correctAnswer,
+            explanation: questionData.explanation,
+            subject: questionData.subject || 'General',
+            difficulty: questionData.difficulty || 'Medium',
+            bookmarkedAt: new Date().toISOString(),
+            source: questionData.quizTitle || 'Unknown Quiz'
+        };
         bookmarks.push(bookmark);
         localStorage.setItem('exam_buddy_bookmarks', JSON.stringify(bookmarks));
 
@@ -296,6 +388,48 @@ class ExamBuddyAPI {
     }
 
     // Helper methods
+    // ————— Helpers —————
+
+  _detectSubject(text = '') {
+    const t = (text || '').toLowerCase();
+    const map = {
+      physics: ['physics', 'thermodynamics', 'kinematics', 'entropy', 'newton', 'quantum'],
+      mathematics: ['calculus', 'algebra', 'matrix', 'derivative', 'integral', 'vector'],
+      biology: ['cell', 'mitochondria', 'genetics', 'photosynthesis', 'organism'],
+      chemistry: ['atom', 'molecule', 'reaction', 'organic', 'inorganic'],
+      'computer science': ['algorithm', 'programming', 'javascript', 'python', 'computational'],
+      history: ['ancient', 'medieval', 'war', 'civilization', 'empire']
+    };
+    for (const [subject, keys] of Object.entries(map)) {
+      if (keys.some(k => t.includes(k))) return subject;
+    }
+    return 'general';
+  }
+
+  _generateInsights(answers) {
+    const correct = answers.filter(a => a?.isCorrect).length;
+    const totalTime = answers.reduce((acc, a) => acc + (a?.timeSpent || 0), 0);
+    const avgTime = answers.length ? totalTime / answers.length : 0;
+    return {
+      strengths: [
+        correct >= Math.ceil(answers.length * 0.7) ? 'Strong overall performance' : null,
+        avgTime < 45 ? 'Efficient time management' : null
+      ].filter(Boolean),
+      improvements: [
+        correct < Math.ceil(answers.length * 0.6) ? 'Review fundamental concepts' : null,
+        avgTime > 90 ? 'Practice under time constraints' : null
+      ].filter(Boolean)
+    };
+  }
+
+  _generateRecommendations(scorePct, answers) {
+    if (scorePct >= 80) {
+      return ['Try a harder difficulty', 'Explore advanced topics', 'Teach concepts to reinforce learning'];
+    } else if (scorePct >= 60) {
+      return ['Review missed concepts', 'Practice similar questions', 'Focus identified weak areas'];
+    }
+    return ['Start with easier sets', 'Review basics before next quiz', 'Short, frequent practice sessions'];
+  }
     _delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -346,23 +480,23 @@ class ExamBuddyAPI {
         };
     }
 
-      _generateInsights(answers) {
+    _generateInsights(answers) {
         const answeredQuestions = answers.filter(Boolean);
         const correctAnswers = answeredQuestions.filter(a => a.isCorrect).length;
         const totalTime = answeredQuestions.reduce((acc, a) => acc + (a.timeSpent || 0), 0);
         const avgTimePerQuestion = answeredQuestions.length > 0 ? totalTime / answeredQuestions.length : 0;
-    
+
         return {
-          strengths: [
-            correctAnswers > answeredQuestions.length * 0.7 ? "Strong overall performance" : null,
-            avgTimePerQuestion < 45 && avgTimePerQuestion > 0 ? "Efficient time management" : null,
-          ].filter(Boolean),
-          improvements: [
-            correctAnswers < answeredQuestions.length * 0.6 ? "Review fundamental concepts" : null,
-            avgTimePerQuestion > 90 ? "Focus on time management" : null,
-          ].filter(Boolean)
+            strengths: [
+                correctAnswers > answeredQuestions.length * 0.7 ? "Strong overall performance" : null,
+                avgTimePerQuestion < 45 && avgTimePerQuestion > 0 ? "Efficient time management" : null,
+            ].filter(Boolean),
+            improvements: [
+                correctAnswers < answeredQuestions.length * 0.6 ? "Review fundamental concepts" : null,
+                avgTimePerQuestion > 90 ? "Focus on time management" : null,
+            ].filter(Boolean)
         };
-      }
+    }
     _generateRecommendations(score, answers) {
         if (score >= 80) {
             return [
@@ -387,51 +521,30 @@ class ExamBuddyAPI {
 
     async _getRecentActivity() {
         return [
-            {
-                type: 'quiz_completed',
-                title: 'Physics Quiz - Completed',
-                score: '8/10',
-                time: '2 hours ago',
-                id: 'activity_1'
-            },
-            {
-                type: 'quiz_paused',
-                title: 'Math Quiz - Paused',
-                progress: '3/15',
-                time: 'Yesterday',
-                id: 'activity_2'
-            },
-            {
-                type: 'bookmark_added',
-                title: '5 Questions Bookmarked',
-                source: 'Chemistry Quiz',
-                time: '3 days ago',
-                id: 'activity_3'
-            }
+          { type: 'quiz_completed', title: 'Physics Quiz - Completed', score: '8/10', time: '2 hours ago', id: 'a1' },
+          { type: 'quiz_paused', title: 'Math Quiz - Paused', progress: '3/15', time: 'Yesterday', id: 'a2' },
+          { type: 'bookmark_added', title: '5 Questions Bookmarked', source: 'Chemistry Quiz', time: '3 days ago', id: 'a3' }
         ];
-    }
-
-    _saveToHistory(results) {
+      }
+    
+      _saveToHistory(results) {
         const history = JSON.parse(localStorage.getItem('exam_buddy_quiz_history') || '[]');
         history.push({
-            id: results.quizId,
-            title: results.title || 'Quiz',
-            score: results.score,
-            totalQuestions: results.totalQuestions,
-            percentage: results.percentage,
-            completedAt: results.completedAt,
-            subject: results.subject || 'General'
+          id: results.quizId,
+          title: results.title || 'Quiz',
+          score: results.score,
+          totalQuestions: results.totalQuestions,
+          percentage: results.percentage,
+          completedAt: results.completedAt,
+          subject: results.subject || 'General'
         });
-
-        // Keep only last 50 entries
-        if (history.length > 50) {
-            history.splice(0, history.length - 50);
-        }
-
+        if (history.length > 50) history.splice(0, history.length - 50);
         localStorage.setItem('exam_buddy_quiz_history', JSON.stringify(history));
-    }
+      }
+
 }
 
 // Export singleton instance
-export const examBuddyAPI = new ExamBuddyAPI();
+const examBuddyAPI = new ExamBuddyAPI();
 export default examBuddyAPI;
+export { examBuddyAPI };
