@@ -71,8 +71,8 @@ const AIProcessingFeedback = ({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-8 max-w-sm mx-4 text-center shadow-2xl border border-white/20">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-backdrop-in">
+      <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-8 max-w-sm mx-4 text-center shadow-2xl border border-white/20 animate-modal-in">
         
         {/* Animated Icon */}
         <div className="relative mb-6">

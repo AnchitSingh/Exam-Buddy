@@ -20,9 +20,9 @@ const Modal = ({
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Backdrop - Fixed */}
+        {/* Backdrop */}
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-backdrop-in"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -31,7 +31,7 @@ const Modal = ({
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         
         {/* Modal */}
-        <div className={`relative inline-block w-full ${sizeClasses[size]} p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl sm:rounded-3xl z-[10000]`}>
+        <div className={`relative inline-block w-full ${sizeClasses[size]} p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl sm:rounded-3xl z-[10000] animate-modal-in`}>
           <div className="text-center">
             {icon && (
               <div className="mx-auto flex items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-amber-100 mb-4">

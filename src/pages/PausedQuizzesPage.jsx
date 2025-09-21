@@ -25,8 +25,13 @@ const PausedQuizzesPage = ({ onNavigate }) => {
 
   const restartQuiz = (quizId) => {
     if (confirm('Are you sure you want to restart this quiz? Your current progress will be lost.')) {
-      console.log('Restarting quiz:', quizId);
-      onNavigate('quiz');
+      const quizToRestart = pausedQuizzes.find(q => q.id === quizId);
+      if (quizToRestart) {
+        console.log('Restarting quiz with config:', quizToRestart.config);
+        onNavigate('quiz', { quizConfig: quizToRestart.config });
+      } else {
+        console.error('Could not find quiz to restart');
+      }
     }
   };
 
