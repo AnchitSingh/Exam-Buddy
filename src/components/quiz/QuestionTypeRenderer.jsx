@@ -12,6 +12,12 @@ const QuestionTypeRenderer = ({
   const [textAnswer, setTextAnswer] = useState('');
   const [fillBlanks, setFillBlanks] = useState(['', '']);
 
+  const handleBlankChange = (index, value) => {
+    const newBlanks = [...fillBlanks];
+    newBlanks[index] = value;
+    setFillBlanks(newBlanks);
+  };
+
   const handleTextSubmit = () => {
     if (textAnswer.trim()) {
 		onAnswerSelect(0, false, false, textAnswer.trim()); // Will be evaluated by AI
@@ -77,7 +83,9 @@ const QuestionTypeRenderer = ({
                   ? selectedAnswer.isCorrect
                     ? 'border-green-400 bg-green-50'
                     : 'border-red-400 bg-red-50'
-                  : disabled
+                  : selectedAnswer?.optionIndex === index
+                    ? 'border-amber-400 bg-amber-50'
+                    : disabled
                     ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
                     : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'
               }`}
@@ -86,6 +94,8 @@ const QuestionTypeRenderer = ({
                 <span className={`text-2xl font-bold ${
                   selectedAnswer?.optionIndex === index && showResult
                     ? selectedAnswer.isCorrect ? 'text-green-700' : 'text-red-700'
+                    : selectedAnswer?.optionIndex === index
+                    ? 'text-amber-700'
                     : 'text-slate-700 group-hover:text-slate-800'
                 }`}>
                   {option.text}
