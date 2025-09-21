@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
 import QuizSetupModal from '../components/quiz/QuizSetupModal';
 import examBuddyAPI from '../services/api';
-import { extractFromCurrentPage } from '../utils/contentExtractor';
+import { extractFromCurrentPage, extractFromPDFResult } from '../utils/contentExtractor';
+import { extractTextFromPDF } from '../utils/pdfExtractor';
+import extractionService from '../services/extraction';
 
 const HomePage = ({ onNavigate }) => {
   const [showQuizSetup, setShowQuizSetup] = useState(false);
@@ -13,20 +15,49 @@ const HomePage = ({ onNavigate }) => {
 
   const handleTestExtraction = async () => {
     try {
-      setExtractionResult('Extracting content from page...');
-      const result = await extractFromCurrentPage();
-      console.log('Extraction Result:', result);
-      // Displaying only a subset of data for readability
+      setExtractionResult('Getting page info...');
+      
+      const meta = await extractionService.getMeta();
+      const url = meta.url;
+
+      let finalResult;
+
+      if (url.toLowerCase().endsWith('.pdf')) {
+        setExtractionResult(`Detected PDF. Fetching and parsing...\nURL: ${url}`);
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+        }
+        const pdfBlob = await response.blob();
+        
+        setExtractionResult('Parsing PDF text...');
+        const { text, meta: pdfMeta } = await extractTextFromPDF(pdfBlob);
+        
+        setExtractionResult('Finalizing source...');
+        finalResult = await extractFromPDFResult({
+          text: text,
+          fileName: url.substring(url.lastIndexOf('/') + 1),
+          pageCount: pdfMeta.pageCount
+        });
+
+      } else {
+        setExtractionResult('Detected HTML page. Extracting content...');
+        finalResult = await extractFromCurrentPage();
+      }
+
+      console.log('Extraction Result:', finalResult);
       const displayResult = {
-        sourceType: result.sourceType,
-        title: result.title,
-        url: result.url,
-        domain: result.domain,
-        excerpt: result.excerpt,
-        wordCount: result.wordCount,
-        chunksCount: result.chunks.length,
+        sourceType: finalResult.sourceType,
+        title: finalResult.title,
+        url: finalResult.url,
+        domain: finalResult.domain,
+        excerpt: finalResult.excerpt,
+        wordCount: finalResult.wordCount,
+        chunksCount: finalResult.chunks.length,
       };
       setExtractionResult(JSON.stringify(displayResult, null, 2));
+
     } catch (error) {
       console.error('Extraction failed:', error);
       setExtractionResult(`Error: ${error.message}`);
