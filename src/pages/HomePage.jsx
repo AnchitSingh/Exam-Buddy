@@ -2,12 +2,36 @@ import React, { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
 import QuizSetupModal from '../components/quiz/QuizSetupModal';
 import examBuddyAPI from '../services/api';
+import { extractFromCurrentPage } from '../utils/contentExtractor';
 
 const HomePage = ({ onNavigate }) => {
   const [showQuizSetup, setShowQuizSetup] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [extractionResult, setExtractionResult] = useState(null);
+
+  const handleTestExtraction = async () => {
+    try {
+      setExtractionResult('Extracting content from page...');
+      const result = await extractFromCurrentPage();
+      console.log('Extraction Result:', result);
+      // Displaying only a subset of data for readability
+      const displayResult = {
+        sourceType: result.sourceType,
+        title: result.title,
+        url: result.url,
+        domain: result.domain,
+        excerpt: result.excerpt,
+        wordCount: result.wordCount,
+        chunksCount: result.chunks.length,
+      };
+      setExtractionResult(JSON.stringify(displayResult, null, 2));
+    } catch (error) {
+      console.error('Extraction failed:', error);
+      setExtractionResult(`Error: ${error.message}`);
+    }
+  };
 
   // Load user data on component mount
   useEffect(() => {
@@ -129,6 +153,26 @@ const HomePage = ({ onNavigate }) => {
             Welcome back{userProfile?.name ? `, ${userProfile.name}` : ''}! 👋
           </h2>
           <p className="text-slate-600">Ready to continue your learning journey?</p>
+        </div>
+
+        {/* EXTRACTION TEST SECTION */}
+        <div className="mb-8 p-4 border-2 border-dashed border-amber-400 rounded-2xl bg-amber-50/50">
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Extraction Test</h3>
+            <p className="text-sm text-slate-600 mb-4">
+                Click the button below to test the content extraction from the current active browser tab.
+                Make sure you are on a page with some article content.
+            </p>
+            <Button onClick={handleTestExtraction} variant="secondary">
+                Test Page Extraction
+            </Button>
+            {extractionResult && (
+                <div className="mt-4 p-4 bg-slate-100 rounded-lg">
+                    <h4 className="font-bold text-slate-700">Extraction Result:</h4>
+                    <pre className="text-xs whitespace-pre-wrap overflow-x-auto mt-2">
+                        {extractionResult}
+                    </pre>
+                </div>
+            )}
         </div>
 
         {/* Quick Action Cards */}
