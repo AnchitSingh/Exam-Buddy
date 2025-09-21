@@ -1,0 +1,39 @@
+{
+    "manifest_version": 3,
+    "name": "Exam Buddy - AI Study Companion",
+    "version": "1.0",
+    "description": "Turn any webpage or PDF into adaptive quizzes with Chrome's built-in AI",
+    "permissions": [
+      "sidePanel",
+      "storage",
+      "activeTab",
+      "scripting"
+    ],
+    "host_permissions": [
+      "http://*/*",
+      "https://*/*"
+    ],
+    "background": {
+      "service_worker": "src/background.js"
+    },
+    "action": {
+      "default_popup": "index.html",
+      "default_title": "Exam Buddy"
+    },
+    "side_panel": {
+      "default_path": "src/sidepanel.html"
+    },
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "js": ["src/content.js"]
+      }
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": ["src/assets/*"],
+        "matches": ["<all_urls>"]
+      }
+    ]
+  }
+  
