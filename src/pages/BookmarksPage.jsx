@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { mockBookmarks } from '../data/mockData';
+import examBuddyAPI from '../services/api';
 
 const BookmarksPage = ({ onNavigate }) => {
-  const [bookmarks] = useState(mockBookmarks);
+  const [bookmarks, setBookmarks] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('All Subjects');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All Difficulty');
+
+  useEffect(() => {
+    const loadBookmarks = async () => {
+      const response = await examBuddyAPI.getBookmarks();
+      if (response.success) {
+        setBookmarks(response.data.sort((a, b) => new Date(b.bookmarkedAt) - new Date(a.bookmarkedAt)));
+      }
+    };
+    loadBookmarks();
+  }, []);
 
   const subjects = ['All Subjects', ...new Set(bookmarks.map(b => b.subject))];
   const difficulties = ['All Difficulty', ...new Set(bookmarks.map(b => b.difficulty))];
@@ -17,15 +27,40 @@ const BookmarksPage = ({ onNavigate }) => {
     return subjectMatch && difficultyMatch;
   });
 
-  const removeBookmark = (bookmarkId) => {
-    console.log('Removing bookmark:', bookmarkId);
-    // In real app, update state and localStorage
+  const removeBookmark = async (questionId) => {
+    const response = await examBuddyAPI.removeBookmark(questionId);
+    if (response.success) {
+      setBookmarks(prev => prev.filter(b => b.questionId !== questionId));
+    }
   };
 
-  const practiceQuestion = (bookmarkId) => {
-    console.log('Starting practice for question:', bookmarkId);
-    // Navigate to quiz with specific question
-    onNavigate('quiz');
+  const transformBookmarksToQuestions = (bookmarksToTransform) => {
+    return bookmarksToTransform.map(b => ({
+      ...b,
+      id: b.questionId,
+      type: b.type || 'MCQ', // Fallback for old bookmarks
+    }));
+  };
+
+  const practiceQuestion = (bookmark) => {
+    const questions = transformBookmarksToQuestions([bookmark]);
+    onNavigate('quiz', {
+      quizConfig: {
+        title: `Practice: ${bookmark.subject}`,
+        questions: questions,
+      },
+    });
+  };
+
+  const practiceAllFiltered = () => {
+    if (filteredBookmarks.length === 0) return;
+    const questions = transformBookmarksToQuestions(filteredBookmarks);
+    onNavigate('quiz', {
+      quizConfig: {
+        title: 'Practice All Bookmarks',
+        questions: questions,
+      },
+    });
   };
 
   return (
@@ -93,7 +128,7 @@ const BookmarksPage = ({ onNavigate }) => {
             
             <Button 
               size="sm" 
-              onClick={() => console.log('Practice all bookmarks')}
+              onClick={practiceAllFiltered}
               className="ml-auto"
             >
               Practice All
@@ -133,7 +168,7 @@ const BookmarksPage = ({ onNavigate }) => {
                     </Badge>
                   </div>
                   <button 
-                    onClick={() => removeBookmark(bookmark.id)} 
+                    onClick={() => removeBookmark(bookmark.questionId)} 
                     className="text-slate-400 hover:text-red-500 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -152,18 +187,18 @@ const BookmarksPage = ({ onNavigate }) => {
                       <span className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-medium">
                         {String.fromCharCode(65 + index)}
                       </span>
-                      <span className="text-slate-700">{option}</span>
+                      <span className="text-slate-700">{option.text}</span>
                     </div>
                   ))}
                 </div>
                 
                 <div className="flex items-center justify-between pt-4 border-t border-slate-200">
                   <div className="flex items-center space-x-4 text-sm text-slate-600">
-                    <span>📅 Bookmarked {bookmark.bookmarkedAt}</span>
+                    <span>📅 Bookmarked {new Date(bookmark.bookmarkedAt).toLocaleDateString()}</span>
                     <span>📝 From: {bookmark.source}</span>
                   </div>
                   <Button 
-                    onClick={() => practiceQuestion(bookmark.id)} 
+                    onClick={() => practiceQuestion(bookmark)} 
                     variant="secondary"
                     size="sm"
                   >

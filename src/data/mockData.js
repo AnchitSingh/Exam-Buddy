@@ -54,26 +54,7 @@ export const mockQuizData = {
     score: 0
   };
   
-  export const mockBookmarks = [
-    {
-      id: 1,
-      question: "What is the relationship between force, mass, and acceleration according to Newton's Second Law?",
-      options: ["F = ma", "F = m/a", "F = a/m", "F = m + a"],
-      subject: "Physics",
-      difficulty: "Medium",
-      bookmarkedAt: "2 days ago",
-      source: "Physics Quiz #3"
-    },
-    {
-      id: 2,
-      question: "Find the derivative of f(x) = 3x² + 2x - 5",
-      options: ["f'(x) = 6x + 2", "f'(x) = 3x + 2", "f'(x) = 6x - 5", "f'(x) = x² + x"],
-      subject: "Math",
-      difficulty: "Hard",
-      bookmarkedAt: "1 week ago",
-      source: "Calculus Quiz #1"
-    }
-  ];
+  
   
   export const mockPausedQuizzes = [
     {

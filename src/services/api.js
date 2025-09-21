@@ -171,7 +171,7 @@ class ExamBuddyAPI {
         await this._delay(1500); // Simulate results processing
 
         const totalQuestions = finalAnswers.length;
-        const correctAnswers = finalAnswers.filter(a => a.isCorrect).length;
+        const correctAnswers = finalAnswers.filter(a => a && a.isCorrect).length;
         const score = Math.round((correctAnswers / totalQuestions) * 100);
 
         const results = {
@@ -179,7 +179,7 @@ class ExamBuddyAPI {
             score: correctAnswers,
             totalQuestions,
             percentage: score,
-            timeSpent: finalAnswers.reduce((acc, a) => acc + (a.timeSpent || 0), 0),
+            timeSpent: finalAnswers.filter(Boolean).reduce((acc, a) => acc + (a.timeSpent || 0), 0),
             answers: finalAnswers,
             completedAt: new Date().toISOString(),
             insights: this._generateInsights(finalAnswers),
@@ -219,19 +219,19 @@ class ExamBuddyAPI {
         await this._delay(300);
 
         const bookmarks = JSON.parse(localStorage.getItem('exam_buddy_bookmarks') || '[]');
-        const bookmark = {
-            id: `bookmark_${Date.now()}`,
-            questionId,
-            question: questionData.question,
-            options: questionData.options,
-            correctAnswer: questionData.correctAnswer,
-            explanation: questionData.explanation,
-            subject: questionData.subject || 'General',
-            difficulty: questionData.difficulty || 'Medium',
-            bookmarkedAt: new Date().toISOString(),
-            source: questionData.quizTitle || 'Unknown Quiz'
-        };
-
+            const bookmark = {
+              id: `bookmark_${Date.now()}`,
+              questionId,
+              question: questionData.question,
+              options: questionData.options,
+              type: questionData.type,
+              correctAnswer: questionData.correctAnswer,
+              explanation: questionData.explanation,
+              subject: questionData.subject || 'General',
+              difficulty: questionData.difficulty || 'Medium',
+              bookmarkedAt: new Date().toISOString(),
+              source: questionData.quizTitle || 'Unknown Quiz'
+            };
         bookmarks.push(bookmark);
         localStorage.setItem('exam_buddy_bookmarks', JSON.stringify(bookmarks));
 
@@ -313,23 +313,23 @@ class ExamBuddyAPI {
         };
     }
 
-    _generateInsights(answers) {
-        const correctAnswers = answers.filter(a => a.isCorrect).length;
-        const totalTime = answers.reduce((acc, a) => acc + (a.timeSpent || 0), 0);
-        const avgTimePerQuestion = totalTime / answers.length;
-
+      _generateInsights(answers) {
+        const answeredQuestions = answers.filter(Boolean);
+        const correctAnswers = answeredQuestions.filter(a => a.isCorrect).length;
+        const totalTime = answeredQuestions.reduce((acc, a) => acc + (a.timeSpent || 0), 0);
+        const avgTimePerQuestion = answeredQuestions.length > 0 ? totalTime / answeredQuestions.length : 0;
+    
         return {
-            strengths: [
-                correctAnswers > answers.length * 0.7 ? "Strong overall performance" : null,
-                avgTimePerQuestion < 45 ? "Efficient time management" : null,
-            ].filter(Boolean),
-            improvements: [
-                correctAnswers < answers.length * 0.6 ? "Review fundamental concepts" : null,
-                avgTimePerQuestion > 90 ? "Focus on time management" : null,
-            ].filter(Boolean)
+          strengths: [
+            correctAnswers > answeredQuestions.length * 0.7 ? "Strong overall performance" : null,
+            avgTimePerQuestion < 45 && avgTimePerQuestion > 0 ? "Efficient time management" : null,
+          ].filter(Boolean),
+          improvements: [
+            correctAnswers < answeredQuestions.length * 0.6 ? "Review fundamental concepts" : null,
+            avgTimePerQuestion > 90 ? "Focus on time management" : null,
+          ].filter(Boolean)
         };
-    }
-
+      }
     _generateRecommendations(score, answers) {
         if (score >= 80) {
             return [

@@ -13,16 +13,17 @@ const QuestionTypeRenderer = forwardRef(({
   const [fillBlanks, setFillBlanks] = useState(['', '']);
 
   useEffect(() => {
+    // Always reset state first to prevent using old answers for different question types
+    setTextAnswer('');
+    setFillBlanks(Array(question.question?.split('_______').length - 1).fill(''));
+
     if (selectedAnswer?.textAnswer) {
-      if (question.type === 'Short Answer') {
+      if (question.type === 'Short Answer' && typeof selectedAnswer.textAnswer === 'string') {
         setTextAnswer(selectedAnswer.textAnswer);
       }
       if (question.type === 'Fill in Blank' && Array.isArray(selectedAnswer.textAnswer)) {
         setFillBlanks(selectedAnswer.textAnswer);
       }
-    } else {
-      setTextAnswer('');
-      setFillBlanks(Array(question.question?.split('_______').length - 1).fill(''));
     }
   }, [question, selectedAnswer]);
 

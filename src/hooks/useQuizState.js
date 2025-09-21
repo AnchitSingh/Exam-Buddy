@@ -27,7 +27,16 @@ const useQuizState = (quizConfig = null) => {
   const quizIdRef = useRef(null);
   const pendingApiCallRef = useRef(null); // Add ref to track pending API calls
 
-  // ... other useEffects remain the same ...
+  // Load bookmarks on initial load
+  useEffect(() => {
+    const loadBookmarks = async () => {
+      const response = await examBuddyAPI.getBookmarks();
+      if (response.success) {
+        setBookmarkedQuestions(new Set(response.data.map(b => b.questionId)));
+      }
+    };
+    loadBookmarks();
+  }, []);
 
   useEffect(() => {
     if (quizConfig) {
@@ -61,7 +70,27 @@ const useQuizState = (quizConfig = null) => {
       setIsLoading(true);
       setError(null);
 
-      const response = await examBuddyAPI.generateQuiz(config);
+      let response;
+      if (config.questions && config.questions.length > 0) {
+        // This is a practice quiz from bookmarks
+        response = {
+          success: true,
+          data: {
+            id: `practice_${Date.now()}`,
+            title: config.title || 'Practice Quiz',
+            subject: config.subject || 'Mixed',
+            totalQuestions: config.questions.length,
+            config: { ...config, immediateFeedback: true, timerEnabled: false },
+            questions: config.questions,
+            createdAt: new Date().toISOString(),
+            timeLimit: null,
+          }
+        };
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate loading
+      } else {
+        // Generate a new quiz
+        response = await examBuddyAPI.generateQuiz(config);
+      }
 
       if (response.success) {
         const newQuiz = response.data;
@@ -296,6 +325,8 @@ const useQuizState = (quizConfig = null) => {
 
   const nextQuestion = () => {
     if (!isLastQuestion) {
+      setShowFeedback(false);
+      setSelectedAnswer(null);
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
@@ -321,10 +352,12 @@ const useQuizState = (quizConfig = null) => {
           return newSet;
         });
       } else {
+        const options = currentQuestion.options || [];
         await examBuddyAPI.addBookmark(questionId, {
           question: currentQuestion.question,
-          options: currentQuestion.options,
-          correctAnswer: currentQuestion.options.findIndex(opt => opt.isCorrect),
+          options: options,
+          type: currentQuestion.type,
+          correctAnswer: options.findIndex(opt => opt.isCorrect),
           explanation: currentQuestion.explanation,
           subject: currentQuestion.subject,
           difficulty: currentQuestion.difficulty,
