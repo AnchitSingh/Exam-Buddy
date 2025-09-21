@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import QuizHeader from '../components/quiz/QuizHeader';
 import QuestionTypeRenderer from '../components/quiz/QuestionTypeRenderer';
 import ProgressBar from '../components/ui/ProgressBar';
@@ -12,6 +12,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     quiz,
     config,
     currentQuestion,
+    currentQuestionIndex,
     currentQuestionNumber,
     timeRemaining,
     questionTimeRemaining,
@@ -21,7 +22,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     error,
     showFeedback,
     selectedAnswer,
-    hasAnswered,
+    userAnswers,
     isLastQuestion,
     progress,
     isBookmarked,
@@ -30,7 +31,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     previousQuestion,
     toggleBookmark,
     pauseQuiz,
-    resumeQuiz,
     stopQuiz,
     toggleImmediateFeedback,
     clearError
@@ -41,6 +41,29 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const [quizResults, setQuizResults] = useState(null);
   const [showAIProcessing, setShowAIProcessing] = useState(false);
   const [aiTask, setAITask] = useState('processing');
+  
+  const questionRendererRef = useRef();
+
+  const handleSubjectiveAnswer = () => {
+    if (questionRendererRef.current) {
+      const subjectiveAnswer = questionRendererRef.current.getAnswer();
+      if (subjectiveAnswer) {
+        const isCorrect = currentQuestion.type === 'Fill in Blank' 
+          ? currentQuestion.acceptableAnswers?.some(acceptableSet =>
+              acceptableSet.every((acceptable, index) =>
+                subjectiveAnswer[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+              )
+            ) || false
+          : false;
+        selectAnswer(0, isCorrect, false, subjectiveAnswer);
+      }
+    }
+  };
+
+  const handleNext = () => {
+    handleSubjectiveAnswer();
+    nextQuestion();
+  };
 
   const handlePause = () => {
     setShowPauseModal(true);
@@ -57,11 +80,39 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   };
 
   const confirmStop = async () => {
-    const results = await stopQuiz();
+    let finalAnswers = [...userAnswers];
+    const subjectiveAnswer = questionRendererRef.current?.getAnswer();
+
+    if (subjectiveAnswer) {
+      const isCorrect = currentQuestion.type === 'Fill in Blank' 
+        ? currentQuestion.acceptableAnswers?.some(acceptableSet =>
+            acceptableSet.every((acceptable, index) =>
+              subjectiveAnswer[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+            )
+          ) || false
+        : false;
+
+      const newAnswer = {
+        questionId: currentQuestion.id,
+        questionType: currentQuestion.type,
+        selectedOption: 0,
+        isCorrect,
+        textAnswer: subjectiveAnswer,
+        timeSpent: (config.timerEnabled ? (config.questionTimer || 60) - questionTimeRemaining : 0),
+        totalTimeWhenAnswered: timeRemaining,
+      };
+
+      if (finalAnswers[currentQuestionIndex]) {
+        finalAnswers[currentQuestionIndex] = newAnswer;
+      } else {
+        finalAnswers.push(newAnswer);
+      }
+    }
+
+    const results = await stopQuiz(finalAnswers);
     setQuizResults(results);
     setShowStopModal(false);
     
-    // Show AI processing for results
     if (results) {
       setAITask('feedback');
       setShowAIProcessing(true);
@@ -71,23 +122,19 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const handleAnswerSelect = (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
     if (selectedAnswer && !autoSelected) return;
     
-    // For subjective questions with immediate feedback, show AI processing
     if ((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Fill in Blank') && config.immediateFeedback) {
       setAITask('evaluation');
       setShowAIProcessing(true);
       
-      // Simulate AI processing delay then select answer
       setTimeout(() => {
         setShowAIProcessing(false);
         selectAnswer(optionIndex, isCorrect, autoSelected, textAnswer);
       }, 2000);
     } else {
-      // For MCQ/True-False or when immediate feedback is off
       selectAnswer(optionIndex, isCorrect, autoSelected, textAnswer);
     }
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
@@ -108,7 +155,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
@@ -125,7 +171,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               <Button onClick={() => {
                 clearError();
                 if (quizConfig) {
-                  // Retry initialization
                   window.location.reload();
                 } else {
                   onNavigate('home');
@@ -143,7 +188,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     );
   }
 
-  // No quiz data (shouldn't happen, but safety check)
   if (!quiz || !currentQuestion) {
     return (
       <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
@@ -164,7 +208,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     );
   }
 
-  // Show results when available
   if (quizResults) {
     const QuizResultsPage = React.lazy(() => import('./QuizResultsPage'));
     return (
@@ -200,7 +243,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         isPaused={isPaused}
       />
 
-      {/* Feedback toggle button */}
       <div className="max-w-4xl mx-auto px-4 py-2">
         <div className="flex justify-end">
           <button
@@ -217,16 +259,13 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10">
         
-        {/* Progress Bar */}
         <ProgressBar 
           progress={progress} 
           label="Progress"
         />
 
-        {/* Quiz Card */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-white/20 p-5 sm:p-8 mb-6 sm:mb-8">
           
-          {/* Question Section */}
           <div className="mb-6 sm:mb-8">
             <div className="flex items-start space-x-3 sm:space-x-4 mb-4 sm:mb-6">
               <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl sm:rounded-2xl flex items-center justify-center">
@@ -254,9 +293,9 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
             </div>
           </div>
 
-          {/* Question Type Specific Renderer */}
           <div className="mb-6 sm:mb-8">
             <QuestionTypeRenderer
+              ref={questionRendererRef}
               question={currentQuestion}
               selectedAnswer={selectedAnswer}
               onAnswerSelect={handleAnswerSelect}
@@ -266,21 +305,12 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
             />
           </div>
 
-          {/* Feedback Section */}
           {showFeedback && (
             <div className="mb-6">
-              <div className={`border rounded-xl sm:rounded-2xl p-4 sm:p-6 ${
-                selectedAnswer?.isCorrect 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-red-50 border-red-200'
-              }`}>
+              <div className={`border rounded-xl sm:rounded-2xl p-4 sm:p-6 ${selectedAnswer?.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                 <div className="flex items-start space-x-3 sm:space-x-4">
-                  <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
-                    selectedAnswer?.isCorrect ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
-                    <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${
-                      selectedAnswer?.isCorrect ? 'text-green-600' : 'text-red-600'
-                    }`} fill="currentColor" viewBox="0 0 20 20">
+                  <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${selectedAnswer?.isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${selectedAnswer?.isCorrect ? 'text-green-600' : 'text-red-600'}`} fill="currentColor" viewBox="0 0 20 20">
                       {selectedAnswer?.isCorrect ? (
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
                       ) : (
@@ -289,17 +319,13 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                     </svg>
                   </div>
                   <div>
-                    <h3 className={`font-semibold mb-1 sm:mb-2 text-sm sm:text-base ${
-                      selectedAnswer?.isCorrect ? 'text-green-800' : 'text-red-800'
-                    }`}>
+                    <h3 className={`font-semibold mb-1 sm:mb-2 text-sm sm:text-base ${selectedAnswer?.isCorrect ? 'text-green-800' : 'text-red-800'}`}>
                       {selectedAnswer?.isCorrect ? 'Correct! Well done! 🎉' : 'Not quite right'}
                       {selectedAnswer?.aiEvaluated && (
                         <span className="ml-2 text-xs text-purple-600">✨ AI Evaluated</span>
                       )}
                     </h3>
-                    <p className={`text-xs sm:text-sm ${
-                      selectedAnswer?.isCorrect ? 'text-green-700' : 'text-red-700'
-                    }`}>
+                    <p className={`text-xs sm:text-sm ${selectedAnswer?.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
                       {currentQuestion.explanation}
                     </p>
                   </div>
@@ -308,7 +334,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
             </div>
           )}
 
-          {/* Navigation Buttons */}
           <div className="flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-200">
             <Button
               onClick={previousQuestion}
@@ -325,7 +350,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
             </Button>
             
             <Button
-              onClick={isLastQuestion ? confirmStop : nextQuestion}
+              onClick={isLastQuestion ? confirmStop : handleNext}
               icon={
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 ml-1 sm:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
@@ -342,7 +367,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           </div>
         </div>
 
-        {/* Study Buddy Encouragement */}
         <div className="hidden sm:flex bg-white/60 backdrop-blur-sm rounded-2xl p-6 items-center space-x-4">
           <img src="/assets/i3.png" alt="Study Buddy" className="w-16 h-16 animate-bounce" />
           <div>
@@ -358,14 +382,12 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
       </main>
 
-      {/* AI Processing Feedback */}
       <AIProcessingFeedback
         isVisible={showAIProcessing}
         task={aiTask}
         onComplete={() => setShowAIProcessing(false)}
       />
 
-      {/* Pause Modal */}
       <Modal 
         isOpen={showPauseModal}
         onClose={() => setShowPauseModal(false)}
@@ -389,7 +411,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         </div>
       </Modal>
 
-      {/* Stop Modal */}
       <Modal 
         isOpen={showStopModal}
         onClose={() => setShowStopModal(false)}

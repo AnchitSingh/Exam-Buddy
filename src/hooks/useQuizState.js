@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import examBuddyAPI from '../services/api';
 
 const useQuizState = (quizConfig = null) => {
@@ -25,6 +25,9 @@ const useQuizState = (quizConfig = null) => {
   const timerRef = useRef(null);
   const questionTimerRef = useRef(null);
   const quizIdRef = useRef(null);
+  const pendingApiCallRef = useRef(null); // Add ref to track pending API calls
+
+  // ... other useEffects remain the same ...
 
   useEffect(() => {
     if (quizConfig) {
@@ -98,6 +101,8 @@ const useQuizState = (quizConfig = null) => {
     }
   };
 
+  // ... timer useEffects remain the same ...
+
   useEffect(() => {
     if (!isQuizActive || !config.timerEnabled || isPaused || timeRemaining <= 0) {
       if (timerRef.current) {
@@ -165,11 +170,22 @@ const useQuizState = (quizConfig = null) => {
   const isLastQuestion = currentQuestionIndex === (quiz?.questions?.length - 1) || false;
   const currentQuestionNumber = currentQuestionIndex + 1;
 
-  const selectAnswer = async (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
+  // FIXED selectAnswer function
+  const selectAnswer = useCallback(async (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
     try {
+      // Cancel any pending API call for text questions
+      if (pendingApiCallRef.current) {
+        pendingApiCallRef.current.cancel = true;
+      }
+
+      const currentQIndex = currentQuestionIndex; // Capture current index
+      const currentQ = currentQuestion; // Capture current question
+      
+      if (!currentQ) return;
+
       const answer = {
-        questionId: currentQuestion.id,
-        questionType: currentQuestion.type || 'MCQ',
+        questionId: currentQ.id,
+        questionType: currentQ.type || 'MCQ',
         selectedOption: optionIndex,
         isCorrect,
         timeSpent: (config.questionTimer || 60) - questionTimeRemaining,
@@ -178,52 +194,105 @@ const useQuizState = (quizConfig = null) => {
         textAnswer,
       };
 
+      console.log('Saving answer at index:', currentQIndex, 'Answer:', textAnswer);
+
       setSelectedAnswer({ optionIndex, isCorrect, textAnswer });
 
-      if (currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False') {
+      // For MCQ and True/False, handle immediately without API call
+      if (currentQ.type === 'MCQ' || currentQ.type === 'True/False') {
         if (config.immediateFeedback) {
           setShowFeedback(true);
         }
+        
         setUserAnswers(currentAnswers => {
-            const newAnswers = [...currentAnswers];
-            newAnswers[currentQuestionIndex] = {
-              ...answer,
-              feedback: {
-                message: isCorrect ? "Correct!" : "Not quite right.",
-                explanation: currentQuestion.explanation
-              }
-            };
-            return newAnswers;
+          const newAnswers = [...currentAnswers];
+          newAnswers[currentQIndex] = {
+            ...answer,
+            feedback: {
+              message: isCorrect ? "Correct!" : "Not quite right.",
+              explanation: currentQ.explanation
+            }
+          };
+          return newAnswers;
         });
         return;
       }
 
-      const response = await examBuddyAPI.submitAnswer(
-        quizIdRef.current,
-        currentQuestion.id,
-        answer
-      );
+      // For text-based questions, update local state immediately
+      setUserAnswers(currentAnswers => {
+        const newAnswers = [...currentAnswers];
+        newAnswers[currentQIndex] = {
+          ...answer,
+          aiEvaluated: false,
+          isPending: true
+        };
+        console.log('Updated userAnswers at index:', currentQIndex, 'with:', answer);
+        return newAnswers;
+      });
 
-      if (response.success) {
-        if (config.immediateFeedback) {
-          setShowFeedback(true);
+      // Then make API call for evaluation (if needed)
+      if (config.immediateFeedback || currentQ.type === 'Fill in Blank') {
+        const apiCall = { cancel: false };
+        pendingApiCallRef.current = apiCall;
+
+        const response = await examBuddyAPI.submitAnswer(
+          quizIdRef.current,
+          currentQ.id,
+          answer
+        );
+
+        // Check if this call was cancelled
+        if (apiCall.cancel) {
+          console.log('API call was cancelled, ignoring response');
+          return;
         }
-        setUserAnswers(currentAnswers => {
+
+        if (response.success) {
+          if (config.immediateFeedback) {
+            setShowFeedback(true);
+          }
+          
+          // Update with API response
+          setUserAnswers(currentAnswers => {
             const newAnswers = [...currentAnswers];
-            newAnswers[currentQuestionIndex] = {
-              ...answer,
-              feedback: response.data.feedback,
-              explanation: response.data.explanation,
-              aiEvaluated: true
-            };
+            // Make sure we're updating the right index
+            if (newAnswers[currentQIndex]?.questionId === currentQ.id) {
+              newAnswers[currentQIndex] = {
+                ...newAnswers[currentQIndex],
+                ...answer, // Ensure the latest textAnswer is preserved
+                feedback: response.data.feedback,
+                explanation: response.data.explanation,
+                aiEvaluated: true,
+                isPending: false
+              };
+            }
             return newAnswers;
-        });
+          });
+        }
       }
     } catch (err) {
       console.error('Error submitting answer:', err);
       setError('Failed to submit answer');
+      
+      // Even on error, make sure we save the answer locally
+      setUserAnswers(currentAnswers => {
+        const newAnswers = [...currentAnswers];
+        newAnswers[currentQuestionIndex] = {
+          questionId: currentQuestion.id,
+          questionType: currentQuestion.type || 'MCQ',
+          selectedOption: optionIndex,
+          isCorrect,
+          timeSpent: (config.questionTimer || 60) - questionTimeRemaining,
+          totalTimeWhenAnswered: timeRemaining,
+          autoSelected,
+          textAnswer,
+          error: true,
+          isPending: false
+        };
+        return newAnswers;
+      });
     }
-  };
+  }, [currentQuestionIndex, currentQuestion, config, questionTimeRemaining, timeRemaining, quizIdRef.current]);
 
   const nextQuestion = () => {
     if (!isLastQuestion) {
@@ -297,12 +366,12 @@ const useQuizState = (quizConfig = null) => {
     setIsQuizActive(true);
   };
 
-  const stopQuiz = async () => {
+  const stopQuiz = async (finalAnswers) => {
     try {
       setIsQuizActive(false);
       setIsPaused(false);
 
-      const response = await examBuddyAPI.completeQuiz(quizIdRef.current, userAnswers);
+      const response = await examBuddyAPI.completeQuiz(quizIdRef.current, finalAnswers);
 
       if (response.success) {
         return {
