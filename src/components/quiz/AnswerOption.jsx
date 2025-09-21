@@ -25,6 +25,10 @@ const AnswerOption = ({
       }
     }
     
+    if (selected) {
+      return `${baseStyles} border-amber-400 bg-amber-50`;
+    }
+
     if (disabled) {
       return `${baseStyles} border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed`;
     }
@@ -48,6 +52,10 @@ const AnswerOption = ({
       }
     }
     
+    if (selected) {
+        return `${baseStyles} border-amber-500 bg-amber-100`;
+    }
+
     return `${baseStyles} border-slate-300 group-hover:border-amber-400`;
   };
 
@@ -64,6 +72,10 @@ const AnswerOption = ({
       }
     }
     
+    if (selected) {
+        return `${baseStyles} text-amber-800`;
+    }
+
     return `${baseStyles} text-slate-700 group-hover:text-slate-800`;
   };
 
@@ -80,6 +92,10 @@ const AnswerOption = ({
       }
     }
     
+    if (selected) {
+        return `${baseStyles} text-amber-700`;
+    }
+
     return `${baseStyles} text-slate-600 group-hover:text-amber-600`;
   };
 
