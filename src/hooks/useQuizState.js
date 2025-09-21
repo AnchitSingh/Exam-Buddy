@@ -26,14 +26,12 @@ const useQuizState = (quizConfig = null) => {
   const questionTimerRef = useRef(null);
   const quizIdRef = useRef(null);
 
-  // Initialize quiz when config is provided
   useEffect(() => {
     if (quizConfig) {
       initializeQuiz(quizConfig);
     }
   }, [quizConfig]);
 
-  // Effect to manage state when question changes
   useEffect(() => {
     const existingAnswer = userAnswers[currentQuestionIndex];
     
@@ -41,28 +39,25 @@ const useQuizState = (quizConfig = null) => {
       setSelectedAnswer({
         optionIndex: existingAnswer.selectedOption,
         isCorrect: existingAnswer.isCorrect,
-        textAnswer: existingAnswer.textAnswer, // For short answer etc.
+        textAnswer: existingAnswer.textAnswer,
       });
       
-      // Only show feedback if the setting is on
       if (config.immediateFeedback) {
         setShowFeedback(true);
       } else {
         setShowFeedback(false);
       }
     } else {
-      // No existing answer, so reset
       setSelectedAnswer(null);
       setShowFeedback(false);
     }
-  }, [currentQuestionIndex]); // Runs only when the user navigates
+  }, [currentQuestionIndex]);
 
   const initializeQuiz = async (config) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Generate new quiz via API
       const response = await examBuddyAPI.generateQuiz(config);
 
       if (response.success) {
@@ -73,24 +68,16 @@ const useQuizState = (quizConfig = null) => {
         setQuestionTimeRemaining(config.questionTimer || 60);
         setIsQuizActive(true);
         quizIdRef.current = newQuiz.id;
-
-        console.log('=== QUIZ INITIALIZED ===');
-        console.log('Quiz ID:', newQuiz.id);
-        console.log('Config:', config);
-        console.log('Questions:', newQuiz.questions.length);
-        console.log('=======================');
       } else {
         setError(response.error || 'Failed to generate quiz');
       }
     } catch (err) {
       setError('Network error: Could not generate quiz');
-      console.error('Quiz initialization error:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Load existing quiz (for resumed quizzes)
   const loadExistingQuiz = async (quizId) => {
     try {
       setIsLoading(true);
@@ -101,7 +88,6 @@ const useQuizState = (quizConfig = null) => {
         setQuiz(existingQuiz);
         setIsQuizActive(true);
         quizIdRef.current = quizId;
-        // Restore progress from API
       } else {
         setError('Could not load quiz');
       }
@@ -112,7 +98,6 @@ const useQuizState = (quizConfig = null) => {
     }
   };
 
-  // Timer effects (same as before)
   useEffect(() => {
     if (!isQuizActive || !config.timerEnabled || isPaused || timeRemaining <= 0) {
       if (timerRef.current) {
@@ -140,7 +125,6 @@ const useQuizState = (quizConfig = null) => {
     };
   }, [isQuizActive, config.timerEnabled, isPaused, timeRemaining]);
 
-  // Question timer effect
   useEffect(() => {
     if (!isQuizActive || !config.timerEnabled || isPaused || questionTimeRemaining <= 0 || selectedAnswer) {
       if (questionTimerRef.current) {
@@ -153,7 +137,6 @@ const useQuizState = (quizConfig = null) => {
     questionTimerRef.current = setInterval(() => {
       setQuestionTimeRemaining(prev => {
         if (prev <= 1) {
-          // Auto-select random answer when time runs out
           if (currentQuestion) {
             const randomIndex = Math.floor(Math.random() * currentQuestion.options.length);
             selectAnswer(randomIndex, currentQuestion.options[randomIndex].isCorrect, true);
@@ -172,21 +155,17 @@ const useQuizState = (quizConfig = null) => {
     };
   }, [isQuizActive, config.timerEnabled, isPaused, questionTimeRemaining, selectedAnswer]);
 
-  // Reset question timer when moving to new question
   useEffect(() => {
     if (config.timerEnabled) {
       setQuestionTimeRemaining(config.questionTimer);
     }
   }, [currentQuestionIndex, config.questionTimer, config.timerEnabled]);
 
-  // Computed values
   const currentQuestion = quiz?.questions?.[currentQuestionIndex] || null;
   const isLastQuestion = currentQuestionIndex === (quiz?.questions?.length - 1) || false;
   const currentQuestionNumber = currentQuestionIndex + 1;
 
-  // Actions with API integration
-  // In the selectAnswer function, update this part:
-  const selectAnswer = async (optionIndex, isCorrect, autoSelected = false) => {
+  const selectAnswer = async (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
     if (selectedAnswer && !autoSelected) return;
 
     try {
@@ -197,19 +176,17 @@ const useQuizState = (quizConfig = null) => {
         isCorrect,
         timeSpent: (config.questionTimer || 60) - questionTimeRemaining,
         totalTimeWhenAnswered: timeRemaining,
-        autoSelected
+        autoSelected,
+        textAnswer,
       };
 
-      setSelectedAnswer({ optionIndex, isCorrect });
+      setSelectedAnswer({ optionIndex, isCorrect, textAnswer });
 
-      // For MCQ/True-False: Instant validation (no API call needed)
       if (currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False') {
-        // Show feedback based on current config setting
         if (config.immediateFeedback) {
           setShowFeedback(true);
         }
 
-        // Update answers array
         const newAnswers = [...userAnswers];
         newAnswers[currentQuestionIndex] = {
           ...answer,
@@ -219,16 +196,9 @@ const useQuizState = (quizConfig = null) => {
           }
         };
         setUserAnswers(newAnswers);
-
-        console.log('=== ANSWER SUBMITTED (INSTANT) ===');
-        console.log('Answer:', answer);
-        console.log('No AI call needed for', currentQuestion.type);
-        console.log('================================');
-
         return;
       }
 
-      // For subjective questions: Call AI for evaluation
       const response = await examBuddyAPI.submitAnswer(
         quizIdRef.current,
         currentQuestion.id,
@@ -236,12 +206,10 @@ const useQuizState = (quizConfig = null) => {
       );
 
       if (response.success) {
-        // Show feedback based on config
         if (config.immediateFeedback) {
           setShowFeedback(true);
         }
 
-        // Update answers array
         const newAnswers = [...userAnswers];
         newAnswers[currentQuestionIndex] = {
           ...answer,
@@ -256,8 +224,6 @@ const useQuizState = (quizConfig = null) => {
       setError('Failed to submit answer');
     }
   };
-
-
 
   const nextQuestion = () => {
     if (!isLastQuestion) {
@@ -320,10 +286,6 @@ const useQuizState = (quizConfig = null) => {
       };
 
       await examBuddyAPI.saveQuizProgress(quizIdRef.current, quizState);
-
-      console.log('=== QUIZ PAUSED ===');
-      console.log('Quiz saved to backend');
-      console.log('==================');
     } catch (err) {
       console.error('Error pausing quiz:', err);
       setError('Failed to save quiz progress');
@@ -333,7 +295,6 @@ const useQuizState = (quizConfig = null) => {
   const resumeQuiz = () => {
     setIsPaused(false);
     setIsQuizActive(true);
-    console.log('=== QUIZ RESUMED ===');
   };
 
   const stopQuiz = async () => {
@@ -341,17 +302,12 @@ const useQuizState = (quizConfig = null) => {
       setIsQuizActive(false);
       setIsPaused(false);
 
-      // Submit final answers to API
       const response = await examBuddyAPI.completeQuiz(quizIdRef.current, userAnswers);
 
       if (response.success) {
-        console.log('=== QUIZ COMPLETED ===');
-        console.log('Results:', response.data);
-        console.log('======================');
-
         return {
           ...response.data,
-          quiz: quiz // Include quiz data for results page
+          quiz: quiz
         };
       } else {
         throw new Error('Failed to complete quiz');
@@ -363,22 +319,15 @@ const useQuizState = (quizConfig = null) => {
     }
   };
 
-  // Fix the toggleImmediateFeedback function:
   const toggleImmediateFeedback = () => {
     const newSetting = !config.immediateFeedback;
     setConfig(prev => ({ ...prev, immediateFeedback: newSetting }));
 
-    // If turning off feedback, hide current feedback
     if (!newSetting) {
       setShowFeedback(false);
     } else if (selectedAnswer) {
-      // If turning on feedback and an answer is selected, show it
       setShowFeedback(true);
     }
-
-    console.log('=== FEEDBACK SETTING CHANGED ===');
-    console.log('Immediate Feedback:', newSetting ? 'ON' : 'OFF');
-    console.log('=================================');
   };
 
   const getProgress = () => {
@@ -387,7 +336,6 @@ const useQuizState = (quizConfig = null) => {
   };
 
   return {
-    // State
     quiz,
     config,
     currentQuestion,
@@ -403,12 +351,8 @@ const useQuizState = (quizConfig = null) => {
     userAnswers,
     bookmarkedQuestions,
     isLastQuestion,
-
-    // Computed
     progress: getProgress(),
     isBookmarked: currentQuestion ? bookmarkedQuestions.has(currentQuestion.id) : false,
-
-    // Actions
     initializeQuiz,
     loadExistingQuiz,
     selectAnswer,
@@ -419,8 +363,6 @@ const useQuizState = (quizConfig = null) => {
     resumeQuiz,
     stopQuiz,
     toggleImmediateFeedback,
-
-    // Error handling
     clearError: () => setError(null)
   };
 };
