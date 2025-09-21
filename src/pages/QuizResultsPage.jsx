@@ -34,12 +34,59 @@ const QuizResultsPage = ({ results, onNavigate }) => {
     return `${mins}m ${secs}s`;
   };
 
+  const renderSubjectiveAnswer = (question, answer) => {
+    const textAnswer = answer?.textAnswer;
+
+    if (!textAnswer) {
+        return <p className="text-slate-800 font-medium">No answer provided</p>;
+    }
+
+    if (Array.isArray(textAnswer)) { // Fill in the Blank
+        const parts = question.question.split('_______');
+        const userAnswerSentence = parts.reduce((acc, part, i) => {
+            const blank = textAnswer[i] ? `<strong class="text-amber-700 font-semibold">${textAnswer[i]}</strong>` : '_______';
+            return acc + part + (i < parts.length - 1 ? blank : '');
+        }, '');
+
+        const correctAnswer = question.acceptableAnswers?.[0];
+        let correctAnswerSentence = '';
+        if (!answer.isCorrect && correctAnswer) {
+            correctAnswerSentence = parts.reduce((acc, part, i) => {
+                const blank = correctAnswer[i] ? `<strong class="text-green-700 font-semibold">${correctAnswer[i]}</strong>` : '_______';
+                return acc + part + (i < parts.length - 1 ? blank : '');
+            }, '');
+        }
+
+        return (
+            <div>
+                <div className="mb-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <p className="text-sm text-slate-600 mb-1">Your answer:</p>
+                    <p className="text-slate-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: userAnswerSentence }} />
+                </div>
+                {correctAnswerSentence && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-sm text-green-800 mb-1">Correct answer:</p>
+                        <p className="text-green-900 leading-relaxed" dangerouslySetInnerHTML={{ __html: correctAnswerSentence }} />
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Short Answer
+    return (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <p className="text-sm text-slate-600 mb-1">Your answer:</p>
+            <p className="text-slate-800 font-medium">{textAnswer}</p>
+        </div>
+    );
+  };
+
   const scoreBadge = getScoreBadge();
 
   return (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
 
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center space-x-3">
@@ -51,13 +98,10 @@ const QuizResultsPage = ({ results, onNavigate }) => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Results Summary Card */}
         <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8 mb-8 text-center">
 
-          {/* Score Display */}
           <div className="mb-6">
             <div className={`text-6xl font-bold mb-2 ${getScoreColor()}`}>
               {percentage}%
@@ -67,7 +111,6 @@ const QuizResultsPage = ({ results, onNavigate }) => {
             </Badge>
           </div>
 
-          {/* Score Breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-slate-50 rounded-2xl p-4">
               <div className="text-2xl font-bold text-green-600">{score}</div>
@@ -87,7 +130,6 @@ const QuizResultsPage = ({ results, onNavigate }) => {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button onClick={() => onNavigate('quiz')} className="flex-1 max-w-xs">
               Take Another Quiz
@@ -98,10 +140,8 @@ const QuizResultsPage = ({ results, onNavigate }) => {
           </div>
         </div>
 
-        {/* Detailed Results */}
         <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
 
-          {/* Section Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-slate-800">Question Review</h2>
             <button
@@ -112,18 +152,12 @@ const QuizResultsPage = ({ results, onNavigate }) => {
             </button>
           </div>
 
-          {/* Questions List */}
           <div className="space-y-4">
             {(answers || []).slice(0, showAllQuestions ? (answers || []).length : 3).map((answer, index) => {
               const question = results.quiz?.questions?.[index] || {
                 id: `question_${index}`,
                 question: `Question ${index + 1}`,
-                options: [
-                  { text: 'Option A', isCorrect: false },
-                  { text: 'Option B', isCorrect: true },
-                  { text: 'Option C', isCorrect: false },
-                  { text: 'Option D', isCorrect: false }
-                ],
+                options: [],
                 explanation: 'Explanation not available',
                 type: 'MCQ'
               };
@@ -132,17 +166,10 @@ const QuizResultsPage = ({ results, onNavigate }) => {
               const selectedOption = answer?.selectedOption;
 
               return (
-                <div key={`${question.id}_${index}`} className={`border-2 rounded-2xl p-6 transition-all ${isCorrect
-                    ? 'border-green-200 bg-green-50/50'
-                    : 'border-red-200 bg-red-50/50'
-                  }`}>
+                <div key={`${question.id}_${index}`} className={`border-2 rounded-2xl p-6 transition-all ${isCorrect ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
 
-                  {/* Question Header */}
                   <div className="flex items-start space-x-4 mb-4">
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold ${isCorrect
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
-                      }`}>
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold ${isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {isCorrect ? '✓' : '✗'}
                     </div>
                     <div className="flex-1">
@@ -158,54 +185,34 @@ const QuizResultsPage = ({ results, onNavigate }) => {
                     </div>
                   </div>
 
-                  {/* Answer Display Based on Question Type */}
                   {question.type === 'Short Answer' || question.type === 'Fill in Blank' ? (
-                    // Subjective answer display
                     <div className="ml-14 mb-4">
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                        <p className="text-sm text-slate-600 mb-1">Your answer:</p>
-                        <p className="text-slate-800 font-medium">{answer?.textAnswer || 'No answer provided'}</p>
-                      </div>
-                      {answer?.aiEvaluated && (
+                      {renderSubjectiveAnswer(question, answer)}
+                      {answer?.aiEvaluated && !Array.isArray(answer?.textAnswer) && (
                         <div className="mt-2 text-xs text-purple-600">
                           ✨ Evaluated by AI
                         </div>
                       )}
                     </div>
                   ) : (
-                    // MCQ answer display
                     <div className="ml-14 space-y-2 mb-4">
-                      {question.options.map((option, optionIndex) => {
+                      {(question.options || []).map((option, optionIndex) => {
                         const isSelected = selectedOption === optionIndex;
                         const isCorrectOption = option.isCorrect;
 
                         return (
-                          <div key={optionIndex} className={`flex items-center space-x-3 p-3 rounded-lg ${isSelected && isCorrectOption ? 'bg-green-100 border border-green-300' :
-                              isSelected && !isCorrectOption ? 'bg-red-100 border border-red-300' :
-                                !isSelected && isCorrectOption ? 'bg-green-50 border border-green-200' :
-                                  'bg-white border border-slate-200'
-                            }`}>
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${isSelected && isCorrectOption ? 'bg-green-200 text-green-800' :
-                                isSelected && !isCorrectOption ? 'bg-red-200 text-red-800' :
-                                  !isSelected && isCorrectOption ? 'bg-green-100 text-green-700' :
-                                    'bg-slate-100 text-slate-600'
-                              }`}>
+                          <div key={optionIndex} className={`flex items-center space-x-3 p-3 rounded-lg ${isSelected && isCorrectOption ? 'bg-green-100 border border-green-300' : isSelected && !isCorrectOption ? 'bg-red-100 border border-red-300' : !isSelected && isCorrectOption ? 'bg-green-50 border border-green-200' : 'bg-white border border-slate-200'}`}>
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${isSelected && isCorrectOption ? 'bg-green-200 text-green-800' : isSelected && !isCorrectOption ? 'bg-red-200 text-red-800' : !isSelected && isCorrectOption ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                               {String.fromCharCode(65 + optionIndex)}
                             </span>
                             <span className="flex-1 text-slate-700">{option.text}</span>
-                            {isSelected && (
-                              <span className="text-sm font-medium text-slate-600">Your Answer</span>
-                            )}
-                            {!isSelected && isCorrectOption && (
-                              <span className="text-sm font-medium text-green-600">Correct</span>
-                            )}
+                            {isSelected && <span className="text-sm font-medium text-slate-600">Your Answer</span>}
+                            {!isSelected && isCorrectOption && <span className="text-sm font-medium text-green-600">Correct</span>}
                           </div>
                         );
                       })}
                     </div>
                   )}
-
-                  {/* Rest of the question display... */}
                 </div>
               );
             })}
@@ -213,20 +220,15 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 
           {!showAllQuestions && (answers || []).length > 3 && (
             <div className="text-center mt-6">
-              <Button
-                onClick={() => setShowAllQuestions(true)}
-                variant="ghost"
-              >
+              <Button onClick={() => setShowAllQuestions(true)} variant="ghost">
                 Show {(answers || []).length - 3} More Questions
               </Button>
             </div>
           )}
         </div>
 
-        {/* Performance Insights */}
         <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 mt-8">
           <h2 className="text-2xl font-bold text-slate-800 mb-4">Performance Insights</h2>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <h3 className="font-semibold text-slate-700">Strengths</h3>
@@ -241,7 +243,6 @@ const QuizResultsPage = ({ results, onNavigate }) => {
                 </li>
               </ul>
             </div>
-
             <div className="space-y-3">
               <h3 className="font-semibold text-slate-700">Areas for Improvement</h3>
               <ul className="space-y-2 text-sm text-slate-600">

@@ -166,8 +166,6 @@ const useQuizState = (quizConfig = null) => {
   const currentQuestionNumber = currentQuestionIndex + 1;
 
   const selectAnswer = async (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
-    if (selectedAnswer && !autoSelected) return;
-
     try {
       const answer = {
         questionId: currentQuestion.id,
@@ -186,16 +184,17 @@ const useQuizState = (quizConfig = null) => {
         if (config.immediateFeedback) {
           setShowFeedback(true);
         }
-
-        const newAnswers = [...userAnswers];
-        newAnswers[currentQuestionIndex] = {
-          ...answer,
-          feedback: {
-            message: isCorrect ? "Correct!" : "Not quite right.",
-            explanation: currentQuestion.explanation
-          }
-        };
-        setUserAnswers(newAnswers);
+        setUserAnswers(currentAnswers => {
+            const newAnswers = [...currentAnswers];
+            newAnswers[currentQuestionIndex] = {
+              ...answer,
+              feedback: {
+                message: isCorrect ? "Correct!" : "Not quite right.",
+                explanation: currentQuestion.explanation
+              }
+            };
+            return newAnswers;
+        });
         return;
       }
 
@@ -209,15 +208,16 @@ const useQuizState = (quizConfig = null) => {
         if (config.immediateFeedback) {
           setShowFeedback(true);
         }
-
-        const newAnswers = [...userAnswers];
-        newAnswers[currentQuestionIndex] = {
-          ...answer,
-          feedback: response.data.feedback,
-          explanation: response.data.explanation,
-          aiEvaluated: true
-        };
-        setUserAnswers(newAnswers);
+        setUserAnswers(currentAnswers => {
+            const newAnswers = [...currentAnswers];
+            newAnswers[currentQuestionIndex] = {
+              ...answer,
+              feedback: response.data.feedback,
+              explanation: response.data.explanation,
+              aiEvaluated: true
+            };
+            return newAnswers;
+        });
       }
     } catch (err) {
       console.error('Error submitting answer:', err);
