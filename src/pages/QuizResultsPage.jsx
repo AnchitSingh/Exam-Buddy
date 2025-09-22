@@ -14,7 +14,9 @@ const QuizResultsPage = ({ results, onNavigate }) => {
   }
 
   const { score, totalQuestions, answers, timeSpent, config } = results;
-  const percentage = Math.round((score / totalQuestions) * 100);
+  const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+  const unansweredCount = (answers || []).filter(a => a && a.unanswered).length;
+  const incorrectCount = totalQuestions - score - unansweredCount;
 
   const getScoreColor = () => {
     if (percentage >= 80) return 'text-green-600';
@@ -84,6 +86,12 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 
   const scoreBadge = getScoreBadge();
 
+  const recommendedQuizzes = [
+    { id: 'rec1', title: 'Review Incorrect Answers', reason: 'Focus on the questions you missed in this quiz.', difficulty: 'Custom', icon: '🎯' },
+    { id: 'rec2', title: 'Related Topics Quiz', reason: 'Broaden your knowledge around this subject.', difficulty: 'Medium', icon: '📚' },
+    { id: 'rec3', title: 'Challenge Mode', reason: 'Try a harder quiz on the same topic.', difficulty: 'Hard', icon: '🔥' }
+  ];
+
   return (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
 
@@ -111,27 +119,27 @@ const QuizResultsPage = ({ results, onNavigate }) => {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-slate-50 rounded-2xl p-4">
               <div className="text-2xl font-bold text-green-600">{score}</div>
               <div className="text-sm text-slate-600">Correct</div>
             </div>
             <div className="bg-slate-50 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-red-600">{totalQuestions - score}</div>
+              <div className="text-2xl font-bold text-red-600">{incorrectCount}</div>
               <div className="text-sm text-slate-600">Incorrect</div>
             </div>
             <div className="bg-slate-50 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-amber-600">{totalQuestions}</div>
-              <div className="text-sm text-slate-600">Total Questions</div>
+              <div className="text-2xl font-bold text-slate-500">{unansweredCount}</div>
+              <div className="text-sm text-slate-600">Unanswered</div>
             </div>
             <div className="bg-slate-50 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-blue-600">{formatTime(timeSpent)}</div>
-              <div className="text-sm text-slate-600">Time Taken</div>
+              <div className="text-2xl font-bold text-amber-600">{totalQuestions}</div>
+              <div className="text-sm text-slate-600">Total</div>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={() => onNavigate('quiz')} className="flex-1 max-w-xs">
+            <Button onClick={() => onNavigate('home', { openQuizSetup: true })} className="flex-1 max-w-xs">
               Take Another Quiz
             </Button>
             <Button onClick={() => onNavigate('home')} variant="secondary" className="flex-1 max-w-xs">
@@ -164,13 +172,14 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 
               const isCorrect = answer?.isCorrect;
               const selectedOption = answer?.selectedOption;
+              const isUnanswered = answer?.unanswered;
 
               return (
-                <div key={`${question.id}_${index}`} className={`border-2 rounded-2xl p-6 transition-all ${isCorrect ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
+                <div key={`${question.id}_${index}`} className={`border-2 rounded-2xl p-6 transition-all ${isUnanswered ? 'border-slate-200 bg-slate-50/50' : isCorrect ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
 
                   <div className="flex items-start space-x-4 mb-4">
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold ${isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {isCorrect ? '✓' : '✗'}
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold ${isUnanswered ? 'bg-slate-100 text-slate-700' : isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {isUnanswered ? '?' : isCorrect ? '✓' : '✗'}
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-slate-800 mb-2">
@@ -185,7 +194,33 @@ const QuizResultsPage = ({ results, onNavigate }) => {
                     </div>
                   </div>
 
-                  {question.type === 'Short Answer' || question.type === 'Fill in Blank' ? (
+                  {isUnanswered ? (
+                    <div className="ml-14 mb-4">
+                        <div className="p-3 rounded-lg bg-slate-100 text-slate-600 font-medium text-center mb-2">
+                            Not Answered
+                        </div>
+                        {question.type === 'MCQ' || question.type === 'True/False' ? (
+                            <div className="space-y-2">
+                                {(question.options || []).map((option, optionIndex) => {
+                                    const isCorrectOption = option.isCorrect;
+                                    return (
+                                        <div key={optionIndex} className={`flex items-center space-x-3 p-3 rounded-lg ${isCorrectOption ? 'bg-green-50 border border-green-200' : 'bg-white border border-slate-200'}`}>
+                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${isCorrectOption ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                {String.fromCharCode(65 + optionIndex)}
+                                            </span>
+                                            <span className="flex-1 text-slate-700">{option.text}</span>
+                                            {isCorrectOption && <span className="text-sm font-medium text-green-600">Correct Answer</span>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+                                <strong>Correct Answer:</strong> {question.explanation}
+                            </div>
+                        )}
+                    </div>
+                  ) : question.type === 'Short Answer' || question.type === 'Fill in Blank' ? (
                     <div className="ml-14 mb-4">
                       {renderSubjectiveAnswer(question, answer)}
                       {answer?.aiEvaluated && !Array.isArray(answer?.textAnswer) && (
@@ -256,6 +291,32 @@ const QuizResultsPage = ({ results, onNavigate }) => {
                 </li>
               </ul>
             </div>
+          </div>
+        </div>
+
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 mt-8">
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">What's Next?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {recommendedQuizzes.map((quiz) => (
+              <div key={quiz.id} className="bg-slate-50 rounded-2xl p-5 flex flex-col transition-transform hover:scale-105 hover:shadow-md">
+                <div className="flex-grow">
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-4">
+                        <span className="text-2xl">{quiz.icon}</span>
+                    </div>
+                    <h4 className="font-semibold text-slate-800 mb-1">{quiz.title}</h4>
+                    <p className="text-sm text-slate-600 mb-3">{quiz.reason}</p>
+                </div>
+                <div className="flex items-center justify-between">
+                    <Badge variant={
+                        quiz.difficulty === 'Hard' ? 'danger' :
+                        quiz.difficulty === 'Medium' ? 'warning' : 'default'
+                    }>{quiz.difficulty}</Badge>
+                    <Button size="sm" variant="secondary" onClick={() => onNavigate('home', { openQuizSetup: true })}>
+                        Start
+                    </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

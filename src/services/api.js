@@ -42,12 +42,12 @@ class ExamBuddyAPI {
         return this._mockSubmitAnswer(quizId, questionId, answer);
     }
 
-    async completeQuiz(quizId, finalAnswers) {
+    async completeQuiz(quizId, finalAnswers, quiz) {
         if (this.isProduction) {
             return this._makeRequest(`/api/quiz/${quizId}/complete`, { method: 'POST', body: finalAnswers });
         }
 
-        return this._mockCompleteQuiz(quizId, finalAnswers);
+        return this._mockCompleteQuiz(quizId, finalAnswers, quiz);
     }
 
     // ————— Content Source helpers —————
@@ -209,27 +209,42 @@ class ExamBuddyAPI {
         };
     }
 
-    async _mockCompleteQuiz(quizId, finalAnswers) {
+    async _mockCompleteQuiz(quizId, finalAnswers, quiz) {
         await this._delay(1500); // Simulate results processing
 
-        const totalQuestions = finalAnswers.length;
-        const correctAnswers = finalAnswers.filter(a => a && a.isCorrect).length;
-        const score = Math.round((correctAnswers / totalQuestions) * 100);
+        const allQuestions = quiz.questions;
+        const totalQuestions = quiz.totalQuestions;
+
+        const detailedAnswers = allQuestions.map((question) => {
+            const userAnswer = finalAnswers.find(a => a && a.questionId === question.id);
+            if (userAnswer) {
+                return userAnswer;
+            }
+            return {
+                questionId: question.id,
+                isCorrect: false,
+                unanswered: true,
+                selectedOption: null,
+            };
+        });
+
+        const correctAnswers = detailedAnswers.filter(a => a && a.isCorrect).length;
+        const percentage = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
         const results = {
             quizId,
             score: correctAnswers,
             totalQuestions,
-            percentage: score,
+            percentage,
             timeSpent: finalAnswers.filter(Boolean).reduce((acc, a) => acc + (a.timeSpent || 0), 0),
-            answers: finalAnswers,
+            answers: detailedAnswers,
             completedAt: new Date().toISOString(),
             insights: this._generateInsights(finalAnswers),
-            recommendations: this._generateRecommendations(score, finalAnswers)
+            recommendations: this._generateRecommendations(percentage, finalAnswers)
         };
 
         // Save to quiz history
-        this._saveToHistory(results);
+        this._saveToHistory({ ...results, title: quiz.title, subject: quiz.subject });
 
         return { success: true, data: results };
     }

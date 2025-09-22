@@ -5,12 +5,19 @@ import examBuddyAPI from '../services/api';
 import { extractFromCurrentPage, extractFromPDFResult, normalizeManualTopic } from '../utils/contentExtractor';
 import { extractTextFromPDF } from '../utils/pdfExtractor';
 import { SOURCE_TYPE } from '../utils/messages';
+import Badge from '../components/ui/Badge';
 
 const HomePage = ({ onNavigate, navigationData }) => {
   const [showQuizSetup, setShowQuizSetup] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const recommendedQuizzes = [
+    { id: 'rec1', title: 'Advanced Thermodynamics', reason: 'Based on your high score in Physics', difficulty: 'Hard', icon: '🔥' },
+    { id: 'rec2', title: 'Calculus Fundamentals', reason: 'To strengthen your Math basics', difficulty: 'Medium', icon: '🧮' },
+    { id: 'rec3', title: 'Data Structures in Python', reason: 'A popular topic you might like', difficulty: 'Medium', icon: '🐍' }
+  ];
 
   useEffect(() => {
     if (navigationData?.openQuizSetup) {
@@ -210,6 +217,32 @@ const HomePage = ({ onNavigate, navigationData }) => {
             <span className="text-purple-600 hover:text-purple-700 font-medium cursor-pointer">
               View All →
             </span>
+          </div>
+        </div>
+
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-white/20 shadow-lg mb-8">
+          <h3 className="text-xl font-semibold text-slate-800 mb-6">Recommended For You ✨</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {recommendedQuizzes.map((quiz) => (
+              <div key={quiz.id} className="bg-slate-50 rounded-2xl p-5 flex flex-col transition-transform hover:scale-105 hover:shadow-md">
+                <div className="flex-grow">
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-4">
+                        <span className="text-2xl">{quiz.icon}</span>
+                    </div>
+                    <h4 className="font-semibold text-slate-800 mb-1">{quiz.title}</h4>
+                    <p className="text-sm text-slate-600 mb-3">{quiz.reason}</p>
+                </div>
+                <div className="flex items-center justify-between">
+                    <Badge variant={
+                        quiz.difficulty === 'Hard' ? 'danger' :
+                        quiz.difficulty === 'Medium' ? 'warning' : 'success'
+                    }>{quiz.difficulty}</Badge>
+                    <Button size="sm" variant="secondary" onClick={() => setShowQuizSetup(true)}>
+                        Start
+                    </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

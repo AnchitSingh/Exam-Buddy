@@ -502,7 +502,8 @@ const useQuizState = (quizConfig = null) => {
 
       const response = await examBuddyAPI.completeQuiz(
         quizIdRef.current, 
-        finalAnswers || userAnswers
+        finalAnswers || userAnswers,
+        quiz
       );
 
       if (response.success) {
