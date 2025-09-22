@@ -3,12 +3,12 @@ import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { SOURCE_TYPE } from '../../utils/messages';
 
-// Constants moved outside component for better performance
+// Constants
 const difficultyLevels = [
-  { value: 'easy', label: 'Easy', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
-  { value: 'medium', label: 'Medium', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-  { value: 'hard', label: 'Hard', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
-  { value: 'mixed', label: 'Mixed', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
+  { value: 'easy', label: 'Easy' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'hard', label: 'Hard' },
+  { value: 'mixed', label: 'Mixed' },
 ];
 
 const questionTypesData = [
@@ -20,36 +20,42 @@ const questionTypesData = [
 
 const questionCounts = [3, 5, 10, 15, 20];
 
-// Use SOURCE_TYPE with fallbacks to prevent undefined key errors
 const sourceOptions = [
-  { value: SOURCE_TYPE?.MANUAL || 'MANUAL', label: 'Custom Topic', icon: '✏️' },
-  { value: SOURCE_TYPE?.PAGE || 'PAGE', label: 'Current Page', icon: '📄' },
-  { value: SOURCE_TYPE?.URL || 'URL', label: 'From URL', icon: '🔗' },
-  { value: SOURCE_TYPE?.PDF || 'PDF', label: 'From PDF', icon: '📎' },
+  { value: SOURCE_TYPE?.MANUAL || 'MANUAL', label: 'Custom Topic', icon: '✏️', description: 'Create quiz from any topic' },
+  { value: SOURCE_TYPE?.PAGE || 'PAGE', label: 'Current Page', icon: '📄', description: 'Use active browser tab' },
+  { value: SOURCE_TYPE?.URL || 'URL', label: 'From URL', icon: '🔗', description: 'Enter a webpage URL' },
+  { value: SOURCE_TYPE?.PDF || 'PDF', label: 'From PDF', icon: '📎', description: 'Upload a PDF file' },
 ];
 
 const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
+  const [currentStep, setCurrentStep] = useState(1);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState({});
   const [pdfFile, setPdfFile] = useState(null);
   const fileInputRef = useRef(null);
+  const modalBodyRef = useRef(null);
 
   const [config, setConfig] = useState({
     sourceType: SOURCE_TYPE.MANUAL,
-    sourceValue: '', // URL or file name
+    sourceValue: '',
     topic: '',
     context: '',
     questionCount: 5,
     difficulty: 'medium',
     questionTypes: ['MCQ'],
     immediateFeedback: true,
-    customPrompt: '',
-    timerEnabled: false,
-    questionTimer: 60,
-    totalTimer: 600,
+    totalTimer: 0,
+    questionTimer: 0,
   });
 
-  // Cleanup on unmount to prevent memory leaks
+  // Focus management
+  useEffect(() => {
+    if (isOpen && modalBodyRef.current) {
+      modalBodyRef.current.focus();
+    }
+  }, [isOpen]);
+
+  // Cleanup
   useEffect(() => {
     return () => {
       setPdfFile(null);
@@ -59,38 +65,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
     };
   }, []);
 
-  // Dynamic step numbering based on source type
-  const getStepNumber = (step) => {
-    if (step === 'source') return 1;
-    if (step === 'describe') {
-      return config.sourceType === SOURCE_TYPE.MANUAL ? 2 : null;
-    }
-    if (step === 'configure') {
-      return config.sourceType === SOURCE_TYPE.MANUAL ? 3 : 2;
-    }
-    return null;
-  };
-
   const handleInputChange = (field, value) => {
-    // Validate timer logic
-    if (field === 'questionTimer' && config.timerEnabled) {
-      const maxQuestionTime = Math.floor(config.totalTimer / config.questionCount);
-      value = Math.min(value, maxQuestionTime);
-    }
-    
-    if (field === 'questionCount' && config.timerEnabled) {
-      // Adjust question timer if needed
-      const maxQuestionTime = Math.floor(config.totalTimer / value);
-      if (config.questionTimer > maxQuestionTime) {
-        setConfig(prev => ({ 
-          ...prev, 
-          [field]: value,
-          questionTimer: maxQuestionTime 
-        }));
-        return;
-      }
-    }
-
     setConfig(prev => ({ ...prev, [field]: value }));
     
     // Clear errors for the field being edited
@@ -102,10 +77,9 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
   const handleSourceTypeChange = (sourceType) => {
     setConfig(prev => ({ 
       ...prev, 
-      sourceType, 
-      topic: '', 
+      sourceType,
       sourceValue: '',
-      context: '' 
+      // Keep topic and context
     }));
     setPdfFile(null);
     if (fileInputRef.current) {
@@ -131,7 +105,6 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
         ? prev.questionTypes.filter(t => t !== type)
         : [...prev.questionTypes, type];
       
-      // Ensure at least one type is selected
       if (types.length === 0) {
         return prev;
       }
@@ -139,39 +112,57 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
       return { ...prev, questionTypes: types };
     });
     
-    // Clear error if we now have valid selection
     if (errors.questionTypes) {
       setErrors(prev => ({ ...prev, questionTypes: '' }));
     }
   };
 
-  const validateForm = () => {
+  const validateStep = (step) => {
     const newErrors = {};
     
-    if (config.sourceType === SOURCE_TYPE.MANUAL && !config.topic.trim()) {
-      newErrors.topic = 'Please enter a topic for your quiz';
+    if (step === 1) {
+      if (!config.topic.trim()) {
+        newErrors.topic = 'Please enter a topic for your quiz';
+      }
+      
+      if (config.sourceType === SOURCE_TYPE.URL && !config.sourceValue.trim()) {
+        newErrors.sourceValue = 'Please enter a valid URL';
+      }
+      
+      if (config.sourceType === SOURCE_TYPE.PDF && !pdfFile) {
+        newErrors.sourceValue = 'Please select a PDF file';
+      }
     }
     
-    if (config.sourceType === SOURCE_TYPE.URL && !config.sourceValue.trim()) {
-      newErrors.sourceValue = 'Please enter a valid URL';
-    }
-    
-    if (config.sourceType === SOURCE_TYPE.PDF && !pdfFile) {
-      newErrors.sourceValue = 'Please select a PDF file';
-    }
-    
-    if (config.questionTypes.length === 0) {
-      newErrors.questionTypes = 'Please select at least one question type';
+    if (step === 2) {
+      if (config.questionTypes.length === 0) {
+        newErrors.questionTypes = 'Please select at least one question type';
+      }
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep(currentStep - 1);
+    setErrors({});
+  };
+
   const handleStartQuiz = () => {
-    if (!validateForm()) return;
+    if (!validateStep(2)) return;
     
-    const finalConfig = { ...config, pdfFile };
+    const finalConfig = { 
+      ...config, 
+      pdfFile,
+      timerEnabled: config.totalTimer > 0 
+    };
     
     console.log('Starting quiz with config:', finalConfig);
     onStartQuiz(finalConfig);
@@ -187,122 +178,95 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
       difficulty: 'medium',
       questionTypes: ['MCQ'],
       immediateFeedback: true,
-      customPrompt: '',
-      timerEnabled: false,
-      questionTimer: 60,
-      totalTimer: 600,
+      totalTimer: 0,
+      questionTimer: 0,
     });
     setPdfFile(null);
+    setCurrentStep(1);
     setShowAdvanced(false);
     setErrors({});
   };
 
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    if (seconds === 0) return 'No timer';
+    if (seconds < 60) return `${seconds} seconds`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes`;
+    return `${Math.floor(seconds / 3600)} hour${Math.floor(seconds / 3600) > 1 ? 's' : ''}`;
   };
 
-  const renderSourceInput = () => {
+  const renderSourceSpecificInput = () => {
     switch (config.sourceType) {
-      case SOURCE_TYPE.MANUAL:
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Quiz Topic <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={config.topic}
-                onChange={(e) => handleInputChange('topic', e.target.value)}
-                placeholder="e.g., World War II, Python Programming..."
-                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 ${
-                  errors.topic ? 'border-red-300 bg-red-50' : 'border-slate-200'
-                }`}
-              />
-              {errors.topic && <p className="text-red-500 text-xs mt-1">{errors.topic}</p>}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Additional Context (Optional)
-              </label>
-              <textarea
-                value={config.context}
-                onChange={(e) => handleInputChange('context', e.target.value)}
-                placeholder="Specific areas to focus on..."
-                rows={3}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-          </div>
-        );
-        
       case SOURCE_TYPE.URL:
         return (
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+          <div className="mt-4">
+            <label htmlFor="quiz-url" className="block text-sm font-medium text-slate-700 mb-2">
               Webpage URL <span className="text-red-500">*</span>
             </label>
             <input
+              id="quiz-url"
               type="url"
               value={config.sourceValue}
               onChange={(e) => handleInputChange('sourceValue', e.target.value)}
-              placeholder="https://..."
-              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 ${
+              placeholder="https://example.com"
+              className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all ${
                 errors.sourceValue ? 'border-red-300 bg-red-50' : 'border-slate-200'
               }`}
+              aria-invalid={errors.sourceValue ? 'true' : 'false'}
             />
-            {errors.sourceValue && <p className="text-red-500 text-xs mt-1">{errors.sourceValue}</p>}
+            {errors.sourceValue && (
+              <p className="text-red-500 text-xs mt-1">{errors.sourceValue}</p>
+            )}
           </div>
         );
         
       case SOURCE_TYPE.PDF:
         return (
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+          <div className="mt-4">
+            <label htmlFor="quiz-pdf" className="block text-sm font-medium text-slate-700 mb-2">
               Upload PDF <span className="text-red-500">*</span>
             </label>
-            <input 
-              type="file" 
-              accept=".pdf" 
-              onChange={handleFileChange} 
-              ref={fileInputRef} 
-              className="hidden" 
+            <input
+              id="quiz-pdf"
+              type="file"
+              accept=".pdf"
+              onChange={handleFileChange}
+              ref={fileInputRef}
+              className="sr-only"
+              aria-describedby="pdf-help"
             />
-            <button 
-              onClick={() => fileInputRef.current?.click()} 
-              className={`w-full flex items-center justify-center px-4 py-3 border-2 border-dashed rounded-xl transition-all hover:bg-slate-50 ${
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className={`w-full flex items-center justify-center px-4 py-3 border-2 border-dashed rounded-lg transition-all hover:bg-slate-50 ${
                 errors.sourceValue ? 'border-red-300 bg-red-50' : 'border-slate-300'
               }`}
             >
-              <span className="text-sm">
-                {pdfFile ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {pdfFile.name}
-                  </span>
-                ) : (
-                  <span className="text-slate-500">Click to choose a PDF file</span>
-                )}
-              </span>
+              {pdfFile ? (
+                <span className="flex items-center gap-2 text-sm">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {pdfFile.name}
+                </span>
+              ) : (
+                <span className="text-sm text-slate-500">Click to choose a PDF file</span>
+              )}
             </button>
-            {errors.sourceValue && <p className="text-red-500 text-xs mt-1">{errors.sourceValue}</p>}
+            {errors.sourceValue && (
+              <p className="text-red-500 text-xs mt-1">{errors.sourceValue}</p>
+            )}
+            <p id="pdf-help" className="text-xs text-slate-500 mt-2">Maximum file size: 10MB</p>
           </div>
         );
         
       case SOURCE_TYPE.PAGE:
         return (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-sm font-medium text-amber-800">
-                The current active browser tab will be used as the source for this quiz.
+              <p className="text-sm text-amber-800">
+                The current active browser tab will be used as the source for generating quiz questions.
               </p>
             </div>
           </div>
@@ -313,275 +277,360 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
     }
   };
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="" size="lg">
-      <div className="space-y-0">
-        <div className="text-center pb-6 border-b border-slate-100">
-          <h2 className="text-2xl font-bold text-slate-900">Create Your Quiz</h2>
-          <p className="text-sm text-slate-500 mt-1">Set up your personalized learning experience</p>
-        </div>
-
-        <div className="pt-6 space-y-6">
-          {/* Step 1: Source Selection */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-8 h-8 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">
-                {getStepNumber('source')}
-              </div>
-              <h3 className="text-base font-semibold text-slate-900">Choose your quiz source</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {sourceOptions.map(opt => (
-                <button 
-                  key={opt.value} 
-                  onClick={() => handleSourceTypeChange(opt.value)}
-                  className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                    config.sourceType === opt.value 
-                      ? 'border-amber-300 bg-amber-50' 
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <span className="text-lg">{opt.icon}</span>
-                  <span className="text-sm font-medium text-slate-700">{opt.label}</span>
-                </button>
-              ))}
-            </div>
-            <div className="pt-4">{renderSourceInput()}</div>
-          </div>
-
-          {/* Step 2/3: Basic Configuration */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-8 h-8 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">
-                {getStepNumber('configure')}
-              </div>
-              <h3 className="text-base font-semibold text-slate-900">Configure your quiz</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">Number of Questions</label>
-                <div className="grid grid-cols-5 gap-2">
-                  {questionCounts.map(count => (
-                    <button
-                      key={count}
-                      onClick={() => handleInputChange('questionCount', count)}
-                      className={`py-2 px-3 rounded-lg font-medium text-sm transition-all ${
-                        config.questionCount === count 
-                          ? 'bg-amber-100 text-amber-700 border-2 border-amber-300' 
-                          : 'bg-white border-2 border-slate-200 text-slate-600 hover:border-slate-300'
-                      }`}
-                    >
-                      {count}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">Difficulty Level</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {difficultyLevels.map(level => (
-                    <button
-                      key={level.value}
-                      onClick={() => handleInputChange('difficulty', level.value)}
-                      className={`py-2 px-3 rounded-lg font-medium text-sm transition-all border-2 ${
-                        config.difficulty === level.value 
-                          ? `${level.bg} ${level.color} ${level.border}` 
-                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                      }`}
-                    >
-                      {level.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Advanced Settings Toggle */}
-          <div>
-            <button 
-              onClick={() => setShowAdvanced(!showAdvanced)} 
-              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+  const renderStep1 = () => (
+    <div className="space-y-6">
+      {/* Source Selection */}
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Choose your quiz source</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {sourceOptions.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => handleSourceTypeChange(opt.value)}
+              className={`relative flex flex-col items-start p-4 rounded-lg border-2 transition-all text-left ${
+                config.sourceType === opt.value
+                  ? 'border-amber-400 bg-amber-50'
+                  : 'border-slate-200 hover:border-slate-300 bg-white'
+              }`}
+              aria-pressed={config.sourceType === opt.value}
             >
-              <svg 
-                className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-              </svg>
-              <span>Advanced Settings</span>
+              <div className="flex items-center gap-3 mb-1">
+                <span className="text-xl" aria-hidden="true">{opt.icon}</span>
+                <span className="font-medium text-slate-900">{opt.label}</span>
+              </div>
+              <span className="text-xs text-slate-500">{opt.description}</span>
+              {config.sourceType === opt.value && (
+                <svg className="absolute top-3 right-3 w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              )}
             </button>
-          </div>
+          ))}
+        </div>
+      </div>
 
-          {/* Advanced Settings */}
-          {showAdvanced && (
-            <div className="space-y-5 pt-5 border-t border-slate-100">
-              
-              {/* Question Types */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
-                  Question Types
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {questionTypesData.map(type => (
-                    <label 
-                      key={type.value} 
-                      className={`relative flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                        config.questionTypes.includes(type.value) 
-                          ? 'border-amber-300 bg-amber-50' 
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={config.questionTypes.includes(type.value)}
-                        onChange={() => handleQuestionTypeToggle(type.value)}
-                        style={{ 
-                          position: 'absolute', 
-                          width: '1px', 
-                          height: '1px', 
-                          padding: 0, 
-                          margin: '-1px', 
-                          overflow: 'hidden', 
-                          clip: 'rect(0,0,0,0)', 
-                          whiteSpace: 'nowrap', 
-                          border: 0 
-                        }}
-                      />
-                      <span className="text-lg">{type.icon}</span>
-                      <span className="text-sm font-medium text-slate-700">{type.label}</span>
-                      {config.questionTypes.includes(type.value) && (
-                        <svg className="w-5 h-5 text-amber-600 absolute top-2 right-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </label>
-                  ))}
-                </div>
-                {errors.questionTypes && (
-                  <p className="text-red-500 text-xs mt-2">{errors.questionTypes}</p>
-                )}
-              </div>
+      {/* Source-specific input (URL or PDF) */}
+      {renderSourceSpecificInput()}
 
-              {/* Timer Settings */}
-              <div className="p-4 bg-slate-50 rounded-xl">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-medium text-slate-700">
-                    Enable Timer
-                  </label>
-                  <button
-                    onClick={() => handleInputChange('timerEnabled', !config.timerEnabled)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      config.timerEnabled ? 'bg-amber-600' : 'bg-slate-200'
-                    }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      config.timerEnabled ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-                
-                {config.timerEnabled && (
-                  <div className="space-y-3 pt-3 border-t border-slate-200">
-                    <div>
-                      <div className="flex justify-between text-xs text-slate-600 mb-2">
-                        <span>Total Quiz Time</span>
-                        <span className="font-mono font-medium">{formatTime(config.totalTimer)}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="300"
-                        max="3600"
-                        step="60"
-                        value={config.totalTimer}
-                        onChange={(e) => handleInputChange('totalTimer', parseInt(e.target.value))}
-                        className="w-full accent-amber-600"
-                      />
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between text-xs text-slate-600 mb-2">
-                        <span>Time per Question</span>
-                        <span className="font-mono font-medium">{config.questionTimer}s</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="30"
-                        max={Math.min(300, Math.floor(config.totalTimer / config.questionCount))}
-                        step="15"
-                        value={config.questionTimer}
-                        onChange={(e) => handleInputChange('questionTimer', parseInt(e.target.value))}
-                        className="w-full accent-amber-600"
-                      />
-                      {config.questionTimer * config.questionCount > config.totalTimer && (
-                        <p className="text-amber-600 text-xs mt-1">
-                          ⚠️ Question time adjusted to fit total time
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Feedback Setting */}
-              <div className="p-4 bg-slate-50 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="text-sm font-medium text-slate-700">
-                      Immediate Feedback
-                    </label>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Show correct answers after each question
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleInputChange('immediateFeedback', !config.immediateFeedback)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      config.immediateFeedback ? 'bg-amber-600' : 'bg-slate-200'
-                    }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      config.immediateFeedback ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Custom Instructions */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Custom Instructions
-                  <span className="text-xs text-slate-400 font-normal ml-2">(Optional)</span>
-                </label>
-                <textarea
-                  value={config.customPrompt}
-                  onChange={(e) => handleInputChange('customPrompt', e.target.value)}
-                  placeholder="Special instructions for question generation..."
-                  rows={2}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all resize-none text-sm hover:border-slate-300"
-                />
-              </div>
-            </div>
+      {/* Quiz Topic and Context - Always visible */}
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="quiz-topic" className="block text-sm font-medium text-slate-700 mb-2">
+            Quiz Topic <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="quiz-topic"
+            type="text"
+            value={config.topic}
+            onChange={(e) => handleInputChange('topic', e.target.value)}
+            placeholder="e.g., World War II, Python Programming..."
+            className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all ${
+              errors.topic ? 'border-red-300 bg-red-50' : 'border-slate-200'
+            }`}
+            aria-invalid={errors.topic ? 'true' : 'false'}
+            aria-describedby={errors.topic ? 'topic-error' : undefined}
+          />
+          {errors.topic && (
+            <p id="topic-error" className="text-red-500 text-xs mt-1">{errors.topic}</p>
           )}
         </div>
+        
+        <div>
+          <label htmlFor="quiz-context" className="block text-sm font-medium text-slate-700 mb-2">
+            Additional Context
+            <span className="text-xs text-slate-400 font-normal ml-2">(Optional)</span>
+          </label>
+          <textarea
+            id="quiz-context"
+            value={config.context}
+            onChange={(e) => handleInputChange('context', e.target.value)}
+            placeholder="Specific areas to focus on..."
+            rows={2}
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all resize-none"
+          />
+        </div>
+      </div>
+    </div>
+  );
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-6 mt-6 border-t border-slate-100">
-          <Button 
-            onClick={onClose} 
-            variant="secondary" 
-            className="flex-1"
+  const renderStep2 = () => (
+    <div className="space-y-6">
+      {/* Basic Configuration */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-slate-900">Basic Settings</h3>
+        
+        {/* Question Count - Centered */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Number of Questions
+          </label>
+          <div className="flex justify-center gap-2">
+            {questionCounts.map(count => (
+              <button
+                key={count}
+                onClick={() => handleInputChange('questionCount', count)}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                  config.questionCount === count
+                    ? 'bg-amber-100 text-amber-700 border-2 border-amber-400'
+                    : 'bg-white border-2 border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+                aria-pressed={config.questionCount === count}
+              >
+                {count}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Question Types */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Question Types <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {questionTypesData.map(type => (
+              <label
+                key={type.value}
+                className={`relative flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                  config.questionTypes.includes(type.value)
+                    ? 'border-amber-400 bg-amber-50'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={config.questionTypes.includes(type.value)}
+                  onChange={() => handleQuestionTypeToggle(type.value)}
+                  className="sr-only"
+                  aria-describedby={`${type.value}-label`}
+                />
+                <span className="text-lg" aria-hidden="true">{type.icon}</span>
+                <span id={`${type.value}-label`} className="text-sm font-medium text-slate-700">
+                  {type.label}
+                </span>
+                {config.questionTypes.includes(type.value) && (
+                  <svg className="absolute top-2 right-2 w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </label>
+            ))}
+          </div>
+          {errors.questionTypes && (
+            <p className="text-red-500 text-xs mt-1">{errors.questionTypes}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Advanced Settings Accordion */}
+      <div className="border border-slate-200 rounded-lg">
+        <button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors rounded-lg"
+          aria-expanded={showAdvanced}
+          aria-controls="advanced-settings"
+        >
+          <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            Advanced Settings
+          </span>
+          <svg
+            className={`w-5 h-5 text-slate-400 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleStartQuiz} 
-            className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
-          >
-            Start Quiz
-          </Button>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showAdvanced && (
+          <div id="advanced-settings" className="border-t border-slate-200 p-4 space-y-4">
+            {/* Difficulty */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Difficulty Level
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {difficultyLevels.map(level => (
+                  <button
+                    key={level.value}
+                    onClick={() => handleInputChange('difficulty', level.value)}
+                    className={`py-2 px-3 rounded-lg font-medium text-sm transition-all ${
+                      config.difficulty === level.value
+                        ? 'bg-amber-100 text-amber-700 border-2 border-amber-400'
+                        : 'bg-white border-2 border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                    aria-pressed={config.difficulty === level.value}
+                  >
+                    {level.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Total Quiz Timer - Slider */}
+            <div>
+              <label htmlFor="quiz-timer" className="block text-sm font-medium text-slate-700 mb-2">
+                Total Quiz Timer: <span className="text-amber-600 font-semibold">{formatTime(config.totalTimer)}</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-500">0</span>
+                <input
+                  id="quiz-timer"
+                  type="range"
+                  min="0"
+                  max="3600"
+                  step="60"
+                  value={config.totalTimer}
+                  onChange={(e) => handleInputChange('totalTimer', parseInt(e.target.value))}
+                  className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
+                  style={{
+                    background: `linear-gradient(to right, rgb(251 191 36) 0%, rgb(251 191 36) ${(config.totalTimer / 3600) * 100}%, rgb(226 232 240) ${(config.totalTimer / 3600) * 100}%, rgb(226 232 240) 100%)`
+                  }}
+                />
+                <span className="text-xs text-slate-500">60 min</span>
+              </div>
+            </div>
+
+            {/* Per Question Timer - Slider */}
+            <div>
+              <label htmlFor="question-timer" className="block text-sm font-medium text-slate-700 mb-2">
+                Per Question Timer: <span className="text-amber-600 font-semibold">{formatTime(config.questionTimer)}</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-500">0</span>
+                <input
+                  id="question-timer"
+                  type="range"
+                  min="0"
+                  max="300"
+                  step="10"
+                  value={config.questionTimer}
+                  onChange={(e) => handleInputChange('questionTimer', parseInt(e.target.value))}
+                  className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
+                  style={{
+                    background: `linear-gradient(to right, rgb(251 191 36) 0%, rgb(251 191 36) ${(config.questionTimer / 300) * 100}%, rgb(226 232 240) ${(config.questionTimer / 300) * 100}%, rgb(226 232 240) 100%)`
+                  }}
+                />
+                <span className="text-xs text-slate-500">5 min</span>
+              </div>
+            </div>
+
+            {/* Immediate Feedback Toggle */}
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <div>
+                <label htmlFor="immediate-feedback" className="text-sm font-medium text-slate-700">
+                  Immediate Feedback
+                </label>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Show correct answers after each question
+                </p>
+              </div>
+              <button
+                id="immediate-feedback"
+                role="switch"
+                aria-checked={config.immediateFeedback}
+                onClick={() => handleInputChange('immediateFeedback', !config.immediateFeedback)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  config.immediateFeedback ? 'bg-amber-600' : 'bg-slate-300'
+                }`}
+              >
+                <span className="sr-only">Enable immediate feedback</span>
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    config.immediateFeedback ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      title="" 
+      size="lg"
+      className="flex flex-col max-h-[90vh]"
+    >
+      <div className="flex flex-col h-full" ref={modalBodyRef} tabIndex={-1}>
+        {/* Fixed Header */}
+        <div className="px-6 py-4 border-b border-slate-200">
+          <h2 className="text-xl font-bold text-slate-900">Create Your Quiz</h2>
+          <div className="flex items-center gap-2 mt-3">
+            {[1, 2].map((step) => (
+              <React.Fragment key={step}>
+                <div className={`flex items-center gap-2 ${currentStep >= step ? 'text-amber-600' : 'text-slate-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                    currentStep >= step ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'
+                  }`}>
+                    {currentStep > step ? (
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : step}
+                  </div>
+                  <span className="text-xs font-medium hidden sm:inline">
+                    {step === 1 ? 'Source' : 'Configure'}
+                  </span>
+                </div>
+                {step < 2 && (
+                  <div className={`flex-1 h-0.5 transition-colors ${
+                    currentStep > step ? 'bg-amber-200' : 'bg-slate-200'
+                  }`} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          {currentStep === 1 ? renderStep1() : renderStep2()}
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="px-6 py-4 border-t border-slate-200 bg-white">
+          <div className="flex gap-3">
+            {currentStep > 1 && (
+              <Button
+                onClick={handleBack}
+                variant="secondary"
+                className="flex-1"
+              >
+                Back
+              </Button>
+            )}
+            <Button
+              onClick={onClose}
+              variant="secondary"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            {currentStep === 1 ? (
+              <Button
+                onClick={handleNext}
+                className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                onClick={handleStartQuiz}
+                className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+              >
+                Start Quiz
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </Modal>

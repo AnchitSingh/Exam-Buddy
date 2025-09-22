@@ -60,6 +60,33 @@
   20%, 40%, 60%, 80% { transform: translateX(2px); }
 }
 
+@keyframes scaleIn {
+    0% { transform: scale(0.9); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes rotateSlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulseSlow {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.6; }
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
+}
+
+.animate-rotate-slow {
+    animation: rotateSlow 20s linear infinite;
+}
+
+.animate-pulse-slow {
+    animation: pulseSlow 3s ease-in-out infinite;
+}
+
 
 /* Modal animations - add to the end of your index.css */
 .animate-modal-in {
@@ -124,4 +151,11 @@ button:not(:disabled):hover {
 
 button:not(:disabled):active {
   transform: translateY(0);
+}
+
+input {
+  outline: none;
+}
+textarea {
+  outline: none;
 }
