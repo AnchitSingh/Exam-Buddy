@@ -12,7 +12,8 @@ export const MSG = {
     PAGE: 'page',
     SELECTION: 'selection',
     PDF: 'pdf',
-    MANUAL: 'manual'
+    MANUAL: 'manual',
+    URL: 'url'
   };
   
   // Narrow message helpers (optional)

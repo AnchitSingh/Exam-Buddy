@@ -1,323 +1,501 @@
 import React, { useState, useEffect } from 'react';
-import Button from '../components/ui/Button';
+import toast from 'react-hot-toast';
 import QuizSetupModal from '../components/quiz/QuizSetupModal';
 import examBuddyAPI from '../services/api';
 import { extractFromCurrentPage, extractFromPDFResult, normalizeManualTopic } from '../utils/contentExtractor';
 import { extractTextFromPDF } from '../utils/pdfExtractor';
 import { SOURCE_TYPE } from '../utils/messages';
-import Badge from '../components/ui/Badge';
 
-const HomePage = ({ onNavigate, navigationData }) => {
-  const [showQuizSetup, setShowQuizSetup] = useState(false);
-  const [userProfile, setUserProfile] = useState(null);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+// Constants
+const RECOMMENDED_TOPICS = ['Advanced React Patterns', 'TypeScript Best Practices', 'System Design'];
 
-  const recommendedQuizzes = [
-    { id: 'rec1', title: 'Advanced Thermodynamics', reason: 'Based on your high score in Physics', difficulty: 'Hard', icon: '🔥' },
-    { id: 'rec2', title: 'Calculus Fundamentals', reason: 'To strengthen your Math basics', difficulty: 'Medium', icon: '🧮' },
-    { id: 'rec3', title: 'Data Structures in Python', reason: 'A popular topic you might like', difficulty: 'Medium', icon: '🐍' }
-  ];
+const SCROLL_CARDS = [
+    { id: 1, title: 'Bookmarks', image: 'assets/i6.png', bgColor: 'rgb(233 190 160 / 23%)', scale: 1 },
+    { id: 2, title: 'Grandpa Stories', image: 'assets/i4.png', bgColor: 'rgb(190 83 9 / 9%)', scale: 1.15 },
+    { id: 3, title: 'Paused Quizzes', image: 'assets/i5.png', bgColor: 'rgb(233 190 160 / 23%)', scale: 1 },
+    { id: 4, title: 'Bookmarks', image: 'assets/i6.png', bgColor: 'rgb(190 83 9 / 9%)', scale: 1 },
+    { id: 5, title: 'Grandpa Stories', image: 'assets/i4.png', bgColor: 'rgb(233 190 160 / 23%)', scale: 1.15 },
+    { id: 6, title: 'Paused Quizzes', image: 'assets/i5.png', bgColor: 'rgb(190 83 9 / 9%)', scale: 1 }
+];
 
-  useEffect(() => {
-    if (navigationData?.openQuizSetup) {
-      setShowQuizSetup(true);
-    }
-  }, [navigationData]);
+// Utility Functions
+const formatTimeAgo = (date) => {
+    const now = Date.now();
+    const then = new Date(date).getTime();
+    const seconds = Math.floor((now - then) / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days} days ago`;
+    return new Date(date).toLocaleDateString();
+};
 
-  const loadUserData = async () => {
-    try {
-      setIsLoading(true);
-      const [profileResponse, historyResponse] = await Promise.all([
-        examBuddyAPI.getUserProfile(),
-        examBuddyAPI.getQuizHistory()
-      ]);
-      
-      if (profileResponse.success) {
-        setUserProfile(profileResponse.data);
-        setRecentActivity(profileResponse.data.recentActivity || []);
-      }
-      
-      if (historyResponse.success) {
-        setRecentActivity(prev => [
-          ...prev,
-          ...historyResponse.data.slice(0, 3).map(quiz => ({
-            type: 'quiz_completed',
-            title: `${quiz.title} - Completed`,
-            score: `${quiz.score}/${quiz.totalQuestions}`,
-            time: new Date(quiz.completedAt).toLocaleDateString(),
-            id: quiz.id
-          }))
-        ]);
-      }
-    } catch (err) {
-      console.error('Error loading user data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleStartQuiz = async (config) => {
-    console.log('=== STARTING NEW QUIZ ===');
-    console.log('Config submitted:', config);
-
-    let extractedSource;
-
-    try {
-      switch (config.sourceType) {
-        case SOURCE_TYPE.PAGE:
-          extractedSource = await extractFromCurrentPage();
-          break;
-        
-        case SOURCE_TYPE.PDF:
-          if (config.pdfFile) {
-            const { text, meta } = await extractTextFromPDF(config.pdfFile);
-            extractedSource = await extractFromPDFResult({
-              text,
-              fileName: config.pdfFile.name,
-              pageCount: meta.pageCount
-            });
-          }
-          break;
-
-        case SOURCE_TYPE.URL:
-          extractedSource = normalizeManualTopic(config.sourceValue, `Content from ${config.sourceValue}`);
-          break;
-
-        case SOURCE_TYPE.MANUAL:
-        default:
-          extractedSource = normalizeManualTopic(config.topic, config.context);
-          break;
-      }
-
-      console.log('Extracted Source:', extractedSource);
-
-      const finalQuizConfig = {
-        ...config,
-        extractedSource,
-        topic: config.topic || extractedSource.title,
-      };
-
-      onNavigate('quiz', { quizConfig: finalQuizConfig });
-
-    } catch (error) {
-      console.error('Failed to prepare quiz source:', error);
-    }
-  };
-
-  const handleQuickAction = async (actionType) => {
-    switch (actionType) {
-      case 'paused':
-        onNavigate('paused');
-        break;
-      case 'bookmarks':
-        onNavigate('bookmarks');
-        break;
-      case 'continue-activity':
-        onNavigate('quiz');
-        break;
-      default:
-        break;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
-            <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-            </svg>
-          </div>
-          <p className="text-slate-600">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
+// Sub-components
+const LoadingScreen = () => (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
-      <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">EB</span>
-              </div>
-              <h1 className="text-xl font-semibold text-slate-800">Exam Buddy</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => handleQuickAction('bookmarks')}
-                className="p-2 rounded-xl text-slate-600 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-800 mb-2">
-            Welcome back{userProfile?.name ? `, ${userProfile.name}` : ''}! 👋
-          </h2>
-          <p className="text-slate-600">Ready to continue your learning journey?</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-6 text-white relative overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-200" 
-               onClick={() => setShowQuizSetup(true)}>
-            <div className="relative z-10">
-              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Start New Quiz</h3>
-              <p className="text-amber-100 mb-4">Create a quiz from any webpage or PDF</p>
-              <div className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-medium transition-colors text-white border-none shadow-none inline-block">
-                Get Started
-              </div>
-            </div>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full transform translate-x-16 -translate-y-16"></div>
-          </div>
-
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-white/20 shadow-lg cursor-pointer hover:scale-105 hover:shadow-xl transition-all duration-200"
-               onClick={() => handleQuickAction('paused')}>
-            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-slate-800 mb-2">Continue Learning</h3>
-            <p className="text-slate-600 mb-4">Resume your paused quizzes</p>
-            <span className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
-              View Paused →
-            </span>
-          </div>
-
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-white/20 shadow-lg cursor-pointer hover:scale-105 hover:shadow-xl transition-all duration-200"
-               onClick={() => handleQuickAction('bookmarks')}>
-            <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-slate-800 mb-2">Review Bookmarks</h3>
-            <p className="text-slate-600 mb-4">Practice your saved questions</p>
-            <span className="text-purple-600 hover:text-purple-700 font-medium cursor-pointer">
-              View All →
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-white/20 shadow-lg mb-8">
-          <h3 className="text-xl font-semibold text-slate-800 mb-6">Recommended For You ✨</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {recommendedQuizzes.map((quiz) => (
-              <div key={quiz.id} className="bg-slate-50 rounded-2xl p-5 flex flex-col transition-transform hover:scale-105 hover:shadow-md">
-                <div className="flex-grow">
-                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-4">
-                        <span className="text-2xl">{quiz.icon}</span>
-                    </div>
-                    <h4 className="font-semibold text-slate-800 mb-1">{quiz.title}</h4>
-                    <p className="text-sm text-slate-600 mb-3">{quiz.reason}</p>
+        <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse-slow">
+                    <svg className="w-8 h-8 text-amber-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
                 </div>
-                <div className="flex items-center justify-between">
-                    <Badge variant={
-                        quiz.difficulty === 'Hard' ? 'danger' :
-                        quiz.difficulty === 'Medium' ? 'warning' : 'success'
-                    }>{quiz.difficulty}</Badge>
-                    <Button size="sm" variant="secondary" onClick={() => setShowQuizSetup(true)}>
-                        Start
-                    </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+                <p className="text-slate-600">Loading your dashboard...</p>
+            </div>
         </div>
-
-        {recentActivity.length > 0 && (
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-white/20 shadow-lg mb-8">
-            <h3 className="text-xl font-semibold text-slate-800 mb-6">Recent Activity</h3>
-            <div className="space-y-4">
-              {recentActivity.slice(0, 3).map((activity) => (
-                <div key={activity.id} className="flex items-center space-x-4 p-4 bg-slate-50 rounded-2xl">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${activity.type === 'quiz_completed' ? 'bg-green-100' : activity.type === 'quiz_paused' ? 'bg-amber-100' : 'bg-purple-100'}`}>
-                    {activity.type === 'quiz_completed' && (
-                      <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
-                      </svg>
-                    )}
-                    {activity.type === 'quiz_paused' && (
-                      <svg className="w-6 h-6 text-amber-600" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                      </svg>
-                    )}
-                    {activity.type === 'bookmark_added' && (
-                      <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-slate-800">{activity.title}</h4>
-                    <p className="text-slate-600 text-sm">
-                      {activity.score && `Score: ${activity.score} • `}
-                      {activity.progress && `Progress: ${activity.progress} • `}
-                      {activity.time}
-                    </p>
-                  </div>
-                  <button 
-                    onClick={() => handleQuickAction('continue-activity')}
-                    className="text-amber-600 hover:text-amber-700 font-medium"
-                  >
-                    {activity.type === 'quiz_paused' ? 'Continue' : 'Review'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {userProfile && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg text-center">
-              <div className="text-3xl font-bold text-amber-600 mb-1">{userProfile.totalQuizzes}</div>
-              <div className="text-slate-600 text-sm">Quizzes Completed</div>
-            </div>
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg text-center">
-              <div className="text-3xl font-bold text-green-600 mb-1">{userProfile.averageScore}%</div>
-              <div className="text-slate-600 text-sm">Average Score</div>
-            </div>
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">{userProfile.totalBookmarks}</div>
-              <div className="text-slate-600 text-sm">Bookmarked Questions</div>
-            </div>
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-1">{userProfile.learningStreaks}</div>
-              <div className="text-slate-600 text-sm">Learning Streaks</div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      <QuizSetupModal 
-        isOpen={showQuizSetup}
-        onClose={() => setShowQuizSetup(false)}
-        onStartQuiz={handleStartQuiz}
-      />
     </div>
-  );
+);
+
+const BackgroundEffects = () => (
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-gradient-to-br from-amber-300/20 to-orange-300/20 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-gradient-to-br from-orange-300/20 to-amber-300/20 rounded-full blur-3xl animate-pulse-slow animation-delay-2000" />
+        <div className="absolute top-3/4 left-1/2 w-72 h-72 bg-gradient-to-br from-amber-200/10 to-orange-200/10 rounded-full blur-3xl animate-pulse-slow animation-delay-4000" />
+    </div>
+);
+
+const ScrollCard = ({ card }) => (
+    <div className="group relative w-[17.5rem] h-64 rounded-[0.65rem] transition-all duration-300 overflow-hidden transform hover:scale-[1.02] z-10 flex-shrink-0"
+        style={{ backgroundColor: card.bgColor }}>
+        <div className="w-full h-full rounded-[3rem] flex flex-col justify-evenly">
+            <img
+                alt={card.title}
+                src={card.image}
+                className="h-40 mx-auto"
+                style={{ transform: `scale(${card.scale})` }}
+            />
+            <h6 className="text-[1.2rem] font-[700] text-[#68634e]">
+                {card.title}
+            </h6>
+        </div>
+    </div>
+);
+
+const PausedQuizCard = ({ quiz, onContinue }) => (
+    <div
+        className="group bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-slate-100 hover:border-amber-200 animate-fade-in-up"
+        onClick={() => onContinue(quiz.id)}
+        role="button"
+        tabIndex={0}
+        onKeyPress={(e) => e.key === 'Enter' && onContinue(quiz.id)}
+    >
+        <div className="flex items-center justify-between">
+            <div className="flex-1">
+                <h3 className="font-semibold text-slate-800 group-hover:text-amber-700 transition-colors">
+                    {quiz.title}
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                    {quiz.questionsLeft} questions remaining • {formatTimeAgo(quiz.lastAccessed)}
+                </p>
+            </div>
+            <div className="flex items-center gap-3">
+                <div className="relative w-12 h-12">
+                    <svg className="transform -rotate-90 w-12 h-12">
+                        <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="none" className="text-slate-200" />
+                        <circle
+                            cx="24" cy="24" r="20"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                            strokeDasharray={`${2 * Math.PI * 20}`}
+                            strokeDashoffset={`${2 * Math.PI * 20 * (1 - quiz.progress / 100)}`}
+                            className="text-amber-500 transition-all duration-500"
+                        />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-slate-700">
+                        {quiz.progress}%
+                    </span>
+                </div>
+                <svg className="w-5 h-5 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </div>
+        </div>
+    </div>
+);
+
+const BookmarkCard = ({ bookmark, onOpen }) => (
+    <div
+        className="group bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-slate-100 hover:border-amber-200 animate-fade-in-up"
+        onClick={() => onOpen(bookmark.id)}
+        role="button"
+        tabIndex={0}
+        onKeyPress={(e) => e.key === 'Enter' && onOpen(bookmark.id)}
+    >
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-amber-100 to-orange-100 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <svg className="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 className="font-semibold text-slate-800 group-hover:text-amber-700 transition-colors">
+                        {bookmark.title}
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                        Saved {formatTimeAgo(bookmark.savedAt)}
+                    </p>
+                </div>
+            </div>
+            <svg className="w-5 h-5 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </div>
+    </div>
+);
+
+const EmptyState = ({ icon, title, message }) => (
+    <div className="text-center py-12">
+        <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {icon}
+            </svg>
+        </div>
+        <p className="text-slate-600 mb-2 font-medium">{title}</p>
+        <p className="text-slate-400 text-sm">{message}</p>
+    </div>
+);
+
+// Main Component
+const HomePage = ({ onNavigate, navigationData }) => {
+    const [showQuizSetup, setShowQuizSetup] = useState(false);
+    const [userProfile, setUserProfile] = useState(null);
+    const [pausedQuizzes, setPausedQuizzes] = useState([]);
+    const [bookmarks, setBookmarks] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [displayContent, setDisplayContent] = useState('continue');
+
+    useEffect(() => {
+        if (navigationData?.openQuizSetup) {
+            setShowQuizSetup(true);
+        }
+    }, [navigationData]);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const loadUserData = async () => {
+            try {
+                setIsLoading(true);
+                const [profileResponse, pausedResponse, bookmarksResponse] = await Promise.all([
+                    examBuddyAPI.getUserProfile(),
+                    examBuddyAPI.getPausedQuizzes(),
+                    examBuddyAPI.getBookmarks()
+                ]);
+
+                if (!mounted) return;
+
+                if (profileResponse.success) setUserProfile(profileResponse.data);
+                if (pausedResponse.success) setPausedQuizzes(pausedResponse.data);
+                if (bookmarksResponse.success) setBookmarks(bookmarksResponse.data);
+
+            } catch (err) {
+                console.error('Error loading user data:', err);
+                if (mounted) {
+                    toast.error('Unable to load your data. Using offline mode.');
+                    // Fallback demo data
+                    setPausedQuizzes([
+                        {
+                            id: 'demo1',
+                            title: "React Advanced Concepts",
+                            progress: 60,
+                            questionsLeft: 4,
+                            totalQuestions: 10,
+                            lastAccessed: new Date(Date.now() - 2 * 60 * 60 * 1000)
+                        },
+                        {
+                            id: 'demo2',
+                            title: "JavaScript Design Patterns",
+                            progress: 30,
+                            questionsLeft: 7,
+                            totalQuestions: 10,
+                            lastAccessed: new Date(Date.now() - 24 * 60 * 60 * 1000)
+                        }
+                    ]);
+                    setBookmarks([
+                        { id: 'b1', title: 'React Hooks Guide', savedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
+                        { id: 'b2', title: 'State Management Patterns', savedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) }
+                    ]);
+                }
+            } finally {
+                if (mounted) setIsLoading(false);
+            }
+        };
+
+        loadUserData();
+        return () => { mounted = false; };
+    }, []);
+
+    const handleStartQuiz = async (config) => {
+        let extractedSource;
+
+        try {
+            switch (config.sourceType) {
+                case SOURCE_TYPE.PAGE:
+                    extractedSource = await extractFromCurrentPage();
+                    break;
+
+                case SOURCE_TYPE.PDF:
+                    if (config.pdfFile) {
+                        const { text, meta } = await extractTextFromPDF(config.pdfFile);
+                        extractedSource = await extractFromPDFResult({
+                            text,
+                            fileName: config.pdfFile.name,
+                            pageCount: meta.pageCount
+                        });
+                    }
+                    break;
+
+                case SOURCE_TYPE.URL:
+                    extractedSource = normalizeManualTopic(config.sourceValue, `Content from ${config.sourceValue}`);
+                    break;
+
+                case SOURCE_TYPE.MANUAL:
+                default:
+                    extractedSource = normalizeManualTopic(config.topic, config.context);
+                    break;
+            }
+
+            const finalQuizConfig = {
+                ...config,
+                extractedSource,
+                topic: config.topic || extractedSource.title,
+            };
+
+            setShowQuizSetup(false);
+            toast.success('Generating your quiz...');
+            onNavigate('quiz', { quizConfig: finalQuizConfig });
+
+        } catch (error) {
+            console.error('Failed to prepare quiz source:', error);
+            toast.error('Failed to prepare quiz source');
+        }
+    };
+
+    const handleContinueQuiz = (quizId) => {
+        const quiz = pausedQuizzes.find(q => q.id === quizId);
+        if (quiz) {
+            toast.success(`Resuming: ${quiz.title}`);
+            onNavigate('quiz', { resumeQuizId: quizId });
+        }
+    };
+
+    const handleOpenBookmark = (bookmarkId) => {
+        const bookmark = bookmarks.find(b => b.id === bookmarkId);
+        if (bookmark) {
+            toast.success(`Opening: ${bookmark.title}`);
+            onNavigate('quiz', { bookmarkId: bookmarkId });
+        }
+    };
+
+    if (isLoading) return <LoadingScreen />;
+
+    return (
+        <>
+            <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen overflow-x-hidden">
+                <BackgroundEffects />
+
+                <main className="mx-auto min-h-screen flex flex-col justify-center py-12 relative z-10">
+                    <div className="min-h-[85vh] flex flex-col justify-center">
+                        {/* Header Section */}
+                        <div className="text-center mb-12 animate-fade-in">
+                            <h1 className="text-5xl sm:text-6xl font-display font-bold tracking-tight mb-4">
+                                <span className="text-slate-800">Welcome back{userProfile?.name ? `, ${userProfile.name}` : ''}</span>
+                                <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">.</span>
+                            </h1>
+                            <p className="text-lg text-slate-500">What would you like to learn today?</p>
+                        </div>
+
+                        {/* Main CTA Button */}
+                        <div className="flex justify-center mb-12 animate-fade-in-up">
+                            <button
+                                onClick={() => setShowQuizSetup(true)}
+                                className="
+                                    group relative inline-flex items-center justify-center
+                                    h-24 w-64  /* 6rem height, 16rem width */
+                                    px-8 py-4 
+                                    text-[1.25rem] font-medium text-white  /* 1.25rem font-size, weight 500 */
+                                    bg-gradient-to-r from-amber-600 to-orange-600
+                                    rounded-[2rem] /* exact 2rem radius */
+                                    shadow-xl shadow-amber-600/25 
+                                    hover:shadow-amber-600/40 hover:scale-105 
+                                    transform transition-all duration-200
+                                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 
+                                    min-h-[3rem]
+                                "
+                                aria-label="Start a new quiz"
+                            >
+                                Start New Quiz
+                            </button>
+                        </div>
+
+                        {/* Recommended Topics */}
+                        <div className="text-center animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                            {/* <p className="text-sm text-slate-400 mb-3">Recommended for you</p> */}
+                            <div className="flex flex-wrap justify-center gap-3">
+                                {RECOMMENDED_TOPICS.map((topic, index) => (
+                                    <button
+                                        key={topic}
+                                        onClick={() => setShowQuizSetup(true)}
+                                        className="group px-4 py-2 rounded-lg hover:border-amber-300 transition-all duration-300 hover:shadow-md animate-fade-in-up"
+                                        style={{ animationDelay: `${0.5 + index * 0.1}s` }}
+                                        aria-label={`Start quiz about ${topic}`}
+                                    >
+                                        <span className="text-sm font-medium group-hover:text-amber-800 transition-colors inline-flex items-center gap-1" style={{ color: '#808080ba' }}>
+                                            {topic}
+                                            <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Scrolling Cards Section */}
+                    <div className="text-center animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                        <div className="overflow-hidden w-full">
+                            <div className="flex gap-4 animate-scroll-horizontal">
+                                {/* Render cards 3 times for smooth infinite scroll */}
+                                {[...Array(3)].map((_, setIndex) => (
+                                    <React.Fragment key={setIndex}>
+                                        {SCROLL_CARDS.map(card => (
+                                            <ScrollCard key={`${setIndex}-${card.id}`} card={card} />
+                                        ))}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Content Display Section */}
+                    <div className="mt-8 min-h-[200px] animate-fade-in">
+                        {displayContent === 'continue' && (
+                            <div className="space-y-4">
+                                {pausedQuizzes.length > 0 ? (
+                                    pausedQuizzes.slice(0, 3).map((quiz, index) => (
+                                        <div key={quiz.id} style={{ animationDelay: `${index * 0.1}s` }}>
+                                            <PausedQuizCard quiz={quiz} onContinue={handleContinueQuiz} />
+                                        </div>
+                                    ))
+                                ) : (
+                                    <EmptyState
+                                        icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />}
+                                        title="No paused quizzes"
+                                        message="Start a new quiz to begin learning"
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        {displayContent === 'bookmarks' && (
+                            <div className="space-y-4">
+                                {bookmarks.length > 0 ? (
+                                    bookmarks.slice(0, 3).map((bookmark, index) => (
+                                        <div key={bookmark.id} style={{ animationDelay: `${index * 0.1}s` }}>
+                                            <BookmarkCard bookmark={bookmark} onOpen={handleOpenBookmark} />
+                                        </div>
+                                    ))
+                                ) : (
+                                    <EmptyState
+                                        icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />}
+                                        title="No bookmarks yet"
+                                        message="Save interesting quizzes to review later"
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        {displayContent === 'stories' && (
+                            <EmptyState
+                                icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />}
+                                title="Stories coming soon"
+                                message="Learn through interactive stories and scenarios"
+                            />
+                        )}
+                    </div>
+                </main>
+
+                {/* Quiz Setup Modal */}
+                <QuizSetupModal
+                    isOpen={showQuizSetup}
+                    onClose={() => setShowQuizSetup(false)}
+                    onStartQuiz={handleStartQuiz}
+                />
+            </div>
+
+            {/* Extracted CSS */}
+            <style>{`
+                 @keyframes scroll-horizontal {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-100%); }
+                }
+
+                .animate-scroll-horizontal {
+                    animation: scroll-horizontal 30s linear infinite;
+                    display: flex;
+                    will-change: transform;
+                }
+
+                .animate-scroll-horizontal:hover {
+                    animation-play-state: paused;
+                }
+                @keyframes fadeIn {
+                    0% { opacity: 0; }
+                    100% { opacity: 1; }
+                }
+                
+                @keyframes fadeInUp {
+                    0% { 
+                        opacity: 0; 
+                        transform: translateY(20px); 
+                    }
+                    100% { 
+                        opacity: 1; 
+                        transform: translateY(0); 
+                    }
+                }
+
+                @keyframes pulse-slow {
+                    0%, 100% { 
+                        opacity: 0.3; 
+                        transform: scale(1); 
+                    }
+                    50% { 
+                        opacity: 0.5; 
+                        transform: scale(1.05); 
+                    }
+                }
+                
+                .animate-fade-in {
+                    animation: fadeIn 0.8s ease-out;
+                }
+                
+                .animate-fade-in-up {
+                    animation: fadeInUp 0.8s ease-out both;
+                }
+
+                .animate-pulse-slow {
+                    animation: pulse-slow 4s ease-in-out infinite;
+                }
+                
+                .animation-delay-2000 {
+                    animation-delay: 2s;
+                }
+
+                .animation-delay-4000 {
+                    animation-delay: 4s;
+                }
+            `}</style>
+        </>
+    );
 };
 
 export default HomePage;

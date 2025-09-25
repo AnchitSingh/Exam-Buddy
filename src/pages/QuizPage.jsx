@@ -1,8 +1,5 @@
 import React, { useState, useRef } from 'react';
-import QuizHeader from '../components/quiz/QuizHeader';
-import QuestionTypeRenderer from '../components/quiz/QuestionTypeRenderer';
-import ProgressBar from '../components/ui/ProgressBar';
-import Button from '../components/ui/Button';
+import toast from 'react-hot-toast';
 import Modal from '../components/ui/Modal';
 import AIProcessingFeedback from '../components/ui/AIProcessingFeedback';
 import useQuizState from '../hooks/useQuizState';
@@ -41,22 +38,51 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const [quizResults, setQuizResults] = useState(null);
   const [showAIProcessing, setShowAIProcessing] = useState(false);
   const [aiTask, setAITask] = useState('processing');
+  const [showHint, setShowHint] = useState(false);
+  const [showMobileNav, setShowMobileNav] = useState(false);
+  const [textAnswer, setTextAnswer] = useState('');
+  const [fillBlanks, setFillBlanks] = useState(['']);
   
   const questionRendererRef = useRef();
 
-  const handleSubjectiveAnswer = () => {
-    if (questionRendererRef.current) {
-      const subjectiveAnswer = questionRendererRef.current.getAnswer();
-      if (subjectiveAnswer) {
-        const isCorrect = currentQuestion.type === 'Fill in Blank' 
-          ? currentQuestion.acceptableAnswers?.some(acceptableSet =>
-              acceptableSet.every((acceptable, index) =>
-                subjectiveAnswer[index]?.toLowerCase().trim() === acceptable.toLowerCase()
-              )
-            ) || false
-          : false;
-        selectAnswer(0, isCorrect, false, subjectiveAnswer);
+  // Initialize fill blanks based on question
+  React.useEffect(() => {
+    if (currentQuestion) {
+      setTextAnswer('');
+      if (currentQuestion.type === 'Fill in Blank') {
+        const blanksCount = currentQuestion.question ? currentQuestion.question.split('_______').length - 1 : 0;
+        setFillBlanks(Array(Math.max(0, blanksCount)).fill(''));
       }
+      
+      // Restore previous answers if they exist
+      if (selectedAnswer?.textAnswer) {
+        if (currentQuestion.type === 'Short Answer' && typeof selectedAnswer.textAnswer === 'string') {
+          setTextAnswer(selectedAnswer.textAnswer);
+        }
+        if (currentQuestion.type === 'Fill in Blank' && Array.isArray(selectedAnswer.textAnswer)) {
+          setFillBlanks(selectedAnswer.textAnswer);
+        }
+      }
+    }
+  }, [currentQuestion, selectedAnswer]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleSubjectiveAnswer = () => {
+    if (currentQuestion?.type === 'Short Answer' && textAnswer.trim()) {
+      const isCorrect = false; // Short answers need AI evaluation
+      selectAnswer(0, isCorrect, false, textAnswer.trim());
+    } else if (currentQuestion?.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
+      const isCorrect = currentQuestion.acceptableAnswers?.some(acceptableSet =>
+        acceptableSet.every((acceptable, index) =>
+          fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+        )
+      ) || false;
+      selectAnswer(0, isCorrect, false, fillBlanks);
     }
   };
 
@@ -67,12 +93,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
   const handlePause = () => {
     setShowPauseModal(true);
+    toast('Quiz paused');
   };
 
   const confirmPause = async () => {
     await pauseQuiz();
     setShowPauseModal(false);
     onNavigate('home');
+    toast.success('Quiz progress saved');
   };
 
   const handleStop = () => {
@@ -81,32 +109,10 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
   const confirmStop = async () => {
     let finalAnswers = [...userAnswers];
-    const subjectiveAnswer = questionRendererRef.current?.getAnswer();
-
-    if (subjectiveAnswer) {
-      const isCorrect = currentQuestion.type === 'Fill in Blank' 
-        ? currentQuestion.acceptableAnswers?.some(acceptableSet =>
-            acceptableSet.every((acceptable, index) =>
-              subjectiveAnswer[index]?.toLowerCase().trim() === acceptable.toLowerCase()
-            )
-          ) || false
-        : false;
-
-      const newAnswer = {
-        questionId: currentQuestion.id,
-        questionType: currentQuestion.type,
-        selectedOption: 0,
-        isCorrect,
-        textAnswer: subjectiveAnswer,
-        timeSpent: (config.timerEnabled ? (config.questionTimer || 60) - questionTimeRemaining : 0),
-        totalTimeWhenAnswered: timeRemaining,
-      };
-
-      if (finalAnswers[currentQuestionIndex]) {
-        finalAnswers[currentQuestionIndex] = newAnswer;
-      } else {
-        finalAnswers.push(newAnswer);
-      }
+    
+    // Handle current question if it has an answer
+    if (hasAnswer()) {
+      handleSubjectiveAnswer();
     }
 
     const results = await stopQuiz(finalAnswers);
@@ -116,11 +122,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     if (results) {
       setAITask('feedback');
       setShowAIProcessing(true);
+      toast.success('Quiz completed! Generating results...');
     }
   };
 
   const handleAnswerSelect = (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
-    if (selectedAnswer && !autoSelected) return;
+    // Allow answer changes when immediate feedback is off
+    // Only prevent changes when immediate feedback is on and answer is already selected
+    if (selectedAnswer && !autoSelected && config.immediateFeedback) return;
     
     if ((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Fill in Blank') && config.immediateFeedback) {
       setAITask('evaluation');
@@ -135,6 +144,156 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     }
   };
 
+  // Helper function to check if an answer is selected
+  const hasAnswer = () => {
+    if (currentQuestion?.type === 'MCQ' || currentQuestion?.type === 'True/False') {
+      // For MCQ and True/False, an answer is selected if there's a selectedAnswer
+      return selectedAnswer !== null;
+    }
+    if (currentQuestion?.type === 'Short Answer') {
+      return textAnswer.trim() !== '';
+    }
+    if (currentQuestion?.type === 'Fill in Blank') {
+      return fillBlanks.some(blank => blank.trim() !== '');
+    }
+    return false;
+  };
+
+  // Get question type for display
+  const getQuestionTypeDisplay = () => {
+    const type = currentQuestion?.type || 'MCQ';
+    switch (type) {
+      case 'MCQ': return 'Multiple Choice';
+      case 'True/False': return 'True/False';
+      case 'Short Answer': return 'Short Answer';
+      case 'Fill in Blank': return 'Fill in the Blank';
+      default: return 'Multiple Choice';
+    }
+  };
+
+  // Render different question types
+  const renderQuestionContent = () => {
+    if (!currentQuestion) return null;
+
+    switch (currentQuestion.type) {
+      case 'MCQ':
+        return (
+          <div className="space-y-3">
+            {currentQuestion.options?.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleAnswerSelect(index, option.isCorrect)}
+                disabled={selectedAnswer !== null && config.immediateFeedback}
+                className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-300 ${
+                  selectedAnswer?.optionIndex === index
+                    ? 'border-amber-500 bg-gradient-to-r from-amber-50 to-orange-50 shadow-lg scale-[1.02]'
+                    : 'border-white/50 bg-white/60 hover:border-amber-200 hover:bg-white/80'
+                } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
+                    selectedAnswer?.optionIndex === index
+                      ? 'border-amber-500 bg-amber-500'
+                      : 'border-slate-300'
+                  }`}>
+                    {selectedAnswer?.optionIndex === index && (
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/>
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`text-base ${selectedAnswer?.optionIndex === index ? 'text-amber-700 font-medium' : 'text-slate-700'}`}>
+                    {option.text}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        );
+
+      case 'True/False':
+        return (
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => handleAnswerSelect(0, currentQuestion.options?.[0]?.isCorrect)}
+              disabled={selectedAnswer !== null && config.immediateFeedback}
+              className={`p-8 rounded-2xl border-2 transition-all duration-300 ${
+                selectedAnswer?.optionIndex === 0
+                  ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg scale-[1.02]'
+                  : 'border-white/50 bg-white/60 hover:border-green-200 hover:bg-white/80'
+              } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
+            >
+              <svg className="w-10 h-10 mx-auto mb-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span className={`text-lg ${selectedAnswer?.optionIndex === 0 ? 'text-green-700 font-semibold' : 'text-slate-700'}`}>
+                True
+              </span>
+            </button>
+            
+            <button
+              onClick={() => handleAnswerSelect(1, currentQuestion.options?.[1]?.isCorrect)}
+              disabled={selectedAnswer !== null && config.immediateFeedback}
+              className={`p-8 rounded-2xl border-2 transition-all duration-300 ${
+                selectedAnswer?.optionIndex === 1
+                  ? 'border-red-500 bg-gradient-to-br from-red-50 to-pink-50 shadow-lg scale-[1.02]'
+                  : 'border-white/50 bg-white/60 hover:border-red-200 hover:bg-white/80'
+              } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
+            >
+              <svg className="w-10 h-10 mx-auto mb-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              <span className={`text-lg ${selectedAnswer?.optionIndex === 1 ? 'text-red-700 font-semibold' : 'text-slate-700'}`}>
+                False
+              </span>
+            </button>
+          </div>
+        );
+
+      case 'Fill in Blank':
+        return (
+          <div className="space-y-4">
+            <div className="text-lg text-slate-700 leading-relaxed">
+              {currentQuestion.question?.split('_______').map((part, index, array) => (
+                <span key={index}>
+                  {part}
+                  {index < array.length - 1 && (
+                                          <input
+                        type="text"
+                        value={fillBlanks[index] || ''}
+                        onChange={(e) => {
+                          const newBlanks = [...fillBlanks];
+                          newBlanks[index] = e.target.value;
+                          setFillBlanks(newBlanks);
+                        }}
+                        disabled={selectedAnswer !== null && config.immediateFeedback}
+                        placeholder="your answer"
+                        className="inline-block mx-2 px-4 py-2 bg-white/80 backdrop-blur-sm border-b-2 border-amber-400 focus:border-amber-600 outline-none rounded-lg min-w-[150px] text-center font-medium text-amber-700 placeholder-amber-300 disabled:opacity-50"
+                      />
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'Short Answer':
+        return (
+          <textarea
+            value={textAnswer}
+            onChange={(e) => setTextAnswer(e.target.value)}
+            disabled={selectedAnswer !== null && config.immediateFeedback}
+            placeholder="Type your answer here..."
+            className="w-full p-4 bg-white/80 backdrop-blur-sm border-2 border-white/50 rounded-2xl focus:border-amber-400 outline-none resize-none h-40 text-slate-700 placeholder-slate-400 disabled:opacity-50"
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Loading state
   if (isLoading) {
     return (
       <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
@@ -155,6 +314,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
@@ -168,19 +328,25 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
             <h2 className="text-xl font-semibold text-slate-800 mb-2">Oops! Something went wrong</h2>
             <p className="text-slate-600 mb-6">{error}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={() => {
-                clearError();
-                if (quizConfig) {
-                  window.location.reload();
-                } else {
-                  onNavigate('home');
-                }
-              }}>
+              <button 
+                onClick={() => {
+                  clearError();
+                  if (quizConfig) {
+                    window.location.reload();
+                  } else {
+                    onNavigate('home');
+                  }
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200"
+              >
                 Try Again
-              </Button>
-              <Button onClick={() => onNavigate('home')} variant="secondary">
+              </button>
+              <button 
+                onClick={() => onNavigate('home')}
+                className="px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
+              >
                 Back to Home
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -188,6 +354,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     );
   }
 
+  // No quiz data
   if (!quiz || !currentQuestion) {
     return (
       <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
@@ -199,15 +366,19 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               </svg>
             </div>
             <p className="text-slate-600 mb-4">No quiz data available</p>
-            <Button onClick={() => onNavigate('home')}>
+            <button 
+              onClick={() => onNavigate('home')}
+              className="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200"
+            >
               Back to Home
-            </Button>
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
+  // Quiz results redirect
   if (quizResults) {
     const QuizResultsPage = React.lazy(() => import('./QuizResultsPage'));
     return (
@@ -230,20 +401,105 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
   return (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
-      <QuizHeader
-        title={quiz.title || 'Quiz'}
-        currentQuestion={currentQuestionNumber}
-        totalQuestions={quiz.totalQuestions}
-        timeLeft={timeRemaining}
-        questionTimeLeft={config.timerEnabled ? questionTimeRemaining : null}
-        onPause={handlePause}
-        onStop={handleStop}
-        onBookmark={toggleBookmark}
-        isBookmarked={isBookmarked}
-        isPaused={isPaused}
-      />
+      {/* Background Elements */}
+      <div className="absolute inset-0 -z-10 opacity-30">
+        <div className="absolute top-1/3 -left-20 w-96 h-96 bg-amber-100/30 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/3 -right-20 w-96 h-96 bg-orange-100/30 rounded-full blur-3xl"></div>
+      </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-2">
+      {/* Enhanced Header */}
+      <header className="sticky top-0 z-20 bg-white/70 backdrop-blur-xl border-b border-amber-100/50 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            {/* Left: Progress and Question Number */}
+            <div className="flex items-center space-x-4 sm:space-x-6">
+              {/* Logo/Icon */}
+              <div className="hidden sm:block w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+              </div>
+              
+              {/* Progress Info */}
+              <div className="flex-1 sm:flex-none">
+                <div className="flex items-center space-x-2 sm:space-x-3 mb-1">
+                  <span className="text-xs sm:text-sm font-medium text-slate-600">Question</span>
+                  <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+                    {currentQuestionNumber}
+                  </span>
+                  <span className="text-xs sm:text-sm text-slate-500">of {quiz.totalQuestions}</span>
+                </div>
+                <div className="w-32 sm:w-48 bg-slate-200/50 rounded-full h-1.5 sm:h-2">
+                  <div 
+                    className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-500 shadow-sm"
+                    style={{width: `${progress}%`}}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Center: Timers - Hidden on smallest screens */}
+            <div className="hidden md:flex items-center space-x-8">
+              {config.timerEnabled && questionTimeRemaining !== null && (
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-md border border-white/50">
+                  <p className="text-xs text-slate-500 text-center mb-1">Question Time</p>
+                  <p className="text-xl font-mono font-bold text-amber-700">{formatTime(questionTimeRemaining)}</p>
+                </div>
+              )}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-md border border-white/50">
+                <p className="text-xs text-slate-500 text-center mb-1">Total Time</p>
+                <p className="text-xl font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</p>
+              </div>
+            </div>
+
+            {/* Right: Control Buttons */}
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <button
+                onClick={handlePause}
+                className="group flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/80 backdrop-blur-sm border-2 border-amber-200/50 text-amber-700 rounded-xl hover:bg-amber-50 hover:border-amber-300 transition-all duration-300 shadow-md hover:shadow-lg"
+              >
+                <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span className="text-xs sm:text-base font-medium">Pause</span>
+              </button>
+              <button
+                onClick={handleStop}
+                className="group flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/80 backdrop-blur-sm border-2 border-red-200/50 text-red-600 rounded-xl hover:bg-red-50 hover:border-red-300 transition-all duration-300 shadow-md hover:shadow-lg"
+              >
+                <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+                </svg>
+                <span className="text-xs sm:text-base font-medium">Stop</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Timer Bar - Shows on mobile only */}
+        <div className="md:hidden px-4 pb-3">
+          <div className="flex items-center justify-between bg-white/50 backdrop-blur-sm rounded-xl px-3 py-2">
+            {config.timerEnabled && questionTimeRemaining !== null && (
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span className="text-xs text-slate-600">Question: <span className="font-mono font-bold text-amber-700">{formatTime(questionTimeRemaining)}</span></span>
+              </div>
+            )}
+            <div className="flex items-center space-x-2">
+              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span className="text-xs text-slate-600">Total: <span className="font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</span></span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Immediate Feedback Toggle */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
         <div className="flex justify-end">
           <button
             onClick={toggleImmediateFeedback}
@@ -257,137 +513,251 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10">
-        
-        <ProgressBar 
-          progress={progress} 
-          label="Progress"
-        />
-
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-white/20 p-5 sm:p-8 mb-6 sm:mb-8">
+      {/* Mobile Question Navigation - Horizontal Scrollable */}
+      <div className="lg:hidden px-4 pt-4">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-3 shadow-md border border-white/50">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-slate-700">Question Navigator</h3>
+            <button
+              onClick={() => setShowMobileNav(!showMobileNav)}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <svg className={`w-5 h-5 transform transition-transform ${showMobileNav ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+          </div>
           
-          <div className="mb-6 sm:mb-8">
-            <div className="flex items-start space-x-3 sm:space-x-4 mb-4 sm:mb-6">
-              <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl sm:rounded-2xl flex items-center justify-center">
-                <span className="text-amber-700 font-bold text-base sm:text-lg">
-                  Q{currentQuestionNumber}
-                </span>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 leading-relaxed">
-                    {currentQuestion.question}
-                  </h2>
-                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                    {currentQuestion.type || 'MCQ'}
-                  </span>
+          {showMobileNav && (
+            <div className="animate-fade-in">
+              <div className="overflow-x-auto pb-2">
+                <div className="flex space-x-2 min-w-max">
+                  {[...Array(quiz.totalQuestions)].map((_, idx) => {
+                    const questionNumber = idx + 1;
+                    const isActive = questionNumber === currentQuestionNumber;
+                    const isAnswered = questionNumber < currentQuestionNumber || (questionNumber === currentQuestionNumber && selectedAnswer);
+                    
+                    return (
+                      <button
+                        key={idx}
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${
+                          isActive 
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110' 
+                            : isAnswered
+                            ? 'bg-green-100 text-green-700 border border-green-200'
+                            : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                      >
+                        {questionNumber}
+                      </button>
+                    );
+                  })}
                 </div>
-                <p className="text-slate-600 mt-2 text-xs sm:text-sm">
-                  {currentQuestion.type === 'MCQ' ? 'Choose the best answer from the options below' :
-                   currentQuestion.type === 'True/False' ? 'Select True or False' :
-                   currentQuestion.type === 'Short Answer' ? 'Provide a detailed answer' :
-                   currentQuestion.type === 'Fill in Blank' ? 'Fill in the missing words' :
-                   'Answer the question below'}
-                </p>
               </div>
-            </div>
-          </div>
-
-          <div className="mb-6 sm:mb-8">
-            <QuestionTypeRenderer
-              ref={questionRendererRef}
-              question={currentQuestion}
-              selectedAnswer={selectedAnswer}
-              onAnswerSelect={handleAnswerSelect}
-              disabled={showFeedback}
-              showResult={showFeedback}
-              immediateFeedback={config.immediateFeedback}
-            />
-          </div>
-
-          {showFeedback && (
-            <div className="mb-6">
-              <div className={`border rounded-xl sm:rounded-2xl p-4 sm:p-6 ${selectedAnswer?.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                <div className="flex items-start space-x-3 sm:space-x-4">
-                  <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${selectedAnswer?.isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
-                    <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${selectedAnswer?.isCorrect ? 'text-green-600' : 'text-red-600'}`} fill="currentColor" viewBox="0 0 20 20">
-                      {selectedAnswer?.isCorrect ? (
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
-                      ) : (
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
-                      )}
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className={`font-semibold mb-1 sm:mb-2 text-sm sm:text-base ${selectedAnswer?.isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                      {selectedAnswer?.isCorrect ? 'Correct! Well done! 🎉' : 'Not quite right'}
-                      {selectedAnswer?.aiEvaluated && (
-                        <span className="ml-2 text-xs text-purple-600">✨ AI Evaluated</span>
-                      )}
-                    </h3>
-                    <p className={`text-xs sm:text-sm ${selectedAnswer?.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                      {currentQuestion.explanation}
-                    </p>
-                  </div>
+              
+              {/* Compact Legend */}
+              <div className="flex items-center justify-center space-x-4 mt-2 text-xs">
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded"></div>
+                  <span className="text-slate-600">Current</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
+                  <span className="text-slate-600">Answered</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-slate-50 border border-slate-200 rounded"></div>
+                  <span className="text-slate-600">Pending</span>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-200">
-            <Button
-              onClick={previousQuestion}
-              variant="ghost"
-              disabled={currentQuestionNumber === 1}
-              icon={
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/>
-                </svg>
-              }
-            >
-              <span className="hidden sm:inline">Previous</span>
-              <span className="sm:hidden">Prev</span>
-            </Button>
-            
-            <Button
-              onClick={isLastQuestion ? confirmStop : handleNext}
-              icon={
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 ml-1 sm:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              }
-            >
-              {isLastQuestion ? 'Finish Quiz' : (
-                <>
-                  <span className="hidden sm:inline">Next Question</span>
-                  <span className="sm:hidden">Next</span>
-                </>
+          {!showMobileNav && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-600">
+                {userAnswers.length} answered • {quiz.totalQuestions - userAnswers.length} remaining
+              </span>
+              <span className="text-xs font-medium text-amber-600">
+                {Math.round(progress)}% complete
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Quiz Content - Better Layout */}
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid lg:grid-cols-4 gap-6">
+          {/* Main Content Area */}
+          <div className="lg:col-span-3 space-y-6 animate-fade-in-up">
+            {/* Question Card */}
+            <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/50 p-6 sm:p-8">
+              {/* Question Header with Actions */}
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <span className="px-3 py-1 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 text-xs sm:text-sm font-medium rounded-full">
+                      {getQuestionTypeDisplay()}
+                    </span>
+                  </div>
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-slate-900 leading-relaxed">
+                    {currentQuestion.question}
+                  </h2>
+                </div>
+                <div className="flex items-center space-x-1 ml-4">
+                  <button
+                    onClick={toggleBookmark}
+                    className={`p-2 sm:p-2.5 rounded-xl transition-all duration-300 ${
+                      isBookmarked 
+                        ? 'text-amber-600 bg-amber-50 shadow-md' 
+                        : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                    }`}
+                  >
+                    <svg className="w-4 sm:w-5 h-4 sm:h-5" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setShowHint(!showHint)}
+                    className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300"
+                  >
+                    <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Hint Box */}
+              {showHint && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/50 rounded-2xl animate-fade-in">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p className="text-sm text-blue-700">
+                      <span className="font-semibold">Hint:</span> {currentQuestion.hint || "Think carefully about the key concepts related to this topic..."}
+                    </p>
+                  </div>
+                </div>
               )}
-            </Button>
+
+              {/* Question Content */}
+              <div className="mb-8">
+                {renderQuestionContent()}
+              </div>
+
+              {/* Feedback Section */}
+              {showFeedback && (
+                <div className="mb-6">
+                  <div className={`border rounded-xl sm:rounded-2xl p-4 sm:p-6 ${selectedAnswer?.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className="flex items-start space-x-3 sm:space-x-4">
+                      <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${selectedAnswer?.isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
+                        <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${selectedAnswer?.isCorrect ? 'text-green-600' : 'text-red-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                          {selectedAnswer?.isCorrect ? (
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
+                          ) : (
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                          )}
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className={`font-semibold mb-1 sm:mb-2 text-sm sm:text-base ${selectedAnswer?.isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                          {selectedAnswer?.isCorrect ? 'Correct! Well done! 🎉' : 'Not quite right'}
+                          {selectedAnswer?.aiEvaluated && (
+                            <span className="ml-2 text-xs text-purple-600">✨ AI Evaluated</span>
+                          )}
+                        </h3>
+                        <p className={`text-xs sm:text-sm ${selectedAnswer?.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                          {currentQuestion.explanation}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-100">
+                <button 
+                  onClick={previousQuestion}
+                  disabled={currentQuestionNumber === 1}
+                  className="text-slate-400 hover:text-slate-600 font-medium transition-colors duration-300 order-2 sm:order-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ← Previous Question
+                </button>
+                
+                <button
+                  onClick={isLastQuestion ? confirmStop : handleNext}
+                  disabled={!hasAnswer() && !isLastQuestion}
+                  className={`px-6 sm:px-8 py-3 rounded-2xl font-semibold transition-all duration-300 transform order-1 sm:order-2 w-full sm:w-auto ${
+                    hasAnswer() || isLastQuestion
+                      ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-xl hover:scale-105'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  {isLastQuestion ? 'Finish Quiz' : 'Next Question'} →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Sidebar - Question Navigation */}
+          <div className="hidden lg:block lg:col-span-1">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/50 sticky top-24">
+              <h3 className="font-semibold text-slate-900 mb-4">Questions</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {[...Array(quiz.totalQuestions)].map((_, idx) => {
+                  const questionNumber = idx + 1;
+                  const isActive = questionNumber === currentQuestionNumber;
+                  const isAnswered = questionNumber < currentQuestionNumber || (questionNumber === currentQuestionNumber && selectedAnswer);
+                  
+                  return (
+                    <button
+                      key={idx}
+                      className={`aspect-square rounded-xl flex items-center justify-center text-sm font-medium transition-all duration-300 ${
+                        isActive 
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110' 
+                          : isAnswered
+                          ? 'bg-green-100 text-green-700 border border-green-200'
+                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      {questionNumber}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Legend */}
+              <div className="mt-6 space-y-2 text-xs">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded"></div>
+                  <span className="text-slate-600">Current</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-green-100 border border-green-200 rounded"></div>
+                  <span className="text-slate-600">Answered</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-slate-50 border border-slate-200 rounded"></div>
+                  <span className="text-slate-600">Not Visited</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="hidden sm:flex bg-white/60 backdrop-blur-sm rounded-2xl p-6 items-center space-x-4">
-          <img src="/assets/i3.png" alt="Study Buddy" className="w-16 h-16 animate-bounce" />
-          <div>
-            <p className="text-slate-700 font-medium">Keep going! You're doing great!</p>
-            <p className="text-sm text-slate-600">
-              {selectedAnswer?.isCorrect ? 
-                "Excellent work! Ready for the next challenge?" : 
-                "Don't worry, learning from mistakes makes you stronger!"
-              }
-            </p>
-          </div>
-        </div>
-
       </main>
 
+      {/* AI Processing Feedback */}
       <AIProcessingFeedback
         isVisible={showAIProcessing}
         task={aiTask}
         onComplete={() => setShowAIProcessing(false)}
       />
 
+      {/* Pause Modal */}
       <Modal 
         isOpen={showPauseModal}
         onClose={() => setShowPauseModal(false)}
@@ -402,15 +772,22 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           Your progress has been saved. You can resume anytime from where you left off.
         </p>
         <div className="flex flex-col space-y-3">
-          <Button onClick={() => setShowPauseModal(false)}>
+          <button 
+            onClick={() => setShowPauseModal(false)}
+            className="w-full px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-2xl hover:shadow-lg transition-all duration-200"
+          >
             Resume Quiz
-          </Button>
-          <Button onClick={confirmPause} variant="secondary">
+          </button>
+          <button 
+            onClick={confirmPause}
+            className="w-full px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-2xl hover:bg-slate-200 transition-colors"
+          >
             Back to Home
-          </Button>
+          </button>
         </div>
       </Modal>
 
+      {/* Stop Modal */}
       <Modal 
         isOpen={showStopModal}
         onClose={() => setShowStopModal(false)}
@@ -425,14 +802,65 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           Are you sure you want to stop this quiz? Your current progress will be saved, but the quiz will end.
         </p>
         <div className="flex flex-col space-y-3">
-          <Button onClick={confirmStop} variant="danger">
+          <button 
+            onClick={confirmStop}
+            className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors"
+          >
             Yes, Stop Quiz
-          </Button>
-          <Button onClick={() => setShowStopModal(false)} variant="secondary">
+          </button>
+          <button 
+            onClick={() => setShowStopModal(false)}
+            className="w-full px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-2xl hover:bg-slate-200 transition-colors"
+          >
             Continue Quiz
-          </Button>
+          </button>
         </div>
       </Modal>
+
+      {/* Custom Styles */}
+      <style>{`
+        @keyframes fadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        
+        @keyframes fadeInUp {
+          0% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes scaleIn {
+          0% { transform: scale(0.9); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out;
+        }
+        
+        .animate-fade-in-up {
+          animation: fadeInUp 0.5s ease-out;
+        }
+        
+        .animate-scale-in {
+          animation: scaleIn 0.3s ease-out;
+        }
+        
+        /* Hide scrollbar but keep functionality */
+        .overflow-x-auto::-webkit-scrollbar {
+          height: 4px;
+        }
+        
+        .overflow-x-auto::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+        
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+          background: #fbbf24;
+          border-radius: 10px;
+        }
+      `}</style>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import examBuddyAPI from '../services/api';
 
 const useQuizState = (quizConfig = null) => {
@@ -72,8 +73,12 @@ const useQuizState = (quizConfig = null) => {
           textAnswer: existingAnswer.textAnswer,
         });
         
+        // Only show feedback if immediate feedback is enabled and answer is not pending
         if (config.immediateFeedback && !existingAnswer.isPending) {
           setShowFeedback(true);
+        } else if (!config.immediateFeedback) {
+          // For non-immediate feedback, we still want to show the answer but not the feedback
+          setShowFeedback(false);
         } else {
           setShowFeedback(false);
         }
@@ -130,11 +135,14 @@ const useQuizState = (quizConfig = null) => {
         setQuestionTimeRemaining(config.questionTimer || 60);
         setIsQuizActive(true);
         quizIdRef.current = newQuiz.id;
+        toast.success('Quiz started successfully');
       } else {
         setError(response.error || 'Failed to generate quiz');
+        toast.error(response.error || 'Failed to generate quiz');
       }
     } catch (err) {
       setError('Network error: Could not generate quiz');
+      toast.error('Network error: Could not generate quiz');
     } finally {
       setIsLoading(false);
     }
@@ -167,12 +175,15 @@ const useQuizState = (quizConfig = null) => {
         quizIdRef.current = quizId;
 
         await examBuddyAPI.removePausedQuiz(quizId);
+        toast.success('Quiz loaded successfully');
 
       } else {
         setError('Could not load quiz');
+        toast.error('Could not load quiz');
       }
     } catch (err) {
       setError('Failed to load quiz');
+      toast.error('Failed to load quiz');
     } finally {
       setIsLoading(false);
     }
@@ -286,10 +297,7 @@ const useQuizState = (quizConfig = null) => {
 
       // For MCQ and True/False, handle immediately without API call
       if (currentQ.type === 'MCQ' || currentQ.type === 'True/False') {
-        if (config.immediateFeedback) {
-          setShowFeedback(true);
-        }
-        
+        // Always update the user answers, even if there was a previous answer
         setUserAnswers(currentAnswers => {
           const newAnswers = [...currentAnswers];
           newAnswers[currentQIndex] = {
@@ -301,6 +309,10 @@ const useQuizState = (quizConfig = null) => {
           };
           return newAnswers;
         });
+        
+        if (config.immediateFeedback) {
+          setShowFeedback(true);
+        }
         return;
       }
 
@@ -387,8 +399,11 @@ const useQuizState = (quizConfig = null) => {
         abortControllerRef.current.abort();
       }
       
-      setShowFeedback(false);
-      setSelectedAnswer(null);
+      // Only hide feedback when moving to next question if immediate feedback is enabled
+      if (config.immediateFeedback) {
+        setShowFeedback(false);
+      }
+      // Don't reset selectedAnswer here to allow users to see their previous answer
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
@@ -400,8 +415,11 @@ const useQuizState = (quizConfig = null) => {
         abortControllerRef.current.abort();
       }
       
-      setShowFeedback(false);
-      setSelectedAnswer(null);
+      // Only hide feedback when moving to previous question if immediate feedback is enabled
+      if (config.immediateFeedback) {
+        setShowFeedback(false);
+      }
+      // Don't reset selectedAnswer here to allow users to see their previous answer
       setCurrentQuestionIndex(prev => prev - 1);
     }
   };
@@ -421,6 +439,9 @@ const useQuizState = (quizConfig = null) => {
             newSet.delete(questionId);
             return newSet;
           });
+          toast.success('Question removed from bookmarks');
+        } else {
+          toast.error('Failed to remove bookmark');
         }
       } else {
         const options = currentQuestion.options || [];
@@ -437,11 +458,15 @@ const useQuizState = (quizConfig = null) => {
         
         if (response.success) {
           setBookmarkedQuestions(prev => new Set(prev).add(questionId));
+          toast.success('Question bookmarked successfully');
+        } else {
+          toast.error('Failed to bookmark question');
         }
       }
     } catch (err) {
       console.error('Error toggling bookmark:', err);
       setError('Failed to update bookmark');
+      toast.error('Failed to update bookmark');
     }
   };
 
@@ -488,6 +513,7 @@ const useQuizState = (quizConfig = null) => {
   const resumeQuiz = () => {
     setIsPaused(false);
     setIsQuizActive(true);
+    toast('Quiz resumed');
   };
 
   const stopQuiz = async (finalAnswers) => {
@@ -527,8 +553,10 @@ const useQuizState = (quizConfig = null) => {
 
     if (!newSetting) {
       setShowFeedback(false);
+      toast('Immediate feedback turned off');
     } else if (selectedAnswer && !userAnswers[currentQuestionIndex]?.isPending) {
       setShowFeedback(true);
+      toast('Immediate feedback turned on');
     }
   };
 

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { SOURCE_TYPE } from '../../utils/messages';
@@ -21,10 +22,10 @@ const questionTypesData = [
 const questionCounts = [3, 5, 10, 15, 20];
 
 const sourceOptions = [
-  { value: SOURCE_TYPE?.MANUAL || 'MANUAL', label: 'Custom Topic', icon: '✏️', description: 'Create quiz from any topic' },
-  { value: SOURCE_TYPE?.PAGE || 'PAGE', label: 'Current Page', icon: '📄', description: 'Use active browser tab' },
-  { value: SOURCE_TYPE?.URL || 'URL', label: 'From URL', icon: '🔗', description: 'Enter a webpage URL' },
-  { value: SOURCE_TYPE?.PDF || 'PDF', label: 'From PDF', icon: '📎', description: 'Upload a PDF file' },
+  { value: SOURCE_TYPE.MANUAL, label: 'Custom Topic', icon: '✏️', description: 'Create quiz from any topic' },
+  { value: SOURCE_TYPE.PAGE, label: 'Current Page', icon: '📄', description: 'Use active browser tab' },
+  { value: SOURCE_TYPE.URL, label: 'From URL', icon: '🔗', description: 'Enter a webpage URL' },
+  { value: SOURCE_TYPE.PDF, label: 'From PDF', icon: '📎', description: 'Upload a PDF file' },
 ];
 
 const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
@@ -141,6 +142,14 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
     }
     
     setErrors(newErrors);
+    
+    // Show toast for validation errors
+    if (Object.keys(newErrors).length > 0) {
+      const firstError = Object.values(newErrors)[0];
+      toast.error(firstError);
+      return false;
+    }
+    
     return Object.keys(newErrors).length === 0;
   };
 
@@ -165,6 +174,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
     };
     
     console.log('Starting quiz with config:', finalConfig);
+    toast.success('Quiz configuration complete! Starting quiz...');
     onStartQuiz(finalConfig);
     onClose();
     
@@ -282,7 +292,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
       {/* Source Selection */}
       <div>
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Choose your quiz source</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {sourceOptions.map(opt => (
             <button
               key={opt.value}
@@ -387,7 +397,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Question Types <span className="text-red-500">*</span>
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {questionTypesData.map(type => (
               <label
                 key={type.value}

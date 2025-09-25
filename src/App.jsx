@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 import LandingPage from './pages/LandingPage';
 import HomePage from './pages/HomePage';
 import QuizPage from './pages/QuizPage';
@@ -56,6 +57,16 @@ const App = () => {
 
   return (
     <>
+      <Toaster position="top-right" toastOptions={{
+        duration: 3000,
+        style: {
+          background: '#fff',
+          color: '#333',
+          borderRadius: '12px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        },
+      }} />
+      
       {/* Debug Controls - Remove for production */}
       <div className="fixed top-2 right-2 z-50 bg-black/80 text-white p-2 rounded text-xs">
         <div>Page: <strong>{currentPage}</strong></div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import examBuddyAPI from '../services/api';
@@ -31,6 +32,9 @@ const BookmarksPage = ({ onNavigate }) => {
     const response = await examBuddyAPI.removeBookmark(questionId);
     if (response.success) {
       setBookmarks(prev => prev.filter(b => b.questionId !== questionId));
+      toast.success('Question removed from bookmarks');
+    } else {
+      toast.error('Failed to remove bookmark');
     }
   };
 
@@ -44,6 +48,7 @@ const BookmarksPage = ({ onNavigate }) => {
 
   const practiceQuestion = (bookmark) => {
     const questions = transformBookmarksToQuestions([bookmark]);
+    toast('Starting practice quiz...');
     onNavigate('quiz', {
       quizConfig: {
         title: `Practice: ${bookmark.subject}`,
@@ -55,6 +60,7 @@ const BookmarksPage = ({ onNavigate }) => {
   const practiceAllFiltered = () => {
     if (filteredBookmarks.length === 0) return;
     const questions = transformBookmarksToQuestions(filteredBookmarks);
+    toast('Starting practice quiz with all filtered questions...');
     onNavigate('quiz', {
       quizConfig: {
         title: 'Practice All Bookmarks',
