@@ -47,7 +47,6 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
     questionTypes: ['MCQ'],
     immediateFeedback: true,
     totalTimer: 0,
-    questionTimer: 0,
   });
 
   // Focus management
@@ -193,7 +192,6 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
         questionTypes: ['MCQ'],
         immediateFeedback: true,
         totalTimer: 0,
-        questionTimer: 0,
       });
       setPdfFile(null);
       setCurrentStep(1);
@@ -512,29 +510,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
               </div>
             </div>
 
-            {/* Per Question Timer - Slider */}
-            <div>
-              <label htmlFor="question-timer" className="block text-sm font-medium text-slate-700 mb-2">
-                Per Question Timer: <span className="text-amber-600 font-semibold">{formatTime(config.questionTimer)}</span>
-              </label>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-500">0</span>
-                <input
-                  id="question-timer"
-                  type="range"
-                  min="0"
-                  max="300"
-                  step="10"
-                  value={config.questionTimer}
-                  onChange={(e) => handleInputChange('questionTimer', parseInt(e.target.value))}
-                  className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
-                  style={{
-                    background: `linear-gradient(to right, rgb(251 191 36) 0%, rgb(251 191 36) ${(config.questionTimer / 300) * 100}%, rgb(226 232 240) ${(config.questionTimer / 300) * 100}%, rgb(226 232 240) 100%)`
-                  }}
-                />
-                <span className="text-xs text-slate-500">5 min</span>
-              </div>
-            </div>
+            
 
             {/* Immediate Feedback Toggle */}
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">

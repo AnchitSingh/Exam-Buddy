@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import QuizPage from './pages/QuizPage';
 import BookmarksPage from './pages/BookmarksPage';
 import PausedQuizzesPage from './pages/PausedQuizzesPage';
+import QuizErrorBoundary from './pages/QuizErrorBoundary';
 import './index.css';
 
 const App = () => {
@@ -86,10 +87,12 @@ const App = () => {
       )}
       
       {currentPage === 'quiz' && (
+        <QuizErrorBoundary>
         <QuizPage 
           onNavigate={navigateTo} 
           quizConfig={navigationData?.quizConfig}
         />
+        </QuizErrorBoundary>
       )}
       
       {currentPage === 'bookmarks' && (

@@ -4,6 +4,8 @@ import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import AIProcessingFeedback from '../components/ui/AIProcessingFeedback';
 import useQuizState from '../hooks/useQuizState';
+import QuizStyles from './QuizStyles';
+import QuizResultsPage from './QuizResultsPage';
 
 const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const answerRef = useRef();
@@ -15,7 +17,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     currentQuestionIndex,
     currentQuestionNumber,
     timeRemaining,
-    questionTimeRemaining,
     isQuizActive,
     isPaused,
     isLoading,
@@ -34,7 +35,9 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     stopQuiz,
     toggleImmediateFeedback,
     goToQuestion,
-    clearError
+    clearError,
+    currentDraft,
+    saveDraftAnswer,
   } = useQuizState(quizConfig, answerRef);
 
   const [showPauseModal, setShowPauseModal] = useState(false);
@@ -53,31 +56,58 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   React.useEffect(() => {
     setShowHint(false);
   }, [currentQuestion]);
-  
+
   const questionRendererRef = useRef();
 
   answerRef.current = { textAnswer, fillBlanks, selectedAnswer };
 
-  // Initialize fill blanks based on question
+  // Fixed fill blanks initialization
   React.useEffect(() => {
     if (currentQuestion) {
+      // Reset states first
       setTextAnswer('');
-      if (currentQuestion.type === 'Fill in Blank') {
-        const blanksCount = currentQuestion.question ? currentQuestion.question.split('_______').length - 1 : 0;
-        setFillBlanks(Array(Math.max(0, blanksCount)).fill(''));
-      }
       
-      // Restore previous answers if they exist
-      if (selectedAnswer?.textAnswer) {
-        if (currentQuestion.type === 'Short Answer' && typeof selectedAnswer.textAnswer === 'string') {
-          setTextAnswer(selectedAnswer.textAnswer);
+      if (currentQuestion.type === 'Fill in Blank') {
+        const questionText = currentQuestion.question || '';
+        const blanksCount = (questionText.match(/_______/g) || []).length;
+        setFillBlanks(Array(Math.max(0, blanksCount)).fill(''));
+      } else {
+        setFillBlanks(['']);
+      }
+
+      // Restore from saved answer first, then from draft
+      const existingAnswer = userAnswers[currentQuestionIndex];
+      
+      if (existingAnswer?.textAnswer) {
+        if (currentQuestion.type === 'Short Answer' && typeof existingAnswer.textAnswer === 'string') {
+          setTextAnswer(existingAnswer.textAnswer);
         }
-        if (currentQuestion.type === 'Fill in Blank' && Array.isArray(selectedAnswer.textAnswer)) {
-          setFillBlanks(selectedAnswer.textAnswer);
+        if (currentQuestion.type === 'Fill in Blank' && Array.isArray(existingAnswer.textAnswer)) {
+          setFillBlanks(existingAnswer.textAnswer);
+        }
+      } else if (currentDraft) {
+        // Restore from draft if no saved answer
+        if (currentQuestion.type === 'Short Answer' && currentDraft.type === 'Short Answer') {
+          setTextAnswer(currentDraft.textAnswer);
+        }
+        if (currentQuestion.type === 'Fill in Blank' && currentDraft.type === 'Fill in Blank') {
+          setFillBlanks(currentDraft.textAnswer);
         }
       }
     }
-  }, [currentQuestion, selectedAnswer]);
+  }, [currentQuestion, currentQuestionIndex, userAnswers, currentDraft]);
+
+  // Add auto-save on text change (debounced)
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if ((currentQuestion?.type === 'Short Answer' && textAnswer) ||
+        (currentQuestion?.type === 'Fill in Blank' && fillBlanks.some(b => b))) {
+        saveDraftAnswer();
+      }
+    }, 1000); // Save after 1 second of no typing
+
+    return () => clearTimeout(timer);
+  }, [textAnswer, fillBlanks, currentQuestion, saveDraftAnswer]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -88,20 +118,34 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const handleSubjectiveAnswer = () => {
     if (currentQuestion?.type === 'Short Answer' && textAnswer.trim()) {
       const isCorrect = false; // Short answers need AI evaluation
-      selectAnswer(0, isCorrect, false, textAnswer.trim());
+      selectAnswer(0, isCorrect, false, textAnswer.trim(), false); // Not a draft
     } else if (currentQuestion?.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
       const isCorrect = currentQuestion.acceptableAnswers?.some(acceptableSet =>
         acceptableSet.every((acceptable, index) =>
           fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
         )
       ) || false;
-      selectAnswer(0, isCorrect, false, fillBlanks);
+      selectAnswer(0, isCorrect, false, fillBlanks, false); // Not a draft
     }
   };
 
   const handleNext = () => {
-    handleSubjectiveAnswer();
-    nextQuestion();
+    // Save the current answer before moving
+    if (currentQuestion?.type === 'Short Answer' && textAnswer.trim()) {
+      selectAnswer(0, false, false, textAnswer.trim(), false);
+    } else if (currentQuestion?.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
+      const isCorrect = currentQuestion.acceptableAnswers?.some(acceptableSet =>
+        acceptableSet.every((acceptable, index) =>
+          fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+        )
+      ) || false;
+      selectAnswer(0, isCorrect, false, fillBlanks, false);
+    }
+    
+    // Small delay to ensure answer is saved before navigation
+    setTimeout(() => {
+      nextQuestion();
+    }, 50);
   };
 
   const handlePause = () => {
@@ -125,58 +169,116 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     setShowStopModal(true);
   };
 
-  const confirmStop = async () => {
-    setIsStoppingQuiz(true);
-    try {
-      // Handle current question answer before stopping
-      handleSubjectiveAnswer();
-      
-      let finalAnswers = [...userAnswers];
-      
-      // If there's a current answer that wasn't saved yet, include it
-      const currentAnswer = answerRef.current;
-      if (currentAnswer && (currentAnswer.textAnswer || currentAnswer.fillBlanks?.some(b => b.trim()) || currentAnswer.selectedAnswer !== null)) {
-        // The answer should already be included in userAnswers 
-        // but if somehow it's not, we can refresh by calling handleSubjectiveAnswer above
-      }
+  // Fixed confirmStop function
+  // Fixed confirmStop function
+const confirmStop = async () => {
+  setIsStoppingQuiz(true);
+  try {
+    let finalAnswers = [...userAnswers];
 
-      const results = await stopQuiz(finalAnswers);
+    // Save the current question's answer if it exists and hasn't been saved yet
+    if (currentQuestion) {
+      const currentAnswer = finalAnswers[currentQuestionIndex];
+      
+      // Check if we need to save a text-based answer
+      if (!currentAnswer || !currentAnswer.textAnswer) {
+        if (currentQuestion.type === 'Short Answer' && textAnswer.trim()) {
+          const answer = {
+            questionId: currentQuestion.id,
+            questionType: 'Short Answer',
+            selectedOption: 0,
+            isCorrect: false,
+            timeSpent: 30,
+            totalTimeWhenAnswered: timeRemaining,
+            textAnswer: textAnswer.trim(),
+            autoSelected: false,
+            isDraft: false
+          };
+          finalAnswers[currentQuestionIndex] = answer;
+          
+        } else if (currentQuestion.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
+          const isCorrect = currentQuestion.acceptableAnswers?.some(acceptableSet =>
+            acceptableSet.every((acceptable, index) =>
+              fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+            )
+          ) || false;
+          
+          const answer = {
+            questionId: currentQuestion.id,
+            questionType: 'Fill in Blank',
+            selectedOption: 0,
+            isCorrect: isCorrect,
+            timeSpent: 30,
+            totalTimeWhenAnswered: timeRemaining,
+            textAnswer: fillBlanks,
+            autoSelected: false,
+            isDraft: false
+          };
+          finalAnswers[currentQuestionIndex] = answer;
+        }
+      }
+      
+      // Also check for MCQ/True-False if selectedAnswer exists but not saved
+      if ((currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False') && 
+          selectedAnswer && !currentAnswer) {
+        const answer = {
+          questionId: currentQuestion.id,
+          questionType: currentQuestion.type,
+          selectedOption: selectedAnswer.optionIndex,
+          isCorrect: selectedAnswer.isCorrect,
+          timeSpent: 30,
+          totalTimeWhenAnswered: timeRemaining,
+          textAnswer: null,
+          autoSelected: false,
+          isDraft: false
+        };
+        finalAnswers[currentQuestionIndex] = answer;
+      }
+    }
+
+    // Pass the finalAnswers to stopQuiz
+    const results = await stopQuiz(finalAnswers);
+    
+    if (results) {
       setQuizResults(results);
       setShowStopModal(false);
-      
-      if (results) {
-        setAITask('feedback');
-        setShowAIProcessing(true);
-        toast.success('Quiz completed! Generating results...');
-      }
-    } finally {
-      setIsStoppingQuiz(false);
-    }
-  };
-
-  const handleAnswerSelect = (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
-    // Allow answer changes when immediate feedback is off
-    // Only prevent changes when immediate feedback is on and answer is already selected
-    if (selectedAnswer && !autoSelected && config.immediateFeedback) return;
-    
-    if ((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Fill in Blank') && config.immediateFeedback) {
-      setAITask('evaluation');
+      setAITask('feedback');
       setShowAIProcessing(true);
       
       setTimeout(() => {
         setShowAIProcessing(false);
-        selectAnswer(optionIndex, isCorrect, autoSelected, textAnswer);
+      }, 2000);
+      
+      toast.success('Quiz completed! Generating results...');
+    }
+  } catch (error) {
+    console.error('Error stopping quiz:', error);
+    toast.error('Failed to complete quiz');
+  } finally {
+    setIsStoppingQuiz(false);
+  }
+};
+
+  const handleAnswerSelect = (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
+    if (selectedAnswer && !autoSelected && config.immediateFeedback) return;
+
+    if ((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Fill in Blank') && config.immediateFeedback) {
+      setAITask('evaluation');
+      setShowAIProcessing(true);
+
+      setTimeout(() => {
+        setShowAIProcessing(false);
+        selectAnswer(optionIndex, isCorrect, autoSelected, textAnswer, false);
       }, 2000);
     } else {
-      selectAnswer(optionIndex, isCorrect, autoSelected, textAnswer);
+      selectAnswer(optionIndex, isCorrect, autoSelected, textAnswer, false);
     }
   };
 
-  // Helper function to check if an answer is selected
+  // Fixed hasAnswer function
   const hasAnswer = () => {
     if (currentQuestion?.type === 'MCQ' || currentQuestion?.type === 'True/False') {
-      // For MCQ and True/False, an answer is selected if there's a selectedAnswer
-      return selectedAnswer !== null;
+      return selectedAnswer != null && selectedAnswer.optionIndex != null;
     }
     if (currentQuestion?.type === 'Short Answer') {
       return textAnswer.trim() !== '';
@@ -226,7 +328,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   }`}>
                     {selectedAnswer?.optionIndex === index && (
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </div>
@@ -252,13 +354,13 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               <svg className="w-10 h-10 mx-auto mb-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
               <span className={`text-lg ${selectedAnswer?.optionIndex === 0 ? 'text-green-700 font-semibold' : 'text-slate-700'}`}>
                 True
               </span>
             </button>
-            
+
             <button
               onClick={() => handleAnswerSelect(1, currentQuestion.options?.[1]?.isCorrect)}
               disabled={selectedAnswer !== null && config.immediateFeedback}
@@ -269,7 +371,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               <svg className="w-10 h-10 mx-auto mb-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
               <span className={`text-lg ${selectedAnswer?.optionIndex === 1 ? 'text-red-700 font-semibold' : 'text-slate-700'}`}>
                 False
@@ -286,18 +388,18 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 <span key={index}>
                   {part}
                   {index < array.length - 1 && (
-                                          <input
-                        type="text"
-                        value={fillBlanks[index] || ''}
-                        onChange={(e) => {
-                          const newBlanks = [...fillBlanks];
-                          newBlanks[index] = e.target.value;
-                          setFillBlanks(newBlanks);
-                        }}
-                        disabled={selectedAnswer !== null && config.immediateFeedback}
-                        placeholder="your answer"
-                        className="inline-block mx-2 px-4 py-2 bg-white/80 backdrop-blur-sm border-b-2 border-amber-400 focus:border-amber-600 outline-none rounded-lg min-w-[150px] text-center font-medium text-amber-700 placeholder-amber-300 disabled:opacity-50"
-                      />
+                    <input
+                      type="text"
+                      value={fillBlanks[index] || ''}
+                      onChange={(e) => {
+                        const newBlanks = [...fillBlanks];
+                        newBlanks[index] = e.target.value;
+                        setFillBlanks(newBlanks);
+                      }}
+                      disabled={selectedAnswer !== null && config.immediateFeedback}
+                      placeholder="your answer"
+                      className="inline-block mx-2 px-4 py-2 bg-white/80 backdrop-blur-sm border-b-2 border-amber-400 focus:border-amber-600 outline-none rounded-lg min-w-[150px] text-center font-medium text-amber-700 placeholder-amber-300 disabled:opacity-50"
+                    />
                   )}
                 </span>
               ))}
@@ -329,7 +431,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           <div className="text-center">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-amber-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </div>
             <p className="text-slate-600 font-medium">Generating your quiz...</p>
@@ -356,7 +458,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
             <h2 className="text-xl font-semibold text-slate-800 mb-2">Oops! Something went wrong</h2>
             <p className="text-slate-600 mb-6">{error}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button 
+              <button
                 onClick={() => {
                   clearError();
                   if (quizConfig) {
@@ -369,7 +471,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               >
                 Try Again
               </button>
-              <button 
+              <button
                 onClick={() => onNavigate('home')}
                 className="px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
               >
@@ -394,7 +496,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               </svg>
             </div>
             <p className="text-slate-600 mb-4">No quiz data available</p>
-            <button 
+            <button
               onClick={() => onNavigate('home')}
               className="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200"
             >
@@ -406,25 +508,9 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     );
   }
 
-  // Quiz results redirect
+  // Quiz results - Direct render without lazy loading to prevent reload
   if (quizResults) {
-    const QuizResultsPage = React.lazy(() => import('./QuizResultsPage'));
-    return (
-      <React.Suspense fallback={
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
-              <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-              </svg>
-            </div>
-            <p className="text-slate-600">Loading results...</p>
-          </div>
-        </div>
-      }>
-        <QuizResultsPage results={quizResults} onNavigate={onNavigate} />
-      </React.Suspense>
-    );
+    return <QuizResultsPage results={quizResults} onNavigate={onNavigate} />;
   }
 
   return (
@@ -444,10 +530,10 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               {/* Logo/Icon */}
               <div className="hidden sm:block w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              
+
               {/* Progress Info */}
               <div className="flex-1 sm:flex-none">
                 <div className="flex items-center space-x-2 sm:space-x-3 mb-1">
@@ -458,9 +544,9 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   <span className="text-xs sm:text-sm text-slate-500">of {quiz.totalQuestions}</span>
                 </div>
                 <div className="w-32 sm:w-48 bg-slate-200/50 rounded-full h-1.5 sm:h-2">
-                  <div 
+                  <div
                     className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-500 shadow-sm"
-                    style={{width: `${progress}%`}}
+                    style={{ width: `${progress}%` }}
                   ></div>
                 </div>
               </div>
@@ -468,12 +554,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
             {/* Center: Timers - Hidden on smallest screens */}
             <div className="hidden md:flex items-center space-x-8">
-              {config.timerEnabled && questionTimeRemaining !== null && (
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-md border border-white/50">
-                  <p className="text-xs text-slate-500 text-center mb-1">Question Time</p>
-                  <p className="text-xl font-mono font-bold text-amber-700">{formatTime(questionTimeRemaining)}</p>
-                </div>
-              )}
               {config.timerEnabled && (
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-md border border-white/50">
                   <p className="text-xs text-slate-500 text-center mb-1">Total Time</p>
@@ -489,7 +569,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 className="group flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/80 backdrop-blur-sm border-2 border-amber-200/50 text-amber-700 rounded-xl hover:bg-amber-50 hover:border-amber-300 transition-all duration-300 shadow-md hover:shadow-lg"
               >
                 <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-xs sm:text-base font-medium">Pause</span>
               </button>
@@ -498,8 +578,8 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 className="group flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/80 backdrop-blur-sm border-2 border-red-200/50 text-red-600 rounded-xl hover:bg-red-50 hover:border-red-300 transition-all duration-300 shadow-md hover:shadow-lg"
               >
                 <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                 </svg>
                 <span className="text-xs sm:text-base font-medium">Stop</span>
               </button>
@@ -510,18 +590,10 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         {/* Mobile Timer Bar - Shows on mobile only */}
         <div className="md:hidden px-4 pb-3">
           <div className="flex items-center justify-between bg-white/50 backdrop-blur-sm rounded-xl px-3 py-2">
-            {config.timerEnabled && questionTimeRemaining !== null && (
-              <div className="flex items-center space-x-2">
-                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span className="text-xs text-slate-600">Question: <span className="font-mono font-bold text-amber-700">{formatTime(questionTimeRemaining)}</span></span>
-              </div>
-            )}
             {config.timerEnabled && (
               <div className="flex items-center space-x-2">
                 <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-xs text-slate-600">Total: <span className="font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</span></span>
               </div>
@@ -555,11 +627,11 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               className="text-slate-400 hover:text-slate-600 transition-colors"
             >
               <svg className={`w-5 h-5 transform transition-transform ${showMobileNav ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
           </div>
-          
+
           {showMobileNav && (
             <div className="animate-fade-in">
               <div className="overflow-x-auto pb-2">
@@ -567,18 +639,18 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   {[...Array(quiz.totalQuestions)].map((_, idx) => {
                     const questionNumber = idx + 1;
                     const isActive = questionNumber === currentQuestionNumber;
-                    const isAnswered = questionNumber < currentQuestionNumber || (questionNumber === currentQuestionNumber && selectedAnswer);
-                    
+                    const isAnswered = userAnswers[idx] != null;
+
                     return (
                       <button
                         key={idx}
                         onClick={() => goToQuestion(idx)}
                         className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${
-                          isActive 
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110' 
+                          isActive
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110'
                             : isAnswered
-                            ? 'bg-green-100 text-green-700 border border-green-200'
-                            : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-200'
+                              ? 'bg-green-100 text-green-700 border border-green-200'
+                              : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-200'
                         }`}
                       >
                         {questionNumber}
@@ -587,7 +659,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   })}
                 </div>
               </div>
-              
+
               {/* Compact Legend */}
               <div className="flex items-center justify-center space-x-4 mt-2 text-xs">
                 <div className="flex items-center space-x-1">
@@ -609,7 +681,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           {!showMobileNav && (
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-600">
-                {userAnswers.length} answered • {quiz.totalQuestions - userAnswers.length} remaining
+                {userAnswers.filter(a => a != null).length} answered • {quiz.totalQuestions - userAnswers.filter(a => a != null).length} remaining
               </span>
               <span className="text-xs font-medium text-amber-600">
                 {Math.round(progress)}% complete
@@ -642,13 +714,13 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   <button
                     onClick={toggleBookmark}
                     className={`p-2 sm:p-2.5 rounded-xl transition-all duration-300 ${
-                      isBookmarked 
-                        ? 'text-amber-600 bg-amber-50 shadow-md' 
+                      isBookmarked
+                        ? 'text-amber-600 bg-amber-50 shadow-md'
                         : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
                     }`}
                   >
                     <svg className="w-4 sm:w-5 h-4 sm:h-5" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                     </svg>
                   </button>
                   <button
@@ -656,7 +728,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                     className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300"
                   >
                     <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </button>
                 </div>
@@ -667,7 +739,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/50 rounded-2xl animate-fade-in">
                   <div className="flex items-start space-x-2">
                     <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <p className="text-sm text-blue-700">
                       <span className="font-semibold">Hint:</span> {currentQuestion.hint || "Think carefully about the key concepts related to this topic..."}
@@ -689,9 +761,9 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                       <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${selectedAnswer?.isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
                         <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${selectedAnswer?.isCorrect ? 'text-green-600' : 'text-red-600'}`} fill="currentColor" viewBox="0 0 20 20">
                           {selectedAnswer?.isCorrect ? (
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
                           ) : (
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
                           )}
                         </svg>
                       </div>
@@ -713,19 +785,16 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-100">
-                <button 
+                <button
                   onClick={previousQuestion}
-                  disabled={currentQuestionNumber === 1 || config.questionTimer > 0}
+                  disabled={currentQuestionNumber === 1}
                   className="text-slate-400 hover:text-slate-600 font-medium transition-colors duration-300 order-2 sm:order-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   ← Previous Question
                 </button>
-                
+
                 <button
-                  onClick={isLastQuestion ? () => {
-                    handleSubjectiveAnswer(); // Process the current answer first
-                    confirmStop(); // Then stop the quiz
-                  } : handleNext}
+                  onClick={isLastQuestion ? confirmStop : handleNext}
                   disabled={config.questionTimer > 0 && !hasAnswer() && !isLastQuestion || isStoppingQuiz}
                   className={`px-6 sm:px-8 py-3 rounded-2xl font-semibold transition-all duration-300 transform order-1 sm:order-2 w-full sm:w-auto ${
                     (!config.questionTimer || hasAnswer() || isLastQuestion) && !isStoppingQuiz
@@ -747,18 +816,18 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 {[...Array(quiz.totalQuestions)].map((_, idx) => {
                   const questionNumber = idx + 1;
                   const isActive = questionNumber === currentQuestionNumber;
-                  const isAnswered = questionNumber < currentQuestionNumber || (questionNumber === currentQuestionNumber && selectedAnswer);
-                  
+                  const isAnswered = userAnswers[idx] != null;
+
                   return (
                     <button
                       key={idx}
                       onClick={() => goToQuestion(idx)}
                       className={`aspect-square rounded-xl flex items-center justify-center text-sm font-medium transition-all duration-300 ${
-                        isActive 
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110' 
+                        isActive
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110'
                           : isAnswered
-                          ? 'bg-green-100 text-green-700 border border-green-200'
-                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-200'
+                            ? 'bg-green-100 text-green-700 border border-green-200'
+                            : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-200'
                       }`}
                     >
                       {questionNumber}
@@ -766,7 +835,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   );
                 })}
               </div>
-              
+
               {/* Legend */}
               <div className="mt-6 space-y-2 text-xs">
                 <div className="flex items-center space-x-2">
@@ -795,13 +864,13 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       />
 
       {/* Pause Modal */}
-      <Modal 
+      <Modal
         isOpen={showPauseModal}
         onClose={() => setShowPauseModal(false)}
         title="Quiz Paused"
         icon={
           <svg className="w-8 h-8 text-amber-600" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
           </svg>
         }
       >
@@ -809,14 +878,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           Your progress has been saved. You can resume anytime from where you left off.
         </p>
         <div className="flex flex-col space-y-3">
-          <button 
+          <button
             onClick={() => setShowPauseModal(false)}
             disabled={isPausingQuiz}
             className="w-full px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-2xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Resume Quiz
           </button>
-          <Button 
+          <Button
             onClick={confirmPause}
             loading={isPausingQuiz}
             disabled={isPausingQuiz}
@@ -829,13 +898,13 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       </Modal>
 
       {/* Stop Modal */}
-      <Modal 
+      <Modal
         isOpen={showStopModal}
         onClose={() => setShowStopModal(false)}
         title="Stop Quiz?"
         icon={
           <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 6h12v12H6z"/>
+            <path d="M6 6h12v12H6z" />
           </svg>
         }
       >
@@ -843,7 +912,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           Are you sure you want to stop this quiz? Your current progress will be saved, but the quiz will end.
         </p>
         <div className="flex flex-col space-y-3">
-          <Button 
+          <Button
             onClick={confirmStop}
             loading={isStoppingQuiz}
             disabled={isStoppingQuiz}
@@ -852,7 +921,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           >
             {isStoppingQuiz ? 'Stopping...' : 'Yes, Stop Quiz'}
           </Button>
-          <button 
+          <button
             onClick={() => setShowStopModal(false)}
             disabled={isStoppingQuiz}
             className="w-full px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-2xl hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -863,49 +932,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       </Modal>
 
       {/* Custom Styles */}
-      <style>{`
-        @keyframes fadeIn {
-          0% { opacity: 0; }
-          100% { opacity: 1; }
-        }
-        
-        @keyframes fadeInUp {
-          0% { opacity: 0; transform: translateY(20px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes scaleIn {
-          0% { transform: scale(0.9); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-out;
-        }
-        
-        .animate-fade-in-up {
-          animation: fadeInUp 0.5s ease-out;
-        }
-        
-        .animate-scale-in {
-          animation: scaleIn 0.3s ease-out;
-        }
-        
-        /* Hide scrollbar but keep functionality */
-        .overflow-x-auto::-webkit-scrollbar {
-          height: 4px;
-        }
-        
-        .overflow-x-auto::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 10px;
-        }
-        
-        .overflow-x-auto::-webkit-scrollbar-thumb {
-          background: #fbbf24;
-          border-radius: 10px;
-        }
-      `}</style>
+      <QuizStyles />
     </div>
   );
 };

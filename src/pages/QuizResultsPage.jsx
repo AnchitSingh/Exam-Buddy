@@ -23,9 +23,11 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 
 	const { score, totalQuestions, answers, timeSpent, config } = results;
 	const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-	const unansweredCount = (answers || []).filter(a => a && a.unanswered).length;
-	const incorrectCount = totalQuestions - score - unansweredCount;
-
+	const answeredCount = (answers || []).filter(a => a != null && !a.unanswered).length;
+	const unansweredCount = totalQuestions - answeredCount;
+	const incorrectCount = answeredCount - score;
+	
+	
 	// Calculate performance level
 	const getPerformanceLevel = () => {
 		if (percentage >= 90) return { text: "Outstanding!", color: "from-green-500 to-emerald-500" };
@@ -335,7 +337,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 								
 								{/* Question Navigator */}
 								<div className="mb-4 overflow-x-auto pb-2">
-									<div className="flex space-x-2 min-w-max">
+									<div className="flex space-x-2 min-w-max p-4">
 										{[...Array(totalQuestions)].map((_, idx) => {
 											const answer = answers?.[idx];
 											const isActive = idx === currentQuestionIndex;
@@ -602,7 +604,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 						
 						{/* Question Navigator - Mobile */}
 						<div className="mb-4 overflow-x-auto pb-2">
-							<div className="flex space-x-2 min-w-max">
+							<div className="flex space-x-2 min-w-max p-4">
 								{[...Array(totalQuestions)].map((_, idx) => {
 									const answer = answers?.[idx];
 									const isActive = idx === currentQuestionIndex;

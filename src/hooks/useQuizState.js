@@ -14,8 +14,6 @@ const useQuizState = (quizConfig = null, answerRef) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState([]);
   const [timeRemaining, setTimeRemaining] = useState(config.timerEnabled ? (config.totalTimer || 600) : 0);
-  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(config.timerEnabled ? (config.questionTimer || 60) : 0);
-  const [questionStartTime, setQuestionStartTime] = useState(null);
   const [isQuizActive, setIsQuizActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,12 +21,14 @@ const useQuizState = (quizConfig = null, answerRef) => {
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState(new Set());
   const [showFeedback, setShowFeedback] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [draftAnswers, setDraftAnswers] = useState({});
 
   const timerRef = useRef(null);
-  const questionTimerRef = useRef(null);
   const quizIdRef = useRef(null);
   const abortControllerRef = useRef(null);
   const currentQuestionIndexRef = useRef(0);
+  const stopQuizCallbackRef = useRef(null);
+  const autoSaveTimerRef = useRef(null);
 
   // Keep currentQuestionIndexRef in sync
   useEffect(() => {
@@ -63,7 +63,6 @@ const useQuizState = (quizConfig = null, answerRef) => {
 
   // Handle existing answers when question changes
   useEffect(() => {
-    // Add small debounce to prevent race conditions
     const timer = setTimeout(() => {
       const existingAnswer = userAnswers[currentQuestionIndex];
       
@@ -72,14 +71,11 @@ const useQuizState = (quizConfig = null, answerRef) => {
           optionIndex: existingAnswer.selectedOption,
           isCorrect: existingAnswer.isCorrect,
           textAnswer: existingAnswer.textAnswer,
+          aiEvaluated: existingAnswer.aiEvaluated
         });
         
-        // Only show feedback if immediate feedback is enabled and answer is not pending
         if (config.immediateFeedback && !existingAnswer.isPending) {
           setShowFeedback(true);
-        } else if (!config.immediateFeedback) {
-          // For non-immediate feedback, we still want to show the answer but not the feedback
-          setShowFeedback(false);
         } else {
           setShowFeedback(false);
         }
@@ -96,8 +92,8 @@ const useQuizState = (quizConfig = null, answerRef) => {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (questionTimerRef.current) clearInterval(questionTimerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, []);
 
@@ -108,7 +104,6 @@ const useQuizState = (quizConfig = null, answerRef) => {
 
       let response;
       if (config.questions && config.questions.length > 0) {
-        // This is a practice quiz from bookmarks
         response = {
           success: true,
           data: {
@@ -122,9 +117,8 @@ const useQuizState = (quizConfig = null, answerRef) => {
             timeLimit: null,
           }
         };
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate loading
+        await new Promise(resolve => setTimeout(resolve, 500));
       } else {
-        // Generate a new quiz
         response = await examBuddyAPI.generateQuiz(config);
       }
 
@@ -133,7 +127,6 @@ const useQuizState = (quizConfig = null, answerRef) => {
         setQuiz(newQuiz);
         setConfig({ ...config, ...newQuiz.config });
         setTimeRemaining(newQuiz.timeLimit || config.totalTimer || 600);
-        setQuestionTimeRemaining(config.questionTimer || 60);
         setIsQuizActive(true);
         quizIdRef.current = newQuiz.id;
         toast.success('Quiz started successfully');
@@ -158,18 +151,18 @@ const useQuizState = (quizConfig = null, answerRef) => {
         const savedState = response.data;
         
         setQuiz({
-            id: savedState.id,
-            title: savedState.title,
-            subject: savedState.subject,
-            questions: savedState.questions,
-            totalQuestions: savedState.totalQuestions,
+          id: savedState.id,
+          title: savedState.title,
+          subject: savedState.subject,
+          questions: savedState.questions,
+          totalQuestions: savedState.totalQuestions,
         });
         setConfig(savedState.config);
         setCurrentQuestionIndex(savedState.currentQuestionIndex);
         setUserAnswers(savedState.userAnswers);
         setTimeRemaining(savedState.timeRemaining);
-        setQuestionTimeRemaining(savedState.questionTimeRemaining);
         setBookmarkedQuestions(new Set(savedState.bookmarkedQuestions));
+        setDraftAnswers(savedState.draftAnswers || {});
         
         setIsPaused(false);
         setIsQuizActive(true);
@@ -177,7 +170,6 @@ const useQuizState = (quizConfig = null, answerRef) => {
 
         await examBuddyAPI.removePausedQuiz(quizId);
         toast.success('Quiz loaded successfully');
-
       } else {
         setError('Could not load quiz');
         toast.error('Could not load quiz');
@@ -190,7 +182,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
     }
   };
 
-  // Fixed: Timer useEffect without timeRemaining dependency
+  // Fixed timer with proper stopQuiz handling
   useEffect(() => {
     if (!isQuizActive || !config.timerEnabled || isPaused) {
       if (timerRef.current) {
@@ -203,7 +195,13 @@ const useQuizState = (quizConfig = null, answerRef) => {
     timerRef.current = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
-          stopQuiz();
+          if (stopQuizCallbackRef.current) {
+            setTimeout(() => {
+              if (stopQuizCallbackRef.current) {
+                stopQuizCallbackRef.current();
+              }
+            }, 0);
+          }
           return 0;
         }
         return prev - 1;
@@ -218,97 +216,56 @@ const useQuizState = (quizConfig = null, answerRef) => {
     };
   }, [isQuizActive, config.timerEnabled, isPaused]);
 
-  // Fixed: Question timer useEffect
-  useEffect(() => {
-    // Check if we should have a question timer
-    const shouldHaveTimer = isQuizActive && 
-                           config.timerEnabled && 
-                           !isPaused;
-
-    if (!shouldHaveTimer) {
-      if (questionTimerRef.current) {
-        clearInterval(questionTimerRef.current);
-        questionTimerRef.current = null;
-      }
-      return;
-    }
-
-    // Set the start time when timer starts (or when the question changes)
-    if (!questionStartTime) {
-      setQuestionStartTime(Date.now());
-    }
-
-    questionTimerRef.current = setInterval(() => {
-      setQuestionTimeRemaining(prev => {
-        if (prev <= 1) {
-          const currentQ = quiz?.questions?.[currentQuestionIndexRef.current];
-          if (currentQ) {
-            const { textAnswer, fillBlanks, selectedAnswer: currentSelected } = answerRef.current || {};
-
-            if (currentQ.type === 'Short Answer' && textAnswer?.trim()) {
-              selectAnswer(0, false, true, textAnswer.trim());
-            } else if (currentQ.type === 'Fill in Blank' && fillBlanks?.some(b => b.trim())) {
-              const isCorrect = currentQ.acceptableAnswers?.some(acceptableSet =>
-                acceptableSet.every((acceptable, index) =>
-                  fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
-                )
-              ) || false;
-              selectAnswer(0, isCorrect, true, fillBlanks);
-            } else if (currentSelected) {
-              // Already answered, just move next
-            } else {
-              selectAnswer(null, false, true, null);
-            }
-
-            if (currentQuestionIndexRef.current < (quiz?.questions?.length || 0) - 1) {
-              nextQuestion();
-            } else {
-              stopQuiz();
-            }
-          }
-          return config.questionTimer;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (questionTimerRef.current) {
-        clearInterval(questionTimerRef.current);
-        questionTimerRef.current = null;
-      }
-    };
-  }, [isQuizActive, config.timerEnabled, isPaused, selectedAnswer, currentQuestionIndex]);
-
-  // Reset question timer when question changes
-  useEffect(() => {
-    if (config.timerEnabled) {
-      setQuestionTimeRemaining(config.questionTimer);
-      setQuestionStartTime(Date.now()); // Set the start time for the new question
-    }
-  }, [currentQuestionIndex, config.questionTimer, config.timerEnabled]);
-
   const currentQuestion = quiz?.questions?.[currentQuestionIndex] || null;
   const isLastQuestion = currentQuestionIndex === (quiz?.questions?.length - 1) || false;
   const currentQuestionNumber = currentQuestionIndex + 1;
 
-  // Fixed: selectAnswer with proper abort controller and error handling
-  const selectAnswer = useCallback(async (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
+  // Save draft answer for text-based questions
+  const saveDraftAnswer = useCallback(() => {
+    if (!answerRef?.current) return;
+    
+    const { textAnswer, fillBlanks } = answerRef.current;
+    const currentQ = quiz?.questions?.[currentQuestionIndexRef.current];
+    
+    if (!currentQ) return;
+
+    // Only save drafts for text-based questions
+    if (currentQ.type === 'Short Answer' && textAnswer?.trim()) {
+      setDraftAnswers(prev => ({
+        ...prev,
+        [currentQuestionIndexRef.current]: {
+          type: 'Short Answer',
+          textAnswer: textAnswer.trim()
+        }
+      }));
+    } else if (currentQ.type === 'Fill in Blank' && fillBlanks?.some(b => b?.trim())) {
+      setDraftAnswers(prev => ({
+        ...prev,
+        [currentQuestionIndexRef.current]: {
+          type: 'Fill in Blank',
+          textAnswer: fillBlanks
+        }
+      }));
+    }
+  }, [quiz, answerRef]);
+
+  // Fixed selectAnswer - properly handle text answers
+  const selectAnswer = useCallback(async (optionIndex, isCorrect, autoSelected = false, textAnswer = null, isDraft = false) => {
     try {
-      // Cancel any pending API call
+      const newController = new AbortController();
+      
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      
+      abortControllerRef.current = newController;
 
       const currentQIndex = currentQuestionIndexRef.current;
       const currentQ = quiz?.questions?.[currentQIndex];
       
       if (!currentQ) return;
 
-      // Calculate actual time spent on this question
-      const actualTimeSpent = questionStartTime ? 
-        Math.max(0, Math.round(((config.questionTimer || 60) - questionTimeRemaining))) : 
-        (config.questionTimer || 60) - questionTimeRemaining;
+      const actualTimeSpent = config.questionTimer ? (config.questionTimer - 30) : 30;
 
       const answer = {
         questionId: currentQ.id,
@@ -319,138 +276,141 @@ const useQuizState = (quizConfig = null, answerRef) => {
         totalTimeWhenAnswered: timeRemaining,
         autoSelected,
         textAnswer,
+        isDraft
       };
 
-      console.log('Saving answer at index:', currentQIndex, 'Answer:', textAnswer);
+      console.log('Saving answer at index:', currentQIndex, 'Answer:', answer);
+
+      // Remove from drafts if not a draft
+      if (!isDraft && draftAnswers[currentQIndex]) {
+        setDraftAnswers(prev => {
+          const newDrafts = { ...prev };
+          delete newDrafts[currentQIndex];
+          return newDrafts;
+        });
+      }
 
       setSelectedAnswer({ optionIndex, isCorrect, textAnswer });
 
-      // For MCQ and True/False, handle immediately without API call
-      if (currentQ.type === 'MCQ' || currentQ.type === 'True/False') {
-        // Always update the user answers, even if there was a previous answer
-        setUserAnswers(currentAnswers => {
-          const newAnswers = [...currentAnswers];
-          newAnswers[currentQIndex] = {
-            ...answer,
-            feedback: {
-              message: isCorrect ? "Correct!" : "Not quite right.",
-              explanation: currentQ.explanation
-            }
-          };
-          return newAnswers;
-        });
-        
-        if (config.immediateFeedback) {
-          setShowFeedback(true);
-        }
-        return;
-      }
-
-      // For text-based questions, update local state immediately
+      // Update userAnswers immediately
       setUserAnswers(currentAnswers => {
         const newAnswers = [...currentAnswers];
-        newAnswers[currentQIndex] = {
-          ...answer,
-          aiEvaluated: false,
-          isPending: true
-        };
-        console.log('Updated userAnswers at index:', currentQIndex, 'with:', answer);
+        newAnswers[currentQIndex] = answer;
         return newAnswers;
       });
 
-      // Then make API call for evaluation (if needed)
-      if (config.immediateFeedback || currentQ.type === 'Fill in Blank') {
-        abortControllerRef.current = new AbortController();
-        
+      // Show feedback for MCQ/True-False
+      if ((currentQ.type === 'MCQ' || currentQ.type === 'True/False') && config.immediateFeedback) {
+        setShowFeedback(true);
+      }
+
+      // Make API call for evaluation if needed and not a draft
+      if (!isDraft && config.immediateFeedback && (currentQ.type === 'Short Answer' || currentQ.type === 'Fill in Blank')) {
         try {
           const response = await examBuddyAPI.submitAnswer(
             quizIdRef.current,
             currentQ.id,
             answer,
-            { signal: abortControllerRef.current.signal }
+            { signal: newController.signal }
           );
 
-          // Only process response if we're still on the same question
           if (currentQuestionIndexRef.current === currentQIndex && response.success) {
-            if (config.immediateFeedback) {
-              setShowFeedback(true);
-            }
+            setShowFeedback(true);
             
-            // Update with API response
             setUserAnswers(currentAnswers => {
               const newAnswers = [...currentAnswers];
-              // Make sure we're updating the right index
               if (newAnswers[currentQIndex]?.questionId === currentQ.id) {
                 newAnswers[currentQIndex] = {
                   ...newAnswers[currentQIndex],
-                  ...answer, // Ensure the latest textAnswer is preserved
+                  ...answer,
                   feedback: response.data.feedback,
                   explanation: response.data.explanation,
                   aiEvaluated: true,
-                  isPending: false
+                  isPending: false,
+                  isDraft: false
                 };
               }
               return newAnswers;
             });
           }
         } catch (err) {
-          // Check if error is from abort
           if (err.name === 'AbortError') {
             console.log('API call was aborted');
             return;
           }
           
           console.error('Error submitting answer:', err);
-          
-          // Update answer state to show error
-          setUserAnswers(currentAnswers => {
-            const newAnswers = [...currentAnswers];
-            if (newAnswers[currentQIndex]?.questionId === currentQ.id) {
-              newAnswers[currentQIndex] = {
-                ...newAnswers[currentQIndex],
-                error: true,
-                isPending: false
-              };
-            }
-            return newAnswers;
-          });
         }
       }
     } catch (err) {
       console.error('Error in selectAnswer:', err);
       setError('Failed to submit answer');
     }
-  }, [quiz, config, questionTimeRemaining, timeRemaining]);
+  }, [quiz, config, timeRemaining, draftAnswers]);
+
+  const saveCurrentAnswer = useCallback(() => {
+    if (!answerRef?.current) return;
+    
+    const { textAnswer, fillBlanks } = answerRef.current;
+    const currentQ = quiz?.questions?.[currentQuestionIndex];
+    
+    if (!currentQ) return;
+    
+    // Save text-based answers if they exist
+    if (currentQ.type === 'Short Answer' && textAnswer?.trim()) {
+      selectAnswer(0, false, false, textAnswer.trim(), false);
+    } else if (currentQ.type === 'Fill in Blank' && fillBlanks?.some(b => b?.trim())) {
+      const isCorrect = currentQ.acceptableAnswers?.some(acceptableSet =>
+        acceptableSet.every((acceptable, index) =>
+          fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+        )
+      ) || false;
+      selectAnswer(0, isCorrect, false, fillBlanks, false);
+    }
+  }, [quiz, currentQuestionIndex, answerRef, selectAnswer]);
 
   const nextQuestion = () => {
     if (!isLastQuestion) {
-      // Cancel any pending API calls
+      saveCurrentAnswer(); // Save current answer before moving
+      
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
       
-      // Only hide feedback when moving to next question if immediate feedback is enabled
       if (config.immediateFeedback) {
         setShowFeedback(false);
       }
-      // Don't reset selectedAnswer here to allow users to see their previous answer
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
 
   const previousQuestion = () => {
     if (currentQuestionIndex > 0) {
-      // Cancel any pending API calls
+      saveCurrentAnswer(); // Save current answer before moving
+      
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
       
-      // Only hide feedback when moving to previous question if immediate feedback is enabled
       if (config.immediateFeedback) {
         setShowFeedback(false);
       }
-      // Don't reset selectedAnswer here to allow users to see their previous answer
       setCurrentQuestionIndex(prev => prev - 1);
+    }
+  };
+
+  const goToQuestion = (questionIndex) => {
+    if (questionIndex >= 0 && questionIndex < quiz?.totalQuestions && questionIndex !== currentQuestionIndex) {
+      saveCurrentAnswer(); // Save current answer before jumping
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      
+      setCurrentQuestionIndex(questionIndex);
     }
   };
 
@@ -502,12 +462,14 @@ const useQuizState = (quizConfig = null, answerRef) => {
 
   const pauseQuiz = async () => {
     try {
+      saveCurrentAnswer(); // Save current answer
+      
       setIsPaused(true);
       setIsQuizActive(false);
 
       const score = {
-        correct: userAnswers.filter(a => a && a.isCorrect).length,
-        total: userAnswers.filter(Boolean).length
+        correct: userAnswers.filter(a => a && a.isCorrect && !a.isDraft).length,
+        total: userAnswers.filter(a => a && !a.isDraft).length
       };
 
       const quizState = {
@@ -523,8 +485,8 @@ const useQuizState = (quizConfig = null, answerRef) => {
         score: score,
         currentQuestionIndex,
         userAnswers,
+        draftAnswers,
         timeRemaining,
-        questionTimeRemaining,
         bookmarkedQuestions: Array.from(bookmarkedQuestions),
         config,
         pausedAt: new Date().toISOString()
@@ -540,60 +502,58 @@ const useQuizState = (quizConfig = null, answerRef) => {
     }
   };
 
-    const resumeQuiz = () => {
+  const resumeQuiz = () => {
     setIsPaused(false);
     setIsQuizActive(true);
   };
 
-  const goToQuestion = (questionIndex) => {
-    // Only restrict navigation if question timer is enabled
-    if (config.questionTimer > 0) {
-      // When question timer is enabled, only allow navigation to the same question or if user has answered
-      if (questionIndex !== currentQuestionIndex && !selectedAnswer) {
-        return; // Prevent navigation if timer is active and question is not answered
-      }
+  // Fixed stopQuiz - accept finalAnswers parameter
+const stopQuiz = async (finalAnswers = null) => {
+  try {
+    setIsQuizActive(false);
+    setIsPaused(false);
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
+
+    // Use provided finalAnswers or fallback to userAnswers
+    const answersToSubmit = finalAnswers || userAnswers;
     
-    if (questionIndex >= 0 && questionIndex < quiz?.totalQuestions) {
-      setCurrentQuestionIndex(questionIndex);
-      if (config.timerEnabled && config.questionTimer > 0) {
-        setQuestionTimeRemaining(config.questionTimer);
-        setQuestionStartTime(Date.now());
-      }
+    // Filter out null answers and drafts
+    const validAnswers = answersToSubmit.filter(answer => {
+      return answer && !answer.isDraft;
+    });
+
+    console.log('Final answers being submitted:', validAnswers);
+
+    const response = await examBuddyAPI.completeQuiz(
+      quizIdRef.current, 
+      validAnswers,
+      quiz
+    );
+
+    if (response.success) {
+      return {
+        ...response.data,
+        quiz: quiz,
+        config: config
+      };
+    } else {
+      throw new Error('Failed to complete quiz');
     }
-  };
+  } catch (err) {
+    console.error('Error completing quiz:', err);
+    setError('Failed to complete quiz');
+    return null;
+  }
+};
 
-  const stopQuiz = async (finalAnswers) => {
-    try {
-      setIsQuizActive(false);
-      setIsPaused(false);
-
-      // Cancel any pending API calls
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      const response = await examBuddyAPI.completeQuiz(
-        quizIdRef.current, 
-        finalAnswers || userAnswers,
-        quiz
-      );
-
-      if (response.success) {
-        return {
-          ...response.data,
-          quiz: quiz,
-          config: config
-        };
-      } else {
-        throw new Error('Failed to complete quiz');
-      }
-    } catch (err) {
-      console.error('Error completing quiz:', err);
-      setError('Failed to complete quiz');
-      return null;
-    }
-  };
+  // Store stopQuiz reference for timer
+  useEffect(() => {
+    stopQuizCallbackRef.current = stopQuiz;
+  }, [stopQuiz]);
 
   const toggleImmediateFeedback = () => {
     const newSetting = !config.immediateFeedback;
@@ -608,18 +568,25 @@ const useQuizState = (quizConfig = null, answerRef) => {
     }
   };
 
+  // Fixed progress calculation
   const getProgress = () => {
     if (!quiz?.questions) return 0;
-    return ((currentQuestionIndex + (selectedAnswer ? 1 : 0)) / quiz.questions.length) * 100;
+    const answeredCount = userAnswers.filter(answer => answer != null && !answer.isDraft).length;
+    return (answeredCount / quiz.questions.length) * 100;
+  };
+
+  // Get draft for current question
+  const getCurrentDraft = () => {
+    return draftAnswers[currentQuestionIndex] || null;
   };
 
   return {
     quiz,
     config,
     currentQuestion,
+    currentQuestionIndex,
     currentQuestionNumber,
     timeRemaining,
-    questionTimeRemaining,
     isQuizActive,
     isPaused,
     isLoading,
@@ -631,6 +598,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
     isLastQuestion,
     progress: getProgress(),
     isBookmarked: currentQuestion ? bookmarkedQuestions.has(currentQuestion.id) : false,
+    currentDraft: getCurrentDraft(),
     initializeQuiz,
     loadExistingQuiz,
     selectAnswer,
@@ -642,6 +610,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
     stopQuiz,
     toggleImmediateFeedback,
     goToQuestion,
+    saveDraftAnswer,
     clearError: () => setError(null)
   };
 };
