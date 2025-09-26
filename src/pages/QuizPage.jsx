@@ -5,6 +5,8 @@ import AIProcessingFeedback from '../components/ui/AIProcessingFeedback';
 import useQuizState from '../hooks/useQuizState';
 
 const QuizPage = ({ onNavigate, quizConfig = null }) => {
+  const answerRef = useRef();
+
   const {
     quiz,
     config,
@@ -31,7 +33,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     stopQuiz,
     toggleImmediateFeedback,
     clearError
-  } = useQuizState(quizConfig);
+  } = useQuizState(quizConfig, answerRef);
 
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
@@ -44,6 +46,8 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const [fillBlanks, setFillBlanks] = useState(['']);
   
   const questionRendererRef = useRef();
+
+  answerRef.current = { textAnswer, fillBlanks, selectedAnswer };
 
   // Initialize fill blanks based on question
   React.useEffect(() => {
@@ -682,7 +686,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-100">
                 <button 
                   onClick={previousQuestion}
-                  disabled={currentQuestionNumber === 1}
+                  disabled={currentQuestionNumber === 1 || config.questionTimer > 0}
                   className="text-slate-400 hover:text-slate-600 font-medium transition-colors duration-300 order-2 sm:order-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   ← Previous Question

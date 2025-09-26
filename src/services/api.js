@@ -147,15 +147,17 @@ class ExamBuddyAPI {
         const quizTemplates = await import('../data/mockQuizTemplates');
         const template = quizTemplates.getQuizByTopic(config.topic) || quizTemplates.getDefaultQuiz();
 
+        const questions = template.questions.slice(0, config.questionCount);
+
         // Generate quiz based on config
         const quiz = {
             id: `quiz_${Date.now()}`,
             title: `${config.topic} Quiz`,
             subject: this._extractSubject(config.topic),
             difficulty: config.difficulty,
-            totalQuestions: config.questionCount,
+            totalQuestions: questions.length,
             config: config,
-            questions: template.questions.slice(0, config.questionCount),
+            questions: questions,
             createdAt: new Date().toISOString(),
             timeLimit: config.timerEnabled ? config.totalTimer : null
         };

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import examBuddyAPI from '../services/api';
 
-const useQuizState = (quizConfig = null) => {
+const useQuizState = (quizConfig = null, answerRef) => {
   const [quiz, setQuiz] = useState(null);
   const [config, setConfig] = useState(quizConfig || {
     immediateFeedback: true,
@@ -15,6 +15,7 @@ const useQuizState = (quizConfig = null) => {
   const [userAnswers, setUserAnswers] = useState([]);
   const [timeRemaining, setTimeRemaining] = useState(config.totalTimer || 600);
   const [questionTimeRemaining, setQuestionTimeRemaining] = useState(config.questionTimer || 60);
+  const [questionStartTime, setQuestionStartTime] = useState(null);
   const [isQuizActive, setIsQuizActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -202,7 +203,7 @@ const useQuizState = (quizConfig = null) => {
     timerRef.current = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
-          setIsQuizActive(false);
+          stopQuiz();
           return 0;
         }
         return prev - 1;
@@ -222,8 +223,7 @@ const useQuizState = (quizConfig = null) => {
     // Check if we should have a question timer
     const shouldHaveTimer = isQuizActive && 
                            config.timerEnabled && 
-                           !isPaused && 
-                           !selectedAnswer;
+                           !isPaused;
 
     if (!shouldHaveTimer) {
       if (questionTimerRef.current) {
@@ -233,14 +233,38 @@ const useQuizState = (quizConfig = null) => {
       return;
     }
 
+    // Set the start time when timer starts (or when the question changes)
+    if (!questionStartTime) {
+      setQuestionStartTime(Date.now());
+    }
+
     questionTimerRef.current = setInterval(() => {
       setQuestionTimeRemaining(prev => {
         if (prev <= 1) {
-          // Auto-select an answer when time runs out
           const currentQ = quiz?.questions?.[currentQuestionIndexRef.current];
-          if (currentQ && currentQ.options) {
-            const randomIndex = Math.floor(Math.random() * currentQ.options.length);
-            selectAnswer(randomIndex, currentQ.options[randomIndex].isCorrect, true);
+          if (currentQ) {
+            const { textAnswer, fillBlanks, selectedAnswer: currentSelected } = answerRef.current || {};
+
+            if (currentQ.type === 'Short Answer' && textAnswer?.trim()) {
+              selectAnswer(0, false, true, textAnswer.trim());
+            } else if (currentQ.type === 'Fill in Blank' && fillBlanks?.some(b => b.trim())) {
+              const isCorrect = currentQ.acceptableAnswers?.some(acceptableSet =>
+                acceptableSet.every((acceptable, index) =>
+                  fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+                )
+              ) || false;
+              selectAnswer(0, isCorrect, true, fillBlanks);
+            } else if (currentSelected) {
+              // Already answered, just move next
+            } else {
+              selectAnswer(null, false, true, null);
+            }
+
+            if (currentQuestionIndexRef.current < (quiz?.questions?.length || 0) - 1) {
+              nextQuestion();
+            } else {
+              stopQuiz();
+            }
           }
           return config.questionTimer;
         }
@@ -254,12 +278,13 @@ const useQuizState = (quizConfig = null) => {
         questionTimerRef.current = null;
       }
     };
-  }, [isQuizActive, config.timerEnabled, isPaused, selectedAnswer]);
+  }, [isQuizActive, config.timerEnabled, isPaused, selectedAnswer, currentQuestionIndex]);
 
   // Reset question timer when question changes
   useEffect(() => {
     if (config.timerEnabled) {
       setQuestionTimeRemaining(config.questionTimer);
+      setQuestionStartTime(Date.now()); // Set the start time for the new question
     }
   }, [currentQuestionIndex, config.questionTimer, config.timerEnabled]);
 
@@ -280,12 +305,17 @@ const useQuizState = (quizConfig = null) => {
       
       if (!currentQ) return;
 
+      // Calculate actual time spent on this question
+      const actualTimeSpent = questionStartTime ? 
+        Math.max(0, Math.round(((config.questionTimer || 60) - questionTimeRemaining))) : 
+        (config.questionTimer || 60) - questionTimeRemaining;
+
       const answer = {
         questionId: currentQ.id,
         questionType: currentQ.type || 'MCQ',
         selectedOption: optionIndex,
         isCorrect,
-        timeSpent: (config.questionTimer || 60) - questionTimeRemaining,
+        timeSpent: actualTimeSpent,
         totalTimeWhenAnswered: timeRemaining,
         autoSelected,
         textAnswer,
@@ -535,7 +565,8 @@ const useQuizState = (quizConfig = null) => {
       if (response.success) {
         return {
           ...response.data,
-          quiz: quiz
+          quiz: quiz,
+          config: config
         };
       } else {
         throw new Error('Failed to complete quiz');

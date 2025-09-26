@@ -59,9 +59,15 @@ const BackgroundEffects = () => (
     </div>
 );
 
-const ScrollCard = ({ card }) => (
-    <div className="group relative w-[17.5rem] h-64 rounded-[0.65rem] transition-all duration-300 overflow-hidden transform hover:scale-[1.02] z-10 flex-shrink-0"
-        style={{ backgroundColor: card.bgColor }}>
+const ScrollCard = ({ card, onClick }) => (
+    <div 
+        className="group relative w-[17.5rem] h-64 rounded-[0.65rem] transition-all duration-300 overflow-hidden transform hover:scale-[1.02] z-10 flex-shrink-0 cursor-pointer"
+        style={{ backgroundColor: card.bgColor }}
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        onKeyPress={(e) => e.key === 'Enter' && onClick && onClick(card)}
+    >
         <div className="w-full h-full rounded-[3rem] flex flex-col justify-evenly">
             <img
                 alt={card.title}
@@ -294,6 +300,22 @@ const HomePage = ({ onNavigate, navigationData }) => {
         }
     };
 
+    const handleScrollCardClick = (card) => {
+        switch(card.title.toLowerCase()) {
+            case 'bookmarks':
+                onNavigate('bookmarks');
+                break;
+            case 'paused quizzes':
+                onNavigate('paused');
+                break;
+            default:
+                // For other cards, you can add specific navigation or default behavior
+                // Right now we'll default to bookmarks for consistency
+                onNavigate('bookmarks');
+                break;
+        }
+    };
+
     if (isLoading) return <LoadingScreen />;
 
     return (
@@ -367,7 +389,11 @@ const HomePage = ({ onNavigate, navigationData }) => {
                                 {[...Array(3)].map((_, setIndex) => (
                                     <React.Fragment key={setIndex}>
                                         {SCROLL_CARDS.map(card => (
-                                            <ScrollCard key={`${setIndex}-${card.id}`} card={card} />
+                                            <ScrollCard 
+                                                key={`${setIndex}-${card.id}`} 
+                                                card={card} 
+                                                onClick={() => handleScrollCardClick(card)} 
+                                            />
                                         ))}
                                     </React.Fragment>
                                 ))}
