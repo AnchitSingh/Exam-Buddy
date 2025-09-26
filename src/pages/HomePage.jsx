@@ -302,7 +302,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
                 <BackgroundEffects />
 
                 <main className="mx-auto min-h-screen flex flex-col justify-center py-12 relative z-10">
-                    <div className="min-h-[85vh] flex flex-col justify-center">
+                    <div className="min-h-[80vh] flex flex-col justify-center">
                         {/* Header Section */}
                         <div className="text-center mb-12 animate-fade-in">
                             <h1 className="text-5xl sm:text-6xl font-display font-bold tracking-tight mb-4">
