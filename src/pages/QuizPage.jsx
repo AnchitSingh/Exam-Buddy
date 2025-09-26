@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import Modal from '../components/ui/Modal';
+import Button from '../components/ui/Button';
 import AIProcessingFeedback from '../components/ui/AIProcessingFeedback';
 import useQuizState from '../hooks/useQuizState';
 
@@ -32,6 +33,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     pauseQuiz,
     stopQuiz,
     toggleImmediateFeedback,
+    goToQuestion,
     clearError
   } = useQuizState(quizConfig, answerRef);
 
@@ -44,6 +46,13 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [textAnswer, setTextAnswer] = useState('');
   const [fillBlanks, setFillBlanks] = useState(['']);
+  const [isPausingQuiz, setIsPausingQuiz] = useState(false);
+  const [isStoppingQuiz, setIsStoppingQuiz] = useState(false);
+
+  // Reset hint visibility when question changes
+  React.useEffect(() => {
+    setShowHint(false);
+  }, [currentQuestion]);
   
   const questionRendererRef = useRef();
 
@@ -101,10 +110,15 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   };
 
   const confirmPause = async () => {
-    await pauseQuiz();
-    setShowPauseModal(false);
-    onNavigate('home');
-    toast.success('Quiz progress saved');
+    setIsPausingQuiz(true);
+    try {
+      await pauseQuiz();
+      setShowPauseModal(false);
+      onNavigate('home');
+      toast.success('Quiz progress saved');
+    } finally {
+      setIsPausingQuiz(false);
+    }
   };
 
   const handleStop = () => {
@@ -112,21 +126,31 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   };
 
   const confirmStop = async () => {
-    let finalAnswers = [...userAnswers];
-    
-    // Handle current question if it has an answer
-    if (hasAnswer()) {
+    setIsStoppingQuiz(true);
+    try {
+      // Handle current question answer before stopping
       handleSubjectiveAnswer();
-    }
+      
+      let finalAnswers = [...userAnswers];
+      
+      // If there's a current answer that wasn't saved yet, include it
+      const currentAnswer = answerRef.current;
+      if (currentAnswer && (currentAnswer.textAnswer || currentAnswer.fillBlanks?.some(b => b.trim()) || currentAnswer.selectedAnswer !== null)) {
+        // The answer should already be included in userAnswers 
+        // but if somehow it's not, we can refresh by calling handleSubjectiveAnswer above
+      }
 
-    const results = await stopQuiz(finalAnswers);
-    setQuizResults(results);
-    setShowStopModal(false);
-    
-    if (results) {
-      setAITask('feedback');
-      setShowAIProcessing(true);
-      toast.success('Quiz completed! Generating results...');
+      const results = await stopQuiz(finalAnswers);
+      setQuizResults(results);
+      setShowStopModal(false);
+      
+      if (results) {
+        setAITask('feedback');
+        setShowAIProcessing(true);
+        toast.success('Quiz completed! Generating results...');
+      }
+    } finally {
+      setIsStoppingQuiz(false);
     }
   };
 
@@ -450,10 +474,12 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   <p className="text-xl font-mono font-bold text-amber-700">{formatTime(questionTimeRemaining)}</p>
                 </div>
               )}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-md border border-white/50">
-                <p className="text-xs text-slate-500 text-center mb-1">Total Time</p>
-                <p className="text-xl font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</p>
-              </div>
+              {config.timerEnabled && (
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-md border border-white/50">
+                  <p className="text-xs text-slate-500 text-center mb-1">Total Time</p>
+                  <p className="text-xl font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</p>
+                </div>
+              )}
             </div>
 
             {/* Right: Control Buttons */}
@@ -492,12 +518,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 <span className="text-xs text-slate-600">Question: <span className="font-mono font-bold text-amber-700">{formatTime(questionTimeRemaining)}</span></span>
               </div>
             )}
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              <span className="text-xs text-slate-600">Total: <span className="font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</span></span>
-            </div>
+            {config.timerEnabled && (
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span className="text-xs text-slate-600">Total: <span className="font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</span></span>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -544,6 +572,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                     return (
                       <button
                         key={idx}
+                        onClick={() => goToQuestion(idx)}
                         className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${
                           isActive 
                             ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110' 
@@ -693,15 +722,18 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 </button>
                 
                 <button
-                  onClick={isLastQuestion ? confirmStop : handleNext}
-                  disabled={!hasAnswer() && !isLastQuestion}
+                  onClick={isLastQuestion ? () => {
+                    handleSubjectiveAnswer(); // Process the current answer first
+                    confirmStop(); // Then stop the quiz
+                  } : handleNext}
+                  disabled={config.questionTimer > 0 && !hasAnswer() && !isLastQuestion || isStoppingQuiz}
                   className={`px-6 sm:px-8 py-3 rounded-2xl font-semibold transition-all duration-300 transform order-1 sm:order-2 w-full sm:w-auto ${
-                    hasAnswer() || isLastQuestion
+                    (!config.questionTimer || hasAnswer() || isLastQuestion) && !isStoppingQuiz
                       ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-xl hover:scale-105'
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
-                  {isLastQuestion ? 'Finish Quiz' : 'Next Question'} →
+                  {isStoppingQuiz ? 'Finishing Quiz...' : (isLastQuestion ? 'Finish Quiz' : 'Next Question')} →
                 </button>
               </div>
             </div>
@@ -720,6 +752,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   return (
                     <button
                       key={idx}
+                      onClick={() => goToQuestion(idx)}
                       className={`aspect-square rounded-xl flex items-center justify-center text-sm font-medium transition-all duration-300 ${
                         isActive 
                           ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110' 
@@ -778,16 +811,20 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         <div className="flex flex-col space-y-3">
           <button 
             onClick={() => setShowPauseModal(false)}
-            className="w-full px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-2xl hover:shadow-lg transition-all duration-200"
+            disabled={isPausingQuiz}
+            className="w-full px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-2xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Resume Quiz
           </button>
-          <button 
+          <Button 
             onClick={confirmPause}
-            className="w-full px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-2xl hover:bg-slate-200 transition-colors"
+            loading={isPausingQuiz}
+            disabled={isPausingQuiz}
+            variant="secondary"
+            className="w-full"
           >
-            Back to Home
-          </button>
+            {isPausingQuiz ? 'Pausing...' : 'Back to Home'}
+          </Button>
         </div>
       </Modal>
 
@@ -806,15 +843,19 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           Are you sure you want to stop this quiz? Your current progress will be saved, but the quiz will end.
         </p>
         <div className="flex flex-col space-y-3">
-          <button 
+          <Button 
             onClick={confirmStop}
-            className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors"
+            loading={isStoppingQuiz}
+            disabled={isStoppingQuiz}
+            variant="danger"
+            className="w-full"
           >
-            Yes, Stop Quiz
-          </button>
+            {isStoppingQuiz ? 'Stopping...' : 'Yes, Stop Quiz'}
+          </Button>
           <button 
             onClick={() => setShowStopModal(false)}
-            className="w-full px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-2xl hover:bg-slate-200 transition-colors"
+            disabled={isStoppingQuiz}
+            className="w-full px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-2xl hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Continue Quiz
           </button>

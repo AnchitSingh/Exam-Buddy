@@ -8,6 +8,7 @@ const BookmarksPage = ({ onNavigate }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('All Subjects');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All Difficulty');
+  const [removingBookmarkIds, setRemovingBookmarkIds] = useState(new Set());
 
   useEffect(() => {
     const loadBookmarks = async () => {
@@ -29,12 +30,21 @@ const BookmarksPage = ({ onNavigate }) => {
   });
 
   const removeBookmark = async (questionId) => {
-    const response = await examBuddyAPI.removeBookmark(questionId);
-    if (response.success) {
-      setBookmarks(prev => prev.filter(b => b.questionId !== questionId));
-      toast.success('Question removed from bookmarks');
-    } else {
-      toast.error('Failed to remove bookmark');
+    setRemovingBookmarkIds(prev => new Set([...prev, questionId]));
+    try {
+      const response = await examBuddyAPI.removeBookmark(questionId);
+      if (response.success) {
+        setBookmarks(prev => prev.filter(b => b.questionId !== questionId));
+        toast.success('Question removed from bookmarks');
+      } else {
+        toast.error('Failed to remove bookmark');
+      }
+    } finally {
+      setRemovingBookmarkIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(questionId);
+        return newSet;
+      });
     }
   };
 
@@ -175,11 +185,19 @@ const BookmarksPage = ({ onNavigate }) => {
                   </div>
                   <button 
                     onClick={() => removeBookmark(bookmark.questionId)} 
-                    className="text-slate-400 hover:text-red-500 transition-colors"
+                    disabled={removingBookmarkIds.has(bookmark.questionId)}
+                    className="text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 13H5v-2h14v2z"/>
-                    </svg>
+                    {removingBookmarkIds.has(bookmark.questionId) ? (
+                      <svg className="w-5 h-5 animate-spin text-red-500" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 13H5v-2h14v2z"/>
+                      </svg>
+                    )}
                   </button>
                 </div>
                 

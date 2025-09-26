@@ -35,6 +35,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
   const [pdfFile, setPdfFile] = useState(null);
   const fileInputRef = useRef(null);
   const modalBodyRef = useRef(null);
+  const [isStartingQuiz, setIsStartingQuiz] = useState(false);
 
   const [config, setConfig] = useState({
     sourceType: SOURCE_TYPE.MANUAL,
@@ -164,37 +165,43 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
     setErrors({});
   };
 
-  const handleStartQuiz = () => {
+  const handleStartQuiz = async () => {
     if (!validateStep(2)) return;
     
-    const finalConfig = { 
-      ...config, 
-      pdfFile,
-      timerEnabled: config.totalTimer > 0 
-    };
+    setIsStartingQuiz(true);
     
-    console.log('Starting quiz with config:', finalConfig);
-    toast.success('Quiz configuration complete! Starting quiz...');
-    onStartQuiz(finalConfig);
-    onClose();
-    
-    // Reset form
-    setConfig({
-      sourceType: SOURCE_TYPE.MANUAL,
-      sourceValue: '',
-      topic: '',
-      context: '',
-      questionCount: 5,
-      difficulty: 'medium',
-      questionTypes: ['MCQ'],
-      immediateFeedback: true,
-      totalTimer: 0,
-      questionTimer: 0,
-    });
-    setPdfFile(null);
-    setCurrentStep(1);
-    setShowAdvanced(false);
-    setErrors({});
+    try {
+      const finalConfig = { 
+        ...config, 
+        pdfFile,
+        timerEnabled: config.totalTimer > 0 
+      };
+      
+      console.log('Starting quiz with config:', finalConfig);
+      toast.success('Quiz configuration complete! Starting quiz...');
+      await onStartQuiz(finalConfig);
+      onClose();
+      
+      // Reset form
+      setConfig({
+        sourceType: SOURCE_TYPE.MANUAL,
+        sourceValue: '',
+        topic: '',
+        context: '',
+        questionCount: 5,
+        difficulty: 'medium',
+        questionTypes: ['MCQ'],
+        immediateFeedback: true,
+        totalTimer: 0,
+        questionTimer: 0,
+      });
+      setPdfFile(null);
+      setCurrentStep(1);
+      setShowAdvanced(false);
+      setErrors({});
+    } finally {
+      setIsStartingQuiz(false);
+    }
   };
 
   const formatTime = (seconds) => {
@@ -635,9 +642,11 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
             ) : (
               <Button
                 onClick={handleStartQuiz}
+                loading={isStartingQuiz}
+                disabled={isStartingQuiz}
                 className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
               >
-                Start Quiz
+                {isStartingQuiz ? 'Starting Quiz...' : 'Start Quiz'}
               </Button>
             )}
           </div>

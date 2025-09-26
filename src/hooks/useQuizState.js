@@ -13,8 +13,8 @@ const useQuizState = (quizConfig = null, answerRef) => {
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState([]);
-  const [timeRemaining, setTimeRemaining] = useState(config.totalTimer || 600);
-  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(config.questionTimer || 60);
+  const [timeRemaining, setTimeRemaining] = useState(config.timerEnabled ? (config.totalTimer || 600) : 0);
+  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(config.timerEnabled ? (config.questionTimer || 60) : 0);
   const [questionStartTime, setQuestionStartTime] = useState(null);
   const [isQuizActive, setIsQuizActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -540,10 +540,27 @@ const useQuizState = (quizConfig = null, answerRef) => {
     }
   };
 
-  const resumeQuiz = () => {
+    const resumeQuiz = () => {
     setIsPaused(false);
     setIsQuizActive(true);
-    toast('Quiz resumed');
+  };
+
+  const goToQuestion = (questionIndex) => {
+    // Only restrict navigation if question timer is enabled
+    if (config.questionTimer > 0) {
+      // When question timer is enabled, only allow navigation to the same question or if user has answered
+      if (questionIndex !== currentQuestionIndex && !selectedAnswer) {
+        return; // Prevent navigation if timer is active and question is not answered
+      }
+    }
+    
+    if (questionIndex >= 0 && questionIndex < quiz?.totalQuestions) {
+      setCurrentQuestionIndex(questionIndex);
+      if (config.timerEnabled && config.questionTimer > 0) {
+        setQuestionTimeRemaining(config.questionTimer);
+        setQuestionStartTime(Date.now());
+      }
+    }
   };
 
   const stopQuiz = async (finalAnswers) => {
@@ -624,6 +641,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
     resumeQuiz,
     stopQuiz,
     toggleImmediateFeedback,
+    goToQuestion,
     clearError: () => setError(null)
   };
 };
