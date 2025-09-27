@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
+import GlobalHeader from '../components/ui/GlobalHeader';
 import examBuddyAPI from '../services/api';
 
 const PausedQuizzesPage = ({ onNavigate }) => {
@@ -44,34 +45,10 @@ const PausedQuizzesPage = ({ onNavigate }) => {
   return (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
       
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <button 
-                onClick={() => onNavigate('home')} 
-                className="p-2 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/>
-                </svg>
-              </button>
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">EB</span>
-              </div>
-              <h1 className="text-xl font-semibold text-slate-800">Paused Quizzes</h1>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Badge variant="default">{pausedQuizzes.length} paused</Badge>
-            </div>
-          </div>
-        </div>
-      </header>
+      <GlobalHeader currentPage="paused" onNavigate={onNavigate} />
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-8">
         
         {/* Page Header */}
         <div className="mb-8">

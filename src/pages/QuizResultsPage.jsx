@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import GlobalHeader from '../components/ui/GlobalHeader';
 
 const QuizResultsPage = ({ results, onNavigate }) => {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -169,35 +170,12 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 			</div>
 
 			{/* Header */}
-			<header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 sticky top-0 z-20">
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center space-x-2 sm:space-x-3">
-							<button
-								onClick={() => onNavigate('home')}
-								className="p-1.5 sm:p-2 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-							>
-								<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-								</svg>
-							</button>
-							<div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
-								<span className="text-white font-bold text-sm sm:text-lg">EB</span>
-							</div>
-							<h1 className="text-lg sm:text-xl font-semibold text-slate-800">Quiz Results</h1>
-						</div>
-						<div className="text-sm font-medium text-slate-700">
-							<span className="hidden sm:inline">{results?.score}/{results?.totalQuestions} correct</span>
-							<span className="sm:hidden">{percentage}%</span>
-						</div>
-					</div>
-				</div>
-			</header>
+			<GlobalHeader currentPage="" onNavigate={onNavigate} />
 
 			{/* Main Content - Two Part Layout */}
 			<main className="relative">
 				{/* Desktop Layout */}
-				<div className="hidden lg:flex h-[calc(100vh-73px)]">
+				<div className="hidden lg:flex h-screen pt-24">
 					{/* Left Side - Fixed */}
 					<div className="w-1/2 flex-shrink-0 flex items-center justify-center p-8">
 						<div className="w-full max-w-lg space-y-6">
@@ -461,7 +439,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 				</div>
 
 				{/* Mobile/Tablet Layout */}
-				<div className="lg:hidden px-4 sm:px-6 py-6 space-y-6">
+				<div className="lg:hidden px-4 sm:px-6 pb-6 pt-24 space-y-6">
 					{/* Score Circle - Mobile */}
 					<div className="flex flex-col items-center">
 						<div className="relative inline-flex items-center justify-center mb-4">

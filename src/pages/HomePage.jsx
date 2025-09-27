@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import QuizSetupModal from '../components/quiz/QuizSetupModal';
+import GlobalHeader from '../components/ui/GlobalHeader';
 import examBuddyAPI from '../services/api';
 import { extractFromCurrentPage, extractFromPDFResult, normalizeManualTopic } from '../utils/contentExtractor';
 import { extractTextFromPDF } from '../utils/pdfExtractor';
@@ -58,208 +59,7 @@ const BackgroundEffects = () => (
         <div className="absolute top-3/4 left-1/2 w-72 h-72 bg-gradient-to-br from-amber-200/10 to-orange-200/10 rounded-full blur-3xl animate-pulse-slow animation-delay-4000" />
     </div>
 );
-const MinimalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
-    const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-    const navigationItems = [
-        { id: 'home', label: 'Home', icon: 'home', action: () => onNavigate('home') },
-        { id: 'bookmarks', label: 'Bookmarks', icon: 'bookmark', action: () => onNavigate('bookmarks') },
-        { id: 'paused', label: 'Paused', icon: 'pause', action: () => onNavigate('paused') },
-        { id: 'quiz', label: 'New Quiz', icon: 'plus', action: () => onNavigate('home', { openQuizSetup: true }) },
-    ];
-
-    const getIcon = (iconName, isActive = false) => {
-        const className = `w-5 h-5 transition-colors ${isActive ? 'text-amber-600' : 'text-slate-500'}`;
-
-        switch (iconName) {
-            case 'home':
-                return (
-                    <svg className={className} fill={isActive ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                );
-            case 'bookmark':
-                return (
-                    <svg className={className} fill={isActive ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                    </svg>
-                );
-            case 'pause':
-                return (
-                    <svg className={className} fill={isActive ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                );
-            case 'plus':
-                return (
-                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                );
-            case 'menu':
-                return (
-                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                );
-            default:
-                return null;
-        }
-    };
-
-    return (
-        <>
-            {/* Fixed Floating Header */}
-            <header className="fixed top-4 left-3 right-3 sp:left-4 sp:right-4 z-50 flex items-center justify-between">
-
-                {/* Left: Logo */}
-                <div className="flex items-center">
-                    <div className="w-10 h-10 sp:w-11 sp:h-11 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <span className="text-white font-bold text-sm sp:text-base">EB</span>
-                    </div>
-                </div>
-
-                {/* Center: Floating Navigation Island */}
-                <div className="flex-1 flex justify-center mx-3 sp:mx-4">
-                    <nav className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl shadow-xl shadow-black/5 px-2 py-2 flex items-center space-x-1">
-
-                        {/* Desktop Navigation - Show all items on wider screens */}
-                        <div className="hidden md:flex items-center space-x-1">
-                            {navigationItems.map((item) => {
-                                const isActive = currentPage === item.id;
-                                return (
-                                    <button
-                                        key={item.id}
-                                        onClick={item.action}
-                                        className={`flex items-center space-x-2 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 ${isActive
-                                                ? 'bg-amber-100 text-amber-700 shadow-sm'
-                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                                            }`}
-                                        aria-label={item.label}
-                                    >
-                                        {getIcon(item.icon, isActive)}
-                                        <span>{item.label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* Tablet Navigation - Show icons + key labels */}
-                        <div className="hidden sp:flex md:hidden items-center space-x-1">
-                            {navigationItems.slice(0, 3).map((item) => {
-                                const isActive = currentPage === item.id;
-                                return (
-                                    <button
-                                        key={item.id}
-                                        onClick={item.action}
-                                        className={`flex items-center space-x-1 px-2 py-2 rounded-xl font-medium text-xs transition-all duration-200 ${isActive
-                                                ? 'bg-amber-100 text-amber-700 shadow-sm'
-                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                                            }`}
-                                        aria-label={item.label}
-                                    >
-                                        {getIcon(item.icon, isActive)}
-                                        <span className="hidden sp:inline">{item.label}</span>
-                                    </button>
-                                );
-                            })}
-
-                            {/* More menu for remaining items */}
-                            <button
-                                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                                className="flex items-center px-2 py-2 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200"
-                                aria-label="More options"
-                            >
-                                {getIcon('menu')}
-                            </button>
-                        </div>
-
-                        {/* Mobile Navigation - Icon only */}
-                        <div className="flex sp:hidden items-center space-x-1">
-                            {navigationItems.slice(0, 2).map((item) => {
-                                const isActive = currentPage === item.id;
-                                return (
-                                    <button
-                                        key={item.id}
-                                        onClick={item.action}
-                                        className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 ${isActive
-                                                ? 'bg-amber-100 text-amber-700 shadow-sm'
-                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                                            }`}
-                                        aria-label={item.label}
-                                    >
-                                        {getIcon(item.icon, isActive)}
-                                    </button>
-                                );
-                            })}
-
-                            {/* Menu button for more options */}
-                            <button
-                                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                                className="flex items-center justify-center w-10 h-10 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200"
-                                aria-label="More options"
-                            >
-                                {getIcon('menu')}
-                            </button>
-                        </div>
-
-                    </nav>
-                </div>
-
-                {/* Right: Profile */}
-                <div className="flex items-center">
-                    <button
-                        className="w-10 h-10 sp:w-11 sp:h-11 bg-white/90 backdrop-blur-xl border border-white/50 rounded-xl shadow-lg flex items-center justify-center hover:bg-white transition-all duration-200"
-                        aria-label={userName ? `Profile: ${userName}` : 'Profile'}
-                    >
-                        {userName ? (
-                            <span className="text-sm sp:text-base font-semibold text-slate-700 uppercase">
-                                {userName.charAt(0)}
-                            </span>
-                        ) : (
-                            <svg className="w-5 h-5 sp:w-6 sp:h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                        )}
-                    </button>
-                </div>
-            </header>
-
-            {/* Mobile Menu Dropdown */}
-            {showMobileMenu && (
-                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 w-48">
-                    <div className="bg-white/95 backdrop-blur-xl border border-white/50 rounded-2xl shadow-2xl shadow-black/10 py-2 animate-fade-in-up">
-                        {navigationItems.slice(2).map((item) => {
-                            const isActive = currentPage === item.id;
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => {
-                                        item.action();
-                                        setShowMobileMenu(false);
-                                    }}
-                                    className={`w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors ${isActive ? 'text-amber-700 bg-amber-50' : 'text-slate-700'
-                                        }`}
-                                >
-                                    {getIcon(item.icon, isActive)}
-                                    <span className="font-medium">{item.label}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {/* Backdrop for mobile menu */}
-            {showMobileMenu && (
-                <div
-                    className="fixed inset-0 z-30 bg-black/10 backdrop-blur-sm"
-                    onClick={() => setShowMobileMenu(false)}
-                />
-            )}
-        </>
-    );
-};
 const ScrollCard = ({ card, onClick }) => (
     <div
         className="group relative w-[17.5rem] h-64 rounded-[0.65rem] transition-all duration-300 overflow-hidden transform hover:scale-[1.02] z-10 flex-shrink-0 cursor-pointer"
@@ -524,7 +324,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
             <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen overflow-x-hidden">
                 <BackgroundEffects />
                 {/* Minimal Header */}
-                <MinimalHeader
+                <GlobalHeader
                     userName={userProfile?.name}
                     currentPage="home"
                     onNavigate={onNavigate}
