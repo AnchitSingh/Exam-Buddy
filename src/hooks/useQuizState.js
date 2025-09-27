@@ -22,32 +22,47 @@ const useQuizState = (quizConfig = null, answerRef) => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [draftAnswers, setDraftAnswers] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const timerRef = useRef(null);
   const quizIdRef = useRef(null);
   const abortControllerRef = useRef(null);
   const currentQuestionIndexRef = useRef(0);
-  const stopQuizCallbackRef = useRef(null);
   const autoSaveTimerRef = useRef(null);
+  const isMountedRef = useRef(true);
+  const userAnswersRef = useRef([]);
 
-  // Keep currentQuestionIndexRef in sync
+  // Keep refs in sync
   useEffect(() => {
     currentQuestionIndexRef.current = currentQuestionIndex;
   }, [currentQuestionIndex]);
 
+  useEffect(() => {
+    userAnswersRef.current = userAnswers;
+  }, [userAnswers]);
+
   // Load bookmarks on initial load
   useEffect(() => {
+    let isMounted = true;
+    
     const loadBookmarks = async () => {
       try {
         const response = await examBuddyAPI.getBookmarks();
-        if (response.success) {
+        if (isMounted && response.success) {
           setBookmarkedQuestions(new Set(response.data.map(b => b.questionId)));
         }
       } catch (err) {
-        console.error('Failed to load bookmarks:', err);
+        if (isMounted) {
+          console.error('Failed to load bookmarks:', err);
+        }
       }
     };
+    
     loadBookmarks();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Initialize quiz when config changes
@@ -90,7 +105,10 @@ const useQuizState = (quizConfig = null, answerRef) => {
 
   // Cleanup on unmount
   useEffect(() => {
+    isMountedRef.current = true;
+    
     return () => {
+      isMountedRef.current = false;
       if (timerRef.current) clearInterval(timerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -98,6 +116,13 @@ const useQuizState = (quizConfig = null, answerRef) => {
   }, []);
 
   const initializeQuiz = async (config) => {
+    // Validate config
+    if (!config || (!config.questions && !config.topic)) {
+      setError('Invalid quiz configuration');
+      toast.error('Invalid quiz configuration');
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -122,7 +147,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
         response = await examBuddyAPI.generateQuiz(config);
       }
 
-      if (response.success) {
+      if (isMountedRef.current && response.success) {
         const newQuiz = response.data;
         setQuiz(newQuiz);
         setConfig({ ...config, ...newQuiz.config });
@@ -130,15 +155,19 @@ const useQuizState = (quizConfig = null, answerRef) => {
         setIsQuizActive(true);
         quizIdRef.current = newQuiz.id;
         toast.success('Quiz started successfully');
-      } else {
+      } else if (isMountedRef.current) {
         setError(response.error || 'Failed to generate quiz');
         toast.error(response.error || 'Failed to generate quiz');
       }
     } catch (err) {
-      setError('Network error: Could not generate quiz');
-      toast.error('Network error: Could not generate quiz');
+      if (isMountedRef.current) {
+        setError('Network error: Could not generate quiz');
+        toast.error('Network error: Could not generate quiz');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -147,7 +176,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
       setIsLoading(true);
       const response = await examBuddyAPI.getActiveQuiz(quizId);
 
-      if (response.success) {
+      if (isMountedRef.current && response.success) {
         const savedState = response.data;
         
         setQuiz({
@@ -170,19 +199,75 @@ const useQuizState = (quizConfig = null, answerRef) => {
 
         await examBuddyAPI.removePausedQuiz(quizId);
         toast.success('Quiz loaded successfully');
-      } else {
+      } else if (isMountedRef.current) {
         setError('Could not load quiz');
         toast.error('Could not load quiz');
       }
     } catch (err) {
-      setError('Failed to load quiz');
-      toast.error('Failed to load quiz');
+      if (isMountedRef.current) {
+        setError('Failed to load quiz');
+        toast.error('Failed to load quiz');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
-  // Fixed timer with proper stopQuiz handling
+  // Fixed stopQuiz with proper state management
+  const stopQuiz = useCallback(async (finalAnswers = null) => {
+    if (isSubmitting) return null;
+    
+    try {
+      setIsSubmitting(true);
+      setIsQuizActive(false);
+      setIsPaused(false);
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+
+      // Use provided finalAnswers or fallback to userAnswers
+      const answersToSubmit = finalAnswers || userAnswersRef.current;
+      
+      // Filter out null answers and drafts
+      const validAnswers = answersToSubmit.filter(answer => {
+        return answer && !answer.isDraft && !answer.isPending;
+      });
+
+      console.log('Final answers being submitted:', validAnswers);
+
+      const response = await examBuddyAPI.completeQuiz(
+        quizIdRef.current, 
+        validAnswers,
+        quiz
+      );
+
+      if (response.success) {
+        return {
+          ...response.data,
+          quiz: quiz,
+          config: config
+        };
+      } else {
+        throw new Error('Failed to complete quiz');
+      }
+    } catch (err) {
+      console.error('Error completing quiz:', err);
+      if (isMountedRef.current) {
+        setError('Failed to complete quiz');
+      }
+      return null;
+    } finally {
+      if (isMountedRef.current) {
+        setIsSubmitting(false);
+      }
+    }
+  }, [quiz, config, isSubmitting]);
+
+  // Fixed timer with proper auto-submission
   useEffect(() => {
     if (!isQuizActive || !config.timerEnabled || isPaused) {
       if (timerRef.current) {
@@ -195,13 +280,66 @@ const useQuizState = (quizConfig = null, answerRef) => {
     timerRef.current = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
-          if (stopQuizCallbackRef.current) {
-            setTimeout(() => {
-              if (stopQuizCallbackRef.current) {
-                stopQuizCallbackRef.current();
-              }
-            }, 0);
+          // Clear the interval immediately
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
           }
+          
+          // Auto-submit the quiz
+          setTimeout(() => {
+            if (!isMountedRef.current) return;
+            
+            // Prepare final answers including any unsaved text
+            let finalAnswers = [...userAnswersRef.current];
+            
+            if (answerRef?.current) {
+              const { textAnswer, fillBlanks } = answerRef.current;
+              const currentQ = quiz?.questions?.[currentQuestionIndexRef.current];
+              
+              if (currentQ && !finalAnswers[currentQuestionIndexRef.current]) {
+                if (currentQ.type === 'Short Answer' && textAnswer?.trim()) {
+                  finalAnswers[currentQuestionIndexRef.current] = {
+                    questionId: currentQ.id,
+                    questionType: 'Short Answer',
+                    selectedOption: 0,
+                    isCorrect: false,
+                    timeSpent: 30,
+                    totalTimeWhenAnswered: 0,
+                    textAnswer: textAnswer.trim(),
+                    autoSelected: true,
+                    isDraft: false
+                  };
+                } else if (currentQ.type === 'Fill in Blank' && fillBlanks?.some(b => b?.trim())) {
+                  const isCorrect = currentQ.acceptableAnswers?.some(acceptableSet =>
+                    acceptableSet.every((acceptable, index) =>
+                      fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+                    )
+                  ) || false;
+                  
+                  finalAnswers[currentQuestionIndexRef.current] = {
+                    questionId: currentQ.id,
+                    questionType: 'Fill in Blank',
+                    selectedOption: 0,
+                    isCorrect: isCorrect,
+                    timeSpent: 30,
+                    totalTimeWhenAnswered: 0,
+                    textAnswer: fillBlanks,
+                    autoSelected: true,
+                    isDraft: false
+                  };
+                }
+              }
+            }
+            
+            // Submit the quiz
+            stopQuiz(finalAnswers).then(results => {
+              if (results) {
+                toast.success('Time\'s up! Quiz submitted automatically.');
+              }
+            });
+          }, 100);
+          
           return 0;
         }
         return prev - 1;
@@ -214,13 +352,13 @@ const useQuizState = (quizConfig = null, answerRef) => {
         timerRef.current = null;
       }
     };
-  }, [isQuizActive, config.timerEnabled, isPaused]);
+  }, [isQuizActive, config.timerEnabled, isPaused, quiz, stopQuiz]);
 
   const currentQuestion = quiz?.questions?.[currentQuestionIndex] || null;
   const isLastQuestion = currentQuestionIndex === (quiz?.questions?.length - 1) || false;
   const currentQuestionNumber = currentQuestionIndex + 1;
 
-  // Save draft answer for text-based questions
+  // Fixed saveDraftAnswer
   const saveDraftAnswer = useCallback(() => {
     if (!answerRef?.current) return;
     
@@ -247,9 +385,9 @@ const useQuizState = (quizConfig = null, answerRef) => {
         }
       }));
     }
-  }, [quiz, answerRef]);
+  }, [quiz]);
 
-  // Fixed selectAnswer - properly handle text answers
+  // Fixed selectAnswer with race condition protection
   const selectAnswer = useCallback(async (optionIndex, isCorrect, autoSelected = false, textAnswer = null, isDraft = false) => {
     try {
       const newController = new AbortController();
@@ -276,7 +414,8 @@ const useQuizState = (quizConfig = null, answerRef) => {
         totalTimeWhenAnswered: timeRemaining,
         autoSelected,
         textAnswer,
-        isDraft
+        isDraft,
+        isPending: false
       };
 
       console.log('Saving answer at index:', currentQIndex, 'Answer:', answer);
@@ -307,6 +446,15 @@ const useQuizState = (quizConfig = null, answerRef) => {
       // Make API call for evaluation if needed and not a draft
       if (!isDraft && config.immediateFeedback && (currentQ.type === 'Short Answer' || currentQ.type === 'Fill in Blank')) {
         try {
+          // Mark as pending
+          setUserAnswers(currentAnswers => {
+            const newAnswers = [...currentAnswers];
+            if (newAnswers[currentQIndex]) {
+              newAnswers[currentQIndex].isPending = true;
+            }
+            return newAnswers;
+          });
+
           const response = await examBuddyAPI.submitAnswer(
             quizIdRef.current,
             currentQ.id,
@@ -314,7 +462,12 @@ const useQuizState = (quizConfig = null, answerRef) => {
             { signal: newController.signal }
           );
 
-          if (currentQuestionIndexRef.current === currentQIndex && response.success) {
+          // Check if component is still mounted and index hasn't changed
+          if (!isMountedRef.current || currentQuestionIndexRef.current !== currentQIndex) {
+            return;
+          }
+
+          if (response.success) {
             setShowFeedback(true);
             
             setUserAnswers(currentAnswers => {
@@ -339,15 +492,28 @@ const useQuizState = (quizConfig = null, answerRef) => {
             return;
           }
           
-          console.error('Error submitting answer:', err);
+          if (isMountedRef.current) {
+            console.error('Error submitting answer:', err);
+            // Remove pending status on error
+            setUserAnswers(currentAnswers => {
+              const newAnswers = [...currentAnswers];
+              if (newAnswers[currentQIndex]) {
+                newAnswers[currentQIndex].isPending = false;
+              }
+              return newAnswers;
+            });
+          }
         }
       }
     } catch (err) {
-      console.error('Error in selectAnswer:', err);
-      setError('Failed to submit answer');
+      if (isMountedRef.current) {
+        console.error('Error in selectAnswer:', err);
+        setError('Failed to submit answer');
+      }
     }
   }, [quiz, config, timeRemaining, draftAnswers]);
 
+  // Fixed saveCurrentAnswer with proper dependencies
   const saveCurrentAnswer = useCallback(() => {
     if (!answerRef?.current) return;
     
@@ -367,9 +533,9 @@ const useQuizState = (quizConfig = null, answerRef) => {
       ) || false;
       selectAnswer(0, isCorrect, false, fillBlanks, false);
     }
-  }, [quiz, currentQuestionIndex, answerRef, selectAnswer]);
+  }, [quiz, currentQuestionIndex, selectAnswer]);
 
-  const nextQuestion = () => {
+  const nextQuestion = useCallback(() => {
     if (!isLastQuestion) {
       saveCurrentAnswer(); // Save current answer before moving
       
@@ -383,9 +549,9 @@ const useQuizState = (quizConfig = null, answerRef) => {
       }
       setCurrentQuestionIndex(prev => prev + 1);
     }
-  };
+  }, [isLastQuestion, saveCurrentAnswer, config.immediateFeedback]);
 
-  const previousQuestion = () => {
+  const previousQuestion = useCallback(() => {
     if (currentQuestionIndex > 0) {
       saveCurrentAnswer(); // Save current answer before moving
       
@@ -399,20 +565,23 @@ const useQuizState = (quizConfig = null, answerRef) => {
       }
       setCurrentQuestionIndex(prev => prev - 1);
     }
-  };
+  }, [currentQuestionIndex, saveCurrentAnswer, config.immediateFeedback]);
 
-  const goToQuestion = (questionIndex) => {
+  const goToQuestion = useCallback((questionIndex) => {
     if (questionIndex >= 0 && questionIndex < quiz?.totalQuestions && questionIndex !== currentQuestionIndex) {
       saveCurrentAnswer(); // Save current answer before jumping
       
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-      
-      setCurrentQuestionIndex(questionIndex);
+      // Add a small delay to ensure save completes
+      setTimeout(() => {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+        
+        setCurrentQuestionIndex(questionIndex);
+      }, 50);
     }
-  };
+  }, [quiz?.totalQuestions, currentQuestionIndex, saveCurrentAnswer]);
 
   const toggleBookmark = async () => {
     if (!currentQuestion) return;
@@ -455,8 +624,10 @@ const useQuizState = (quizConfig = null, answerRef) => {
       }
     } catch (err) {
       console.error('Error toggling bookmark:', err);
-      setError('Failed to update bookmark');
-      toast.error('Failed to update bookmark');
+      if (isMountedRef.current) {
+        setError('Failed to update bookmark');
+        toast.error('Failed to update bookmark');
+      }
     }
   };
 
@@ -468,8 +639,8 @@ const useQuizState = (quizConfig = null, answerRef) => {
       setIsQuizActive(false);
 
       const score = {
-        correct: userAnswers.filter(a => a && a.isCorrect && !a.isDraft).length,
-        total: userAnswers.filter(a => a && !a.isDraft).length
+        correct: userAnswers.filter(a => a && a.isCorrect && !a.isDraft && !a.isPending).length,
+        total: userAnswers.filter(a => a && !a.isDraft && !a.isPending).length
       };
 
       const quizState = {
@@ -498,7 +669,9 @@ const useQuizState = (quizConfig = null, answerRef) => {
       }
     } catch (err) {
       console.error('Error pausing quiz:', err);
-      setError('Failed to save quiz progress');
+      if (isMountedRef.current) {
+        setError('Failed to save quiz progress');
+      }
     }
   };
 
@@ -506,54 +679,6 @@ const useQuizState = (quizConfig = null, answerRef) => {
     setIsPaused(false);
     setIsQuizActive(true);
   };
-
-  // Fixed stopQuiz - accept finalAnswers parameter
-const stopQuiz = async (finalAnswers = null) => {
-  try {
-    setIsQuizActive(false);
-    setIsPaused(false);
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-
-    // Use provided finalAnswers or fallback to userAnswers
-    const answersToSubmit = finalAnswers || userAnswers;
-    
-    // Filter out null answers and drafts
-    const validAnswers = answersToSubmit.filter(answer => {
-      return answer && !answer.isDraft;
-    });
-
-    console.log('Final answers being submitted:', validAnswers);
-
-    const response = await examBuddyAPI.completeQuiz(
-      quizIdRef.current, 
-      validAnswers,
-      quiz
-    );
-
-    if (response.success) {
-      return {
-        ...response.data,
-        quiz: quiz,
-        config: config
-      };
-    } else {
-      throw new Error('Failed to complete quiz');
-    }
-  } catch (err) {
-    console.error('Error completing quiz:', err);
-    setError('Failed to complete quiz');
-    return null;
-  }
-};
-
-  // Store stopQuiz reference for timer
-  useEffect(() => {
-    stopQuizCallbackRef.current = stopQuiz;
-  }, [stopQuiz]);
 
   const toggleImmediateFeedback = () => {
     const newSetting = !config.immediateFeedback;
@@ -571,8 +696,10 @@ const stopQuiz = async (finalAnswers = null) => {
   // Fixed progress calculation
   const getProgress = () => {
     if (!quiz?.questions) return 0;
-    const answeredCount = userAnswers.filter(answer => answer != null && !answer.isDraft).length;
-    return (answeredCount / quiz.questions.length) * 100;
+    const answeredCount = userAnswers.filter(answer => 
+      answer != null && !answer.isDraft && !answer.isPending
+    ).length;
+    return Math.min(100, (answeredCount / quiz.questions.length) * 100);
   };
 
   // Get draft for current question
@@ -599,6 +726,7 @@ const stopQuiz = async (finalAnswers = null) => {
     progress: getProgress(),
     isBookmarked: currentQuestion ? bookmarkedQuestions.has(currentQuestion.id) : false,
     currentDraft: getCurrentDraft(),
+    isSubmitting,
     initializeQuiz,
     loadExistingQuiz,
     selectAnswer,
@@ -611,6 +739,7 @@ const stopQuiz = async (finalAnswers = null) => {
     toggleImmediateFeedback,
     goToQuestion,
     saveDraftAnswer,
+    saveCurrentAnswer,
     clearError: () => setError(null)
   };
 };

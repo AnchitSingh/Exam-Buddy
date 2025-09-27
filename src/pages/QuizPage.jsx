@@ -66,7 +66,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     if (currentQuestion) {
       // Reset states first
       setTextAnswer('');
-      
+
       if (currentQuestion.type === 'Fill in Blank') {
         const questionText = currentQuestion.question || '';
         const blanksCount = (questionText.match(/_______/g) || []).length;
@@ -77,7 +77,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
       // Restore from saved answer first, then from draft
       const existingAnswer = userAnswers[currentQuestionIndex];
-      
+
       if (existingAnswer?.textAnswer) {
         if (currentQuestion.type === 'Short Answer' && typeof existingAnswer.textAnswer === 'string') {
           setTextAnswer(existingAnswer.textAnswer);
@@ -108,7 +108,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
     return () => clearTimeout(timer);
   }, [textAnswer, fillBlanks, currentQuestion, saveDraftAnswer]);
-
+  // Add this effect in QuizPage after the other effects
+  React.useEffect(() => {
+    // Check if time is up and quiz needs to be auto-submitted
+    if (timeRemaining === 0 && isQuizActive && config.timerEnabled) {
+      // Auto-submit the quiz
+      confirmStop();
+    }
+  }, [timeRemaining, isQuizActive, config.timerEnabled]);
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -141,7 +148,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       ) || false;
       selectAnswer(0, isCorrect, false, fillBlanks, false);
     }
-    
+
     // Small delay to ensure answer is saved before navigation
     setTimeout(() => {
       nextQuestion();
@@ -171,93 +178,93 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
   // Fixed confirmStop function
   // Fixed confirmStop function
-const confirmStop = async () => {
-  setIsStoppingQuiz(true);
-  try {
-    let finalAnswers = [...userAnswers];
+  const confirmStop = async () => {
+    setIsStoppingQuiz(true);
+    try {
+      let finalAnswers = [...userAnswers];
 
-    // Save the current question's answer if it exists and hasn't been saved yet
-    if (currentQuestion) {
-      const currentAnswer = finalAnswers[currentQuestionIndex];
-      
-      // Check if we need to save a text-based answer
-      if (!currentAnswer || !currentAnswer.textAnswer) {
-        if (currentQuestion.type === 'Short Answer' && textAnswer.trim()) {
+      // Save the current question's answer if it exists and hasn't been saved yet
+      if (currentQuestion) {
+        const currentAnswer = finalAnswers[currentQuestionIndex];
+
+        // Check if we need to save a text-based answer
+        if (!currentAnswer || !currentAnswer.textAnswer) {
+          if (currentQuestion.type === 'Short Answer' && textAnswer.trim()) {
+            const answer = {
+              questionId: currentQuestion.id,
+              questionType: 'Short Answer',
+              selectedOption: 0,
+              isCorrect: false,
+              timeSpent: 30,
+              totalTimeWhenAnswered: timeRemaining,
+              textAnswer: textAnswer.trim(),
+              autoSelected: false,
+              isDraft: false
+            };
+            finalAnswers[currentQuestionIndex] = answer;
+
+          } else if (currentQuestion.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
+            const isCorrect = currentQuestion.acceptableAnswers?.some(acceptableSet =>
+              acceptableSet.every((acceptable, index) =>
+                fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
+              )
+            ) || false;
+
+            const answer = {
+              questionId: currentQuestion.id,
+              questionType: 'Fill in Blank',
+              selectedOption: 0,
+              isCorrect: isCorrect,
+              timeSpent: 30,
+              totalTimeWhenAnswered: timeRemaining,
+              textAnswer: fillBlanks,
+              autoSelected: false,
+              isDraft: false
+            };
+            finalAnswers[currentQuestionIndex] = answer;
+          }
+        }
+
+        // Also check for MCQ/True-False if selectedAnswer exists but not saved
+        if ((currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False') &&
+          selectedAnswer && !currentAnswer) {
           const answer = {
             questionId: currentQuestion.id,
-            questionType: 'Short Answer',
-            selectedOption: 0,
-            isCorrect: false,
+            questionType: currentQuestion.type,
+            selectedOption: selectedAnswer.optionIndex,
+            isCorrect: selectedAnswer.isCorrect,
             timeSpent: 30,
             totalTimeWhenAnswered: timeRemaining,
-            textAnswer: textAnswer.trim(),
-            autoSelected: false,
-            isDraft: false
-          };
-          finalAnswers[currentQuestionIndex] = answer;
-          
-        } else if (currentQuestion.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
-          const isCorrect = currentQuestion.acceptableAnswers?.some(acceptableSet =>
-            acceptableSet.every((acceptable, index) =>
-              fillBlanks[index]?.toLowerCase().trim() === acceptable.toLowerCase()
-            )
-          ) || false;
-          
-          const answer = {
-            questionId: currentQuestion.id,
-            questionType: 'Fill in Blank',
-            selectedOption: 0,
-            isCorrect: isCorrect,
-            timeSpent: 30,
-            totalTimeWhenAnswered: timeRemaining,
-            textAnswer: fillBlanks,
+            textAnswer: null,
             autoSelected: false,
             isDraft: false
           };
           finalAnswers[currentQuestionIndex] = answer;
         }
       }
-      
-      // Also check for MCQ/True-False if selectedAnswer exists but not saved
-      if ((currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False') && 
-          selectedAnswer && !currentAnswer) {
-        const answer = {
-          questionId: currentQuestion.id,
-          questionType: currentQuestion.type,
-          selectedOption: selectedAnswer.optionIndex,
-          isCorrect: selectedAnswer.isCorrect,
-          timeSpent: 30,
-          totalTimeWhenAnswered: timeRemaining,
-          textAnswer: null,
-          autoSelected: false,
-          isDraft: false
-        };
-        finalAnswers[currentQuestionIndex] = answer;
-      }
-    }
 
-    // Pass the finalAnswers to stopQuiz
-    const results = await stopQuiz(finalAnswers);
-    
-    if (results) {
-      setQuizResults(results);
-      setShowStopModal(false);
-      setAITask('feedback');
-      setShowAIProcessing(true);
-      
-      setTimeout(() => {
-        setShowAIProcessing(false);
-      }, 2000);
-      
-      toast.success('Quiz completed! Generating results...');
+      // Pass the finalAnswers to stopQuiz
+      const results = await stopQuiz(finalAnswers);
+
+      if (results) {
+        setQuizResults(results);
+        setShowStopModal(false);
+        setAITask('feedback');
+        setShowAIProcessing(true);
+
+        setTimeout(() => {
+          setShowAIProcessing(false);
+        }, 2000);
+
+        toast.success('Quiz completed! Generating results...');
+      }
+    } catch (error) {
+      console.error('Error stopping quiz:', error);
+      toast.error('Failed to complete quiz');
+    } finally {
+      setIsStoppingQuiz(false);
     }
-  } catch (error) {
-    console.error('Error stopping quiz:', error);
-    toast.error('Failed to complete quiz');
-  } finally {
-    setIsStoppingQuiz(false);
-  }
-};
+  };
 
   const handleAnswerSelect = (optionIndex, isCorrect, autoSelected = false, textAnswer = null) => {
     if (selectedAnswer && !autoSelected && config.immediateFeedback) return;
@@ -314,18 +321,16 @@ const confirmStop = async () => {
                 key={index}
                 onClick={() => handleAnswerSelect(index, option.isCorrect)}
                 disabled={selectedAnswer !== null && config.immediateFeedback}
-                className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-300 ${
-                  selectedAnswer?.optionIndex === index
+                className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-300 ${selectedAnswer?.optionIndex === index
                     ? 'border-amber-500 bg-gradient-to-r from-amber-50 to-orange-50 shadow-lg scale-[1.02]'
                     : 'border-white/50 bg-white/60 hover:border-amber-200 hover:bg-white/80'
-                } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
+                  } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
               >
                 <div className="flex items-center space-x-3">
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                    selectedAnswer?.optionIndex === index
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${selectedAnswer?.optionIndex === index
                       ? 'border-amber-500 bg-amber-500'
                       : 'border-slate-300'
-                  }`}>
+                    }`}>
                     {selectedAnswer?.optionIndex === index && (
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
@@ -347,11 +352,10 @@ const confirmStop = async () => {
             <button
               onClick={() => handleAnswerSelect(0, currentQuestion.options?.[0]?.isCorrect)}
               disabled={selectedAnswer !== null && config.immediateFeedback}
-              className={`p-8 rounded-2xl border-2 transition-all duration-300 ${
-                selectedAnswer?.optionIndex === 0
+              className={`p-8 rounded-2xl border-2 transition-all duration-300 ${selectedAnswer?.optionIndex === 0
                   ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg scale-[1.02]'
                   : 'border-white/50 bg-white/60 hover:border-green-200 hover:bg-white/80'
-              } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
+                } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               <svg className="w-10 h-10 mx-auto mb-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -364,11 +368,10 @@ const confirmStop = async () => {
             <button
               onClick={() => handleAnswerSelect(1, currentQuestion.options?.[1]?.isCorrect)}
               disabled={selectedAnswer !== null && config.immediateFeedback}
-              className={`p-8 rounded-2xl border-2 transition-all duration-300 ${
-                selectedAnswer?.optionIndex === 1
+              className={`p-8 rounded-2xl border-2 transition-all duration-300 ${selectedAnswer?.optionIndex === 1
                   ? 'border-red-500 bg-gradient-to-br from-red-50 to-pink-50 shadow-lg scale-[1.02]'
                   : 'border-white/50 bg-white/60 hover:border-red-200 hover:bg-white/80'
-              } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
+                } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               <svg className="w-10 h-10 mx-auto mb-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -645,13 +648,12 @@ const confirmStop = async () => {
                       <button
                         key={idx}
                         onClick={() => goToQuestion(idx)}
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${
-                          isActive
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${isActive
                             ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110'
                             : isAnswered
                               ? 'bg-green-100 text-green-700 border border-green-200'
                               : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-200'
-                        }`}
+                          }`}
                       >
                         {questionNumber}
                       </button>
@@ -713,11 +715,10 @@ const confirmStop = async () => {
                 <div className="flex items-center space-x-1 ml-4">
                   <button
                     onClick={toggleBookmark}
-                    className={`p-2 sm:p-2.5 rounded-xl transition-all duration-300 ${
-                      isBookmarked
+                    className={`p-2 sm:p-2.5 rounded-xl transition-all duration-300 ${isBookmarked
                         ? 'text-amber-600 bg-amber-50 shadow-md'
                         : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                    }`}
+                      }`}
                   >
                     <svg className="w-4 sm:w-5 h-4 sm:h-5" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -796,11 +797,10 @@ const confirmStop = async () => {
                 <button
                   onClick={isLastQuestion ? confirmStop : handleNext}
                   disabled={config.questionTimer > 0 && !hasAnswer() && !isLastQuestion || isStoppingQuiz}
-                  className={`px-6 sm:px-8 py-3 rounded-2xl font-semibold transition-all duration-300 transform order-1 sm:order-2 w-full sm:w-auto ${
-                    (!config.questionTimer || hasAnswer() || isLastQuestion) && !isStoppingQuiz
+                  className={`px-6 sm:px-8 py-3 rounded-2xl font-semibold transition-all duration-300 transform order-1 sm:order-2 w-full sm:w-auto ${(!config.questionTimer || hasAnswer() || isLastQuestion) && !isStoppingQuiz
                       ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-xl hover:scale-105'
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  }`}
+                    }`}
                 >
                   {isStoppingQuiz ? 'Finishing Quiz...' : (isLastQuestion ? 'Finish Quiz' : 'Next Question')} →
                 </button>
@@ -822,13 +822,12 @@ const confirmStop = async () => {
                     <button
                       key={idx}
                       onClick={() => goToQuestion(idx)}
-                      className={`aspect-square rounded-xl flex items-center justify-center text-sm font-medium transition-all duration-300 ${
-                        isActive
+                      className={`aspect-square rounded-xl flex items-center justify-center text-sm font-medium transition-all duration-300 ${isActive
                           ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110'
                           : isAnswered
                             ? 'bg-green-100 text-green-700 border border-green-200'
                             : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-200'
-                      }`}
+                        }`}
                     >
                       {questionNumber}
                     </button>
