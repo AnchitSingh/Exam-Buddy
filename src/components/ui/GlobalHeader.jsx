@@ -23,6 +23,49 @@ const Tooltip = ({ children, content }) => {
     );
 };
 
+// Expanding Nav Item Component
+const ExpandingNavItem = ({ item, isActive, onClick }) => {
+    const [isHovered, setIsHovered] = useState(false);
+    
+    return (
+        <button
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onClick={onClick}
+            className={`
+                relative flex items-center justify-start
+                h-10 rounded-full
+                transition-all duration-300 ease-out
+                ${isHovered ? 'w-auto px-4' : 'w-10 px-0'}
+                ${isActive 
+                    ? 'bg-white text-amber-700 shadow-sm' 
+                    : 'text-slate-600 hover:bg-slate-50'
+                }
+            `}
+            style={{
+                minWidth: isHovered ? '120px' : '40px',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+        >
+            <div className="flex items-center justify-center w-10 flex-shrink-0">
+                {getIcon(item.icon, isActive)}
+            </div>
+            <span 
+                className={`
+                    ml-2 text-sm font-medium whitespace-nowrap
+                    transition-all duration-300
+                    ${isHovered ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'}
+                `}
+                style={{
+                    transition: 'opacity 0.3s ease-out, max-width 0.3s ease-out',
+                }}
+            >
+                {item.label}
+            </span>
+        </button>
+    );
+};
+
 // Centralized icon management function for consistency
 const getIcon = (iconName, isActive = false) => {
     const className = `w-5 h-5 transition-colors ${isActive ? 'text-amber-600' : 'text-slate-500'}`;
@@ -34,9 +77,9 @@ const getIcon = (iconName, isActive = false) => {
         case 'home':
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" color="#000000" fill="none">
-                    <path d="M2 10L11.1076 2.80982C11.3617 2.60915 11.6761 2.5 12 2.5C12.3239 2.5 12.6383 2.60915 12.8924 2.80982L16.5 5.65789V4C16.5 3.44772 16.9477 3 17.5 3H18.5C19.0523 3 19.5 3.44771 19.5 4V8.02632L22 10" stroke="#141B34" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M20 11.5V15.5C20 18.3284 20 19.7426 19.1213 20.6213C18.2426 21.5 16.8284 21.5 14 21.5H10C7.17157 21.5 5.75736 21.5 4.87868 20.6213C4 19.7426 4 18.3284 4 15.5V11.5" stroke="#141B34" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M15.0011 15.5C14.2016 16.1224 13.1513 16.5 12.0011 16.5C10.8509 16.5 9.80062 16.1224 9.0011 15.5" stroke="#141B34" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M2 10L11.1076 2.80982C11.3617 2.60915 11.6761 2.5 12 2.5C12.3239 2.5 12.6383 2.60915 12.8924 2.80982L16.5 5.65789V4C16.5 3.44772 16.9477 3 17.5 3H18.5C19.0523 3 19.5 3.44771 19.5 4V8.02632L22 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M20 11.5V15.5C20 18.3284 20 19.7426 19.1213 20.6213C18.2426 21.5 16.8284 21.5 14 21.5H10C7.17157 21.5 5.75736 21.5 4.87868 20.6213C4 19.7426 4 18.3284 4 15.5V11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M15.0011 15.5C14.2016 16.1224 13.1513 16.5 12.0011 16.5C10.8509 16.5 9.80062 16.1224 9.0011 15.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
             );
         case 'bookmark':
@@ -118,7 +161,7 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                                         onClick={item.action}
                                         className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                                             isActive
-                                                ? 'bg-amber-100 text-amber-700 shadow-sm'
+                                                ? 'bg-white text-amber-700 shadow-sm'
                                                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
                                         }`}
                                     >
@@ -129,23 +172,17 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             })}
                         </nav>
                         
-                        {/* Medium Screen Navigation (md to lg) - Icons Only */}
+                        {/* Medium Screen Navigation (md to lg) - Expanding Icons */}
                         <nav className="hidden md:flex lg:hidden items-center space-x-1 border-l border-gray-200 ml-2 pl-2">
-                             {navigationItems.map((item) => {
+                            {navigationItems.map((item) => {
                                 const isActive = currentPage === item.id;
                                 return (
-                                    <button
+                                    <ExpandingNavItem
                                         key={item.id}
+                                        item={item}
+                                        isActive={isActive}
                                         onClick={item.action}
-                                        aria-label={item.label}
-                                        className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
-                                            isActive
-                                                ? 'bg-amber-100 text-amber-700 shadow-sm'
-                                                : 'text-slate-600 hover:bg-slate-50'
-                                        }`}
-                                    >
-                                        {getIcon(item.icon, isActive)}
-                                    </button>
+                                    />
                                 );
                             })}
                         </nav>
@@ -172,13 +209,13 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             {navigationItems.map((item) => {
                                 const isActive = currentPage === item.id;
                                 return (
-                                    <Tooltip key={item.id} content={item.label} isVisible={true}>
+                                    <Tooltip key={item.id} content={item.label}>
                                         <button
                                             onClick={item.action}
                                             aria-label={item.label}
                                             className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
                                                 isActive
-                                                    ? 'bg-amber-100 text-amber-700 shadow-sm'
+                                                    ? 'bg-white text-amber-700 shadow-sm'
                                                     : 'text-slate-600 hover:bg-slate-50'
                                             }`}
                                         >
@@ -189,7 +226,7 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             })}
                             
                             {/* Profile Icon for Mobile with tooltip */}
-                            <Tooltip content={userName ? `Profile: ${userName}` : 'Profile'} isVisible={true}>
+                            <Tooltip content={userName ? `Profile: ${userName}` : 'Profile'}>
                                 <button
                                     className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors ml-2"
                                     aria-label={userName ? `Profile: ${userName}` : 'Profile'}

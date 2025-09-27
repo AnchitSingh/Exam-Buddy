@@ -6,6 +6,7 @@ import AIProcessingFeedback from '../components/ui/AIProcessingFeedback';
 import useQuizState from '../hooks/useQuizState';
 import QuizStyles from './QuizStyles';
 import QuizResultsPage from './QuizResultsPage';
+import BackgroundEffects from '../components/ui/BackgroundEffects';
 
 const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const answerRef = useRef();
@@ -108,6 +109,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
     return () => clearTimeout(timer);
   }, [textAnswer, fillBlanks, currentQuestion, saveDraftAnswer]);
+  
   // Add this effect in QuizPage after the other effects
   React.useEffect(() => {
     // Check if time is up and quiz needs to be auto-submitted
@@ -116,6 +118,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       confirmStop();
     }
   }, [timeRemaining, isQuizActive, config.timerEnabled]);
+  
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -176,7 +179,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     setShowStopModal(true);
   };
 
-  // Fixed confirmStop function
   // Fixed confirmStop function
   const confirmStop = async () => {
     setIsStoppingQuiz(true);
@@ -518,110 +520,119 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
   return (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
-      {/* Background Elements */}
-      <div className="absolute inset-0 -z-10 opacity-30">
-        <div className="absolute top-1/3 -left-20 w-96 h-96 bg-amber-100/30 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-1/3 -right-20 w-96 h-96 bg-orange-100/30 rounded-full blur-3xl"></div>
-      </div>
+      <BackgroundEffects />
 
-      {/* Enhanced Header */}
-      <header className="sticky top-0 z-20 bg-white/70 backdrop-blur-xl border-b border-amber-100/50 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            {/* Left: Progress and Question Number */}
-            <div className="flex items-center space-x-4 sm:space-x-6">
-              {/* Logo/Icon */}
-              <div className="hidden sm:block w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-
-              {/* Progress Info */}
-              <div className="flex-1 sm:flex-none">
-                <div className="flex items-center space-x-2 sm:space-x-3 mb-1">
-                  <span className="text-xs sm:text-sm font-medium text-slate-600">Question</span>
-                  <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                    {currentQuestionNumber}
-                  </span>
-                  <span className="text-xs sm:text-sm text-slate-500">of {quiz.totalQuestions}</span>
-                </div>
-                <div className="w-32 sm:w-48 bg-slate-200/50 rounded-full h-1.5 sm:h-2">
-                  <div
-                    className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-500 shadow-sm"
-                    style={{ width: `${progress}%` }}
-                  ></div>
-                </div>
-              </div>
+      {/* Modern Island Header - Compact like Global Header */}
+      <header className="fixed h-[4rem] top-4 left-1/2 -translate-x-1/2 z-50 w-[95vw] max-w-max">
+        <div className="bg-white/80 backdrop-blur-lg h-full rounded-[1.25rem] shadow-lg flex items-center justify-between p-2">
+          {/* Left: Logo and Progress */}
+          <div className="flex items-center space-x-2.5 pl-3 pr-2 flex-shrink-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-sm">EB</span>
             </div>
+            <div className="hidden sm:flex items-center space-x-2">
+              <span className="text-xl font-bold text-slate-700">{currentQuestionNumber}</span>
+              <span className="text-sm text-slate-500">/ {quiz.totalQuestions}</span>
+            </div>
+            <div className="sm:hidden">
+              <span className="text-lg font-bold text-slate-700">{currentQuestionNumber}/{quiz.totalQuestions}</span>
+            </div>
+          </div>
 
-            {/* Center: Timers - Hidden on smallest screens */}
-            <div className="hidden md:flex items-center space-x-8">
+          {/* Center: Timer and Feedback Toggle */}
+          <div className="flex items-center">
+            <nav className="flex items-center space-x-1 border-l border-gray-200 ml-2 pl-2">
+              {/* Timer */}
               {config.timerEnabled && (
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-md border border-white/50">
-                  <p className="text-xs text-slate-500 text-center mb-1">Total Time</p>
-                  <p className="text-xl font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</p>
+                <div className="hidden md:flex items-center space-x-2 px-4 py-2 rounded-full bg-slate-50">
+                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</span>
                 </div>
               )}
-            </div>
+              
+              {/* Timer for Mobile - Icon only */}
+              {config.timerEnabled && (
+                <button className="md:hidden flex items-center justify-center w-10 h-10 rounded-full bg-slate-50">
+                  <span className="text-xs font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</span>
+                </button>
+              )}
 
-            {/* Right: Control Buttons */}
-            <div className="flex items-center space-x-2 sm:space-x-3">
+              {/* Immediate Feedback Toggle - Text on large screens */}
+              <button
+                onClick={toggleImmediateFeedback}
+                className="hidden lg:flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 hover:bg-slate-50"
+              >
+                <span className="text-slate-600">Feedback</span>
+                <div className={`w-8 h-5 rounded-full transition-colors ${config.immediateFeedback ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform mt-1 ${config.immediateFeedback ? 'translate-x-4' : 'translate-x-1'}`} />
+                </div>
+              </button>
+
+              {/* Immediate Feedback Toggle - Icon for smaller screens */}
+              <button
+                onClick={toggleImmediateFeedback}
+                aria-label="Toggle immediate feedback"
+                className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-50 transition-all duration-200"
+              >
+                <div className={`w-6 h-4 rounded-full transition-colors ${config.immediateFeedback ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <div className={`w-2.5 h-2.5 bg-white rounded-full shadow-sm transition-transform mt-0.75 ${config.immediateFeedback ? 'translate-x-3' : 'translate-x-0.5'}`} />
+                </div>
+              </button>
+
+              {/* Pause Button */}
               <button
                 onClick={handlePause}
-                className="group flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/80 backdrop-blur-sm border-2 border-amber-200/50 text-amber-700 rounded-xl hover:bg-amber-50 hover:border-amber-300 transition-all duration-300 shadow-md hover:shadow-lg"
+                className="hidden sm:flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 transition-all duration-200"
               >
-                <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-xs sm:text-base font-medium">Pause</span>
+                <span>Pause</span>
               </button>
+
+              {/* Pause Button - Icon only on mobile */}
+              <button
+                onClick={handlePause}
+                aria-label="Pause quiz"
+                className="sm:hidden flex items-center justify-center w-10 h-10 rounded-full text-amber-700 bg-amber-100 hover:bg-amber-200 transition-all duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+
+              {/* Stop Button */}
               <button
                 onClick={handleStop}
-                className="group flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/80 backdrop-blur-sm border-2 border-red-200/50 text-red-600 rounded-xl hover:bg-red-50 hover:border-red-300 transition-all duration-300 shadow-md hover:shadow-lg"
+                className="hidden sm:flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium text-red-600 bg-red-100 hover:bg-red-200 transition-all duration-200"
               >
-                <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                 </svg>
-                <span className="text-xs sm:text-base font-medium">Stop</span>
+                <span>Stop</span>
               </button>
-            </div>
-          </div>
-        </div>
 
-        {/* Mobile Timer Bar - Shows on mobile only */}
-        <div className="md:hidden px-4 pb-3">
-          <div className="flex items-center justify-between bg-white/50 backdrop-blur-sm rounded-xl px-3 py-2">
-            {config.timerEnabled && (
-              <div className="flex items-center space-x-2">
-                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              {/* Stop Button - Icon only on mobile */}
+              <button
+                onClick={handleStop}
+                aria-label="Stop quiz"
+                className="sm:hidden flex items-center justify-center w-10 h-10 rounded-full text-red-600 bg-red-100 hover:bg-red-200 transition-all duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                 </svg>
-                <span className="text-xs text-slate-600">Total: <span className="font-mono font-bold text-slate-700">{formatTime(timeRemaining)}</span></span>
-              </div>
-            )}
+              </button>
+            </nav>
           </div>
         </div>
       </header>
-
-      {/* Immediate Feedback Toggle */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-        <div className="flex justify-end">
-          <button
-            onClick={toggleImmediateFeedback}
-            className="text-xs text-slate-500 hover:text-slate-700 flex items-center space-x-1 transition-colors"
-          >
-            <span>Immediate feedback:</span>
-            <span className={`font-medium ${config.immediateFeedback ? 'text-green-600' : 'text-red-600'}`}>
-              {config.immediateFeedback ? 'ON' : 'OFF'}
-            </span>
-          </button>
-        </div>
-      </div>
-
+      
       {/* Mobile Question Navigation - Horizontal Scrollable */}
-      <div className="lg:hidden px-4 pt-4">
+      <div className="lg:hidden px-4 pt-24">
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-3 shadow-md border border-white/50">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-slate-700">Question Navigator</h3>
@@ -638,7 +649,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
           {showMobileNav && (
             <div className="animate-fade-in">
               <div className="overflow-x-auto pb-2">
-                <div className="flex space-x-2 min-w-max">
+                <div className="flex space-x-2 min-w-max p-4">
                   {[...Array(quiz.totalQuestions)].map((_, idx) => {
                     const questionNumber = idx + 1;
                     const isActive = questionNumber === currentQuestionNumber;
@@ -693,8 +704,8 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         </div>
       </div>
 
-      {/* Main Quiz Content - Better Layout */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Main Quiz Content - Adjusted for fixed header */}
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 lg:pt-24 pt-8 pb-6">
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Main Content Area */}
           <div className="lg:col-span-3 space-y-6 animate-fade-in-up">
@@ -707,6 +718,12 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                     <span className="px-3 py-1 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 text-xs sm:text-sm font-medium rounded-full">
                       {getQuestionTypeDisplay()}
                     </span>
+                    <div className="w-32 bg-slate-200/50 rounded-full h-1.5">
+                      <div
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-500 shadow-sm"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
                   </div>
                   <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-slate-900 leading-relaxed">
                     {currentQuestion.question}

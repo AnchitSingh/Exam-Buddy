@@ -4,7 +4,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import examBuddyAPI from '../services/api';
 import GlobalHeader from '../components/ui/GlobalHeader';
-
+import BackgroundEffects from '../components/ui/BackgroundEffects';
 // Modal Component for Question Details
 const QuestionDetailModal = ({ isOpen, onClose, question, onDelete, onPractice }) => {
   if (!isOpen || !question) return null;
@@ -252,6 +252,7 @@ const BookmarksPage = ({ onNavigate }) => {
 
   return (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
+      <BackgroundEffects />
       <GlobalHeader currentPage="bookmarks" onNavigate={onNavigate} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-8">

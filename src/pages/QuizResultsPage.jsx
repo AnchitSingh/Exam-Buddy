@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import GlobalHeader from '../components/ui/GlobalHeader';
+import BackgroundEffects from '../components/ui/BackgroundEffects';
 
 const QuizResultsPage = ({ results, onNavigate }) => {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -163,11 +164,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 
 	return (
 		<div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
-			{/* Subtle Background Elements */}
-			<div className="absolute inset-0 -z-10 opacity-40 overflow-hidden">
-				<div className="absolute top-1/4 left-0 w-72 h-72 sm:w-96 sm:h-96 bg-amber-100/30 rounded-full blur-3xl"></div>
-				<div className="absolute bottom-1/4 right-0 w-72 h-72 sm:w-96 sm:h-96 bg-orange-100/30 rounded-full blur-3xl"></div>
-			</div>
+			<BackgroundEffects />
 
 			{/* Header */}
 			<GlobalHeader currentPage="" onNavigate={onNavigate} />

@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import GlobalHeader from '../components/ui/GlobalHeader';
 import examBuddyAPI from '../services/api';
+import BackgroundEffects from '../components/ui/BackgroundEffects';
 
 // Delete Confirmation Modal
 const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, quizTitle }) => {
@@ -340,12 +341,7 @@ const PausedQuizzesPage = ({ onNavigate }) => {
 
   return (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
-      {/* Background Effects */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-gradient-to-br from-amber-300/20 to-orange-300/20 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-gradient-to-br from-orange-300/20 to-amber-300/20 rounded-full blur-3xl animate-pulse-slow animation-delay-2000" />
-      </div>
-      
+      <BackgroundEffects />
       <GlobalHeader currentPage="paused" onNavigate={onNavigate} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-8 relative z-10">
