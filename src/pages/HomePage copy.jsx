@@ -330,7 +330,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
                     onNavigate={onNavigate}
                 />
                 <main className="mx-auto min-h-screen flex flex-col justify-center py-12 pt-24 relative z-10">
-                    <div className="min-h-[76vh] flex flex-col justify-center">
+                    <div className="min-h-[80vh] flex flex-col justify-center">
                         {/* Header Section */}
                         <div className="text-center mb-12 animate-fade-in">
                             <h1 className="text-5xl sm:text-6xl font-display font-bold tracking-tight mb-4">
@@ -381,31 +381,28 @@ const HomePage = ({ onNavigate, navigationData }) => {
                         </div>
                     </div>
 
-                    {/* Recommended Topics */}
+                    {/* Scrolling Cards Section */}
                     <div className="text-center animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-                            {/* <p className="text-sm text-slate-400 mb-3">Recommended for you</p> */}
-                            <div className="flex flex-wrap justify-center gap-3">
-                                {RECOMMENDED_TOPICS.map((topic, index) => (
-                                    <button
-                                        key={topic}
-                                        onClick={() => setShowQuizSetup(true)}
-                                        className="group px-4 py-2 rounded-lg hover:border-amber-200 transition-all duration-300 hover:shadow-md animate-fade-in-up"
-                                        style={{ animationDelay: `${0.5 + index * 0.1}s` }}
-                                        aria-label={`Start quiz about ${topic}`}
-                                    >
-                                        <span className="text-sm font-medium hover:text-amber-800 transition-colors inline-flex items-center gap-1" style={{ color: '#808080ba' }}>
-                                            {topic}
-                                            <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                            </svg>
-                                        </span>
-                                    </button>
+                        <div className="overflow-hidden w-full">
+                            <div className="flex gap-4 animate-scroll-horizontal">
+                                {/* Render cards 3 times for smooth infinite scroll */}
+                                {[...Array(3)].map((_, setIndex) => (
+                                    <React.Fragment key={setIndex}>
+                                        {SCROLL_CARDS.map(card => (
+                                            <ScrollCard
+                                                key={`${setIndex}-${card.id}`}
+                                                card={card}
+                                                onClick={() => handleScrollCardClick(card)}
+                                            />
+                                        ))}
+                                    </React.Fragment>
                                 ))}
                             </div>
                         </div>
+                    </div>
 
                     {/* Content Display Section */}
-                    {/* <div className="mt-8 min-h-[200px] animate-fade-in">
+                    <div className="mt-8 min-h-[200px] animate-fade-in">
                         {displayContent === 'continue' && (
                             <div className="space-y-4">
                                 {pausedQuizzes.length > 0 ? (
@@ -449,10 +446,8 @@ const HomePage = ({ onNavigate, navigationData }) => {
                                 message="Learn through interactive stories and scenarios"
                             />
                         )}
-                    </div> */}
-                    
+                    </div>
                 </main>
-
 
                 {/* Quiz Setup Modal */}
                 <QuizSetupModal

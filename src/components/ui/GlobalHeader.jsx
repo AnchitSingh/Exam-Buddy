@@ -1,5 +1,28 @@
 import React, { useState } from 'react';
 
+// Tooltip Component
+const Tooltip = ({ children, content }) => {
+    const [isVisible, setIsVisible] = useState(false);
+    
+    return (
+        <div 
+            className="relative group"
+            onMouseEnter={() => setIsVisible(true)}
+            onMouseLeave={() => setIsVisible(false)}
+        >
+            {children}
+            <div 
+                className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg transition-opacity duration-200 z-50 ${
+                    isVisible ? 'opacity-100 visible' : 'opacity-0 invisible'
+                }`}
+            >
+                {content}
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-gray-800"></div>
+            </div>
+        </div>
+    );
+};
+
 // Centralized icon management function for consistency
 const getIcon = (iconName, isActive = false) => {
     const className = `w-5 h-5 transition-colors ${isActive ? 'text-amber-600' : 'text-slate-500'}`;
@@ -143,40 +166,43 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             </button>
                         </div>
 
-                        {/* Mobile View Navigation - Icons in a row */}
+                        {/* Mobile View Navigation - Icons in a row with tooltips */}
                         <div className="md:hidden flex items-center space-x-1 border-l border-gray-200 ml-2 pl-2">
                             {/* Navigation Icons for Mobile */}
                             {navigationItems.map((item) => {
                                 const isActive = currentPage === item.id;
                                 return (
-                                    <button
-                                        key={item.id}
-                                        onClick={item.action}
-                                        aria-label={item.label}
-                                        className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
-                                            isActive
-                                                ? 'bg-amber-100 text-amber-700 shadow-sm'
-                                                : 'text-slate-600 hover:bg-slate-50'
-                                        }`}
-                                    >
-                                        {getIcon(item.icon, isActive)}
-                                    </button>
+                                    <Tooltip key={item.id} content={item.label} isVisible={true}>
+                                        <button
+                                            onClick={item.action}
+                                            aria-label={item.label}
+                                            className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
+                                                isActive
+                                                    ? 'bg-amber-100 text-amber-700 shadow-sm'
+                                                    : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {getIcon(item.icon, isActive)}
+                                        </button>
+                                    </Tooltip>
                                 );
                             })}
                             
-                            {/* Profile Icon for Mobile */}
-                            <button
-                                className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors ml-2"
-                                aria-label={userName ? `Profile: ${userName}` : 'Profile'}
-                            >
-                                {userName ? (
-                                    <span className="font-semibold text-gray-700 uppercase">
-                                        {userName.charAt(0)}
-                                    </span>
-                                ) : (
-                                    getIcon('user')
-                                )}
-                            </button>
+                            {/* Profile Icon for Mobile with tooltip */}
+                            <Tooltip content={userName ? `Profile: ${userName}` : 'Profile'} isVisible={true}>
+                                <button
+                                    className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors ml-2"
+                                    aria-label={userName ? `Profile: ${userName}` : 'Profile'}
+                                >
+                                    {userName ? (
+                                        <span className="font-semibold text-gray-700 uppercase">
+                                            {userName.charAt(0)}
+                                        </span>
+                                    ) : (
+                                        getIcon('user')
+                                    )}
+                                </button>
+                            </Tooltip>
                         </div>
                         
                         {/* Hidden mobile menu button to maintain functionality if needed */}
