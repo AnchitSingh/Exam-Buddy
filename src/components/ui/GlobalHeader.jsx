@@ -10,26 +10,32 @@ const getIcon = (iconName, isActive = false) => {
     switch (iconName) {
         case 'home':
             return (
-                <svg className={isActive ? className : desktopClassName} fill={isActive ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" color="#000000" fill="none">
+                    <path d="M2 10L11.1076 2.80982C11.3617 2.60915 11.6761 2.5 12 2.5C12.3239 2.5 12.6383 2.60915 12.8924 2.80982L16.5 5.65789V4C16.5 3.44772 16.9477 3 17.5 3H18.5C19.0523 3 19.5 3.44771 19.5 4V8.02632L22 10" stroke="#141B34" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M20 11.5V15.5C20 18.3284 20 19.7426 19.1213 20.6213C18.2426 21.5 16.8284 21.5 14 21.5H10C7.17157 21.5 5.75736 21.5 4.87868 20.6213C4 19.7426 4 18.3284 4 15.5V11.5" stroke="#141B34" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M15.0011 15.5C14.2016 16.1224 13.1513 16.5 12.0011 16.5C10.8509 16.5 9.80062 16.1224 9.0011 15.5" stroke="#141B34" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
             );
         case 'bookmark':
             return (
-                <svg className={isActive ? className : desktopClassName} fill={isActive ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" color="#000000" fill="none">
+                    <path d="M20 22H6C4.89543 22 4 21.1046 4 20M4 20C4 18.8954 4.89543 18 6 18H18C19.1046 18 20 17.1046 20 16V2C20 3.10457 19.1046 4 18 4L10 4C7.17157 4 5.75736 4 4.87868 4.87868C4 5.75736 4 7.17157 4 10V20Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M9 4V12L12 9L15 12V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M18.5 18C18.5 18 17.5 18.7628 17.5 20C17.5 21.2372 18.5 22 18.5 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                 </svg>
             );
         case 'pause':
             return (
-                <svg className={isActive ? className : desktopClassName} fill={isActive ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" color="#000000" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"></circle>
+                    <path d="M9.5 9L9.5 15M14.5 9V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                 </svg>
             );
         case 'plus':
             return (
-                <svg className={isActive ? className : desktopClassName} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" color="#000000" fill="none">
+                    <path d="M12 2.00012C17.5228 2.00012 22 6.47727 22 12.0001C22 17.523 17.5228 22.0001 12 22.0001C6.47715 22.0001 2 17.523 2 12.0001M8.909 2.48699C7.9 2.8146 6.96135 3.29828 6.12153 3.90953M3.90943 6.12162C3.29806 6.9616 2.81432 7.90044 2.4867 8.90964" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M12 8.00012V16.0001M16 12.0001L8 12.0001" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                 </svg>
             );
         case 'menu':
@@ -50,6 +56,7 @@ const getIcon = (iconName, isActive = false) => {
 };
 
 const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
+    // State for mobile menu is kept in case it's needed in the future, though not currently used
     const [showMobileMenu, setShowMobileMenu] = useState(false);
 
     // Restored navigation items from the original code
@@ -65,14 +72,14 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
             <header className="fixed h-[4rem] top-4 left-1/2 -translate-x-1/2 z-50 w-[95vw] max-w-max">
                 {/* The main floating "island" container */}
                 <div className="bg-white/80 backdrop-blur-lg h-full rounded-[1.25rem] shadow-lg flex items-center justify-between p-2">
-                    {/* Logo - always visible */}
+                    {/* Logo - always visible with "Buddy" text only on medium screens and larger */}
                     <a href="#home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="flex items-center space-x-2.5 pl-3 pr-2 flex-shrink-0">
                         <div className="flex items-center">
                             <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
                                 <span className="text-white font-bold text-sm">EB</span>
                             </div>
                         </div>
-                        <span className="font-bold text-xl text-gray-800">Buddy</span>
+                        <span className="font-bold text-xl text-gray-800 hidden sm:block">Buddy</span>
                     </a>
 
                     {/* Right-side container for nav and actions */}
@@ -136,8 +143,44 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             </button>
                         </div>
 
-                        {/* Mobile Menu Button (sm and down) */}
-                        <div className="md:hidden">
+                        {/* Mobile View Navigation - Icons in a row */}
+                        <div className="md:hidden flex items-center space-x-1 border-l border-gray-200 ml-2 pl-2">
+                            {/* Navigation Icons for Mobile */}
+                            {navigationItems.map((item) => {
+                                const isActive = currentPage === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={item.action}
+                                        aria-label={item.label}
+                                        className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
+                                            isActive
+                                                ? 'bg-amber-100 text-amber-700 shadow-sm'
+                                                : 'text-slate-600 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {getIcon(item.icon, isActive)}
+                                    </button>
+                                );
+                            })}
+                            
+                            {/* Profile Icon for Mobile */}
+                            <button
+                                className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors ml-2"
+                                aria-label={userName ? `Profile: ${userName}` : 'Profile'}
+                            >
+                                {userName ? (
+                                    <span className="font-semibold text-gray-700 uppercase">
+                                        {userName.charAt(0)}
+                                    </span>
+                                ) : (
+                                    getIcon('user')
+                                )}
+                            </button>
+                        </div>
+                        
+                        {/* Hidden mobile menu button to maintain functionality if needed */}
+                        <div className="md:hidden hidden">
                             <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
                                 {getIcon('menu')}
                             </button>
@@ -201,6 +244,8 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                     </div>
                 </div>
             )}
+            
+            {/* Mobile menu overlay is hidden as we now show navigation icons in the header */}
         </>
     );
 };

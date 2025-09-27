@@ -367,27 +367,17 @@ const HomePage = ({ onNavigate, navigationData }) => {
                             </button>
                         </div>
 
-                        {/* Recommended Topics */}
+                        {/* Subtle Recommendation */}
                         <div className="text-center animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-                            {/* <p className="text-sm text-slate-400 mb-3">Recommended for you</p> */}
-                            <div className="flex flex-wrap justify-center gap-3">
-                                {RECOMMENDED_TOPICS.map((topic, index) => (
-                                    <button
-                                        key={topic}
-                                        onClick={() => setShowQuizSetup(true)}
-                                        className="group px-4 py-2 rounded-lg hover:border-amber-300 transition-all duration-300 hover:shadow-md animate-fade-in-up"
-                                        style={{ animationDelay: `${0.5 + index * 0.1}s` }}
-                                        aria-label={`Start quiz about ${topic}`}
-                                    >
-                                        <span className="text-sm font-medium group-hover:text-amber-800 transition-colors inline-flex items-center gap-1" style={{ color: '#808080ba' }}>
-                                            {topic}
-                                            <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                            </svg>
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
+                            <button
+                                onClick={() => setShowQuizSetup(true)}
+                                className="text-amber-600 hover:text-amber-700 font-medium transition-colors duration-300 inline-flex items-center group"
+                            >
+                                <span>Learn using Stories</span>
+                                <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
 
