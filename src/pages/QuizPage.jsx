@@ -39,6 +39,8 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     clearError,
     currentDraft,
     saveDraftAnswer,
+    isEvaluating,
+    evaluationProgress,
   } = useQuizState(quizConfig, answerRef);
 
   const [showPauseModal, setShowPauseModal] = useState(false);
@@ -304,11 +306,8 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     switch (type) {
       case 'MCQ': return 'Multiple Choice';
       case 'True/False': return 'True/False';
-      case 'TrueFalse': return 'True/False';
       case 'Short Answer': return 'Short Answer';
-      case 'Subjective': return 'Short Answer';
       case 'Fill in Blank': return 'Fill in the Blank';
-      case 'FillUp': return 'Fill in the Blank';
       default: return 'Multiple Choice';
     }
   };
@@ -350,7 +349,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
             ))}
           </div>
         );
-      case 'TrueFalse':
+      case 'True/False':
         return (
           <div className="grid grid-cols-2 gap-4">
             <button
@@ -388,7 +387,6 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         );
 
       case 'Fill in Blank':
-      case 'FillUp':
         return (
           <div className="space-y-4">
             <div className="text-lg text-slate-700 leading-relaxed">
@@ -413,9 +411,9 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               ))}
             </div>
           </div>
-        );      
+        );
+
       case 'Short Answer':
-      case 'Subjective':
         return (
           <textarea
             value={textAnswer}
@@ -877,9 +875,12 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
       {/* AI Processing Feedback */}
       <AIProcessingFeedback
-        isVisible={showAIProcessing}
-        task={aiTask}
-        onComplete={() => setShowAIProcessing(false)}
+        isVisible={showAIProcessing || isEvaluating}
+        task={isEvaluating ? 'evaluation' : aiTask}
+        evaluationProgress={evaluationProgress}
+        onComplete={() => {
+          setShowAIProcessing(false);
+        }}
       />
 
       {/* Pause Modal */}

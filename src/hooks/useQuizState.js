@@ -23,6 +23,8 @@ const useQuizState = (quizConfig = null, answerRef) => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [draftAnswers, setDraftAnswers] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationProgress, setEvaluationProgress] = useState({ current: 0, total: 0 });
 
   const timerRef = useRef(null);
   const quizIdRef = useRef(null);
@@ -218,7 +220,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
   // Fixed stopQuiz with proper state management
   const stopQuiz = useCallback(async (finalAnswers = null) => {
     if (isSubmitting) return null;
-    
+
     try {
       setIsSubmitting(true);
       setIsQuizActive(false);
@@ -229,15 +231,51 @@ const useQuizState = (quizConfig = null, answerRef) => {
         abortControllerRef.current = null;
       }
 
-      // Use provided finalAnswers or fallback to userAnswers
-      const answersToSubmit = finalAnswers || userAnswersRef.current;
-      
-      // Filter out null answers and drafts
-      const validAnswers = answersToSubmit.filter(answer => {
-        return answer && !answer.isDraft && !answer.isPending;
-      });
+      let answersToSubmit = [...(finalAnswers || userAnswersRef.current)]; // Make a mutable copy
 
-      console.log('Final answers being submitted:', validAnswers);
+      // Find answers that need evaluation
+      const answersToEvaluate = [];
+      for (let i = 0; i < answersToSubmit.length; i++) {
+        const answer = answersToSubmit[i];
+        const question = quiz.questions[i];
+        if (answer && !answer.aiEvaluated && (question.type === 'Short Answer' || question.type === 'Fill in Blank')) {
+          answersToEvaluate.push({ index: i, answer, question });
+        }
+      }
+
+      // If there are answers to evaluate, show loading screen and evaluate one by one
+      if (answersToEvaluate.length > 0) {
+        setIsEvaluating(true); // Trigger loading screen
+        setEvaluationProgress({ current: 0, total: answersToEvaluate.length });
+
+        for (const [index, item] of answersToEvaluate.entries()) {
+          const { index: answerIndex, answer, question } = item;
+          setEvaluationProgress({ current: index + 1, total: answersToEvaluate.length });
+          try {
+            const response = await examBuddyAPI.submitAnswer(quizIdRef.current, question.id, answer);
+            if (response.success) {
+              // Update the answer in our array
+              answersToSubmit[answerIndex] = {
+                ...answer,
+                isCorrect: response.data.isCorrect,
+                score: response.data.score,
+                feedback: response.data.feedback,
+                explanation: response.data.explanation,
+                aiEvaluated: true,
+                isPending: false,
+              };
+            }
+          } catch (e) {
+            console.error(`Failed to evaluate question ${answerIndex}`, e);
+            // Keep the answer as is (incorrect)
+          }
+        }
+
+        setIsEvaluating(false); // Hide loading screen
+      }
+
+      // Now answersToSubmit is fully evaluated
+      const validAnswers = answersToSubmit.filter(answer => answer && !answer.isDraft);
 
       const response = await examBuddyAPI.completeQuiz(
         quizIdRef.current, 
@@ -265,7 +303,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
         setIsSubmitting(false);
       }
     }
-  }, [quiz, config, isSubmitting]);
+  }, [quiz, config, isSubmitting, userAnswers]);
 
   // Fixed timer with proper auto-submission
   useEffect(() => {
@@ -727,6 +765,8 @@ const useQuizState = (quizConfig = null, answerRef) => {
     isBookmarked: currentQuestion ? bookmarkedQuestions.has(currentQuestion.id) : false,
     currentDraft: getCurrentDraft(),
     isSubmitting,
+    isEvaluating,
+    evaluationProgress,
     initializeQuiz,
     loadExistingQuiz,
     selectAnswer,

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 const AIProcessingFeedback = ({ 
   isVisible, 
   task = 'processing',
+  evaluationProgress = { current: 0, total: 0 },
   onComplete 
 }) => {
   const [currentMessage, setCurrentMessage] = useState(0);
@@ -36,30 +37,35 @@ const AIProcessingFeedback = ({
 
   const currentMessages = messages[task] || messages.processing;
 
+  const isBulkEvaluating = task === 'evaluation' && evaluationProgress.total > 0;
+
   useEffect(() => {
     if (!isVisible) return;
 
-    const messageInterval = setInterval(() => {
-      setCurrentMessage(prev => 
-        prev < currentMessages.length - 1 ? prev + 1 : prev
-      );
-    }, 2000);
+    let messageInterval, dotsInterval, autoCompleteTimer;
 
-    const dotsInterval = setInterval(() => {
+    if (!isBulkEvaluating) {
+      messageInterval = setInterval(() => {
+        setCurrentMessage(prev => 
+          prev < currentMessages.length - 1 ? prev + 1 : prev
+        );
+      }, 2000);
+
+      autoCompleteTimer = setTimeout(() => {
+        if (onComplete) onComplete();
+      }, currentMessages.length * 2000 + 1000);
+    }
+
+    dotsInterval = setInterval(() => {
       setDots(prev => prev.length >= 3 ? '' : prev + '.');
     }, 500);
 
-    // Auto complete after showing all messages
-    const autoCompleteTimer = setTimeout(() => {
-      if (onComplete) onComplete();
-    }, currentMessages.length * 2000 + 1000);
-
     return () => {
-      clearInterval(messageInterval);
-      clearInterval(dotsInterval);
-      clearTimeout(autoCompleteTimer);
+      if (messageInterval) clearInterval(messageInterval);
+      if (dotsInterval) clearInterval(dotsInterval);
+      if (autoCompleteTimer) clearTimeout(autoCompleteTimer);
     };
-  }, [isVisible, currentMessages.length, onComplete]);
+  }, [isVisible, isBulkEvaluating, currentMessages.length, onComplete]);
 
   useEffect(() => {
     if (isVisible) {
@@ -69,6 +75,10 @@ const AIProcessingFeedback = ({
   }, [isVisible, task]);
 
   if (!isVisible) return null;
+
+  const progressPercentage = isBulkEvaluating
+    ? (evaluationProgress.current / evaluationProgress.total) * 100
+    : ((currentMessage + 1) / currentMessages.length) * 100;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-backdrop-in">
@@ -92,12 +102,15 @@ const AIProcessingFeedback = ({
         {/* Current Message */}
         <div className="mb-4">
           <p className="text-lg font-semibold text-slate-800 mb-2">
-            {currentMessages[currentMessage]}{dots}
+            {isBulkEvaluating
+              ? `Evaluating answer ${evaluationProgress.current} of ${evaluationProgress.total}${dots}`
+              : `${currentMessages[currentMessage]}${dots}`
+            }
           </p>
           <div className="w-full bg-slate-200 rounded-full h-2">
             <div 
-              className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${((currentMessage + 1) / currentMessages.length) * 100}%` }}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercentage}%` }}
             />
           </div>
         </div>
@@ -108,12 +121,14 @@ const AIProcessingFeedback = ({
         </p>
 
         {/* Cancel button - optional */}
-        <button 
-          onClick={onComplete}
-          className="mt-4 text-xs text-slate-400 hover:text-slate-600 underline"
-        >
-          Skip animation
-        </button>
+        {!isBulkEvaluating && (
+          <button 
+            onClick={onComplete}
+            className="mt-4 text-xs text-slate-400 hover:text-slate-600 underline"
+          >
+            Skip animation
+          </button>
+        )}
       </div>
     </div>
   );

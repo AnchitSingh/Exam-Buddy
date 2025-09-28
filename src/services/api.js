@@ -73,10 +73,24 @@ class ExamBuddyAPI {
         this._logWithTimestamp(`Quiz Generated (${duration}ms)`, aiResult);
         
         // Transform AI result to match frontend expectations
-        const transformedQuestions = (aiResult.questions || []).map((q, index) => ({
-          ...q,
-          id: generateId(`q${index}`),
-        }));
+        const transformedQuestions = (aiResult.questions || []).map((q, index) => {
+          let normalizedType = q.type;
+          const lowerCaseType = q.type.toLowerCase().replace(/[\s\/_-]/g, '');
+
+          if (lowerCaseType === 'truefalse') {
+            normalizedType = 'True/False';
+          } else if (lowerCaseType === 'subjective' || lowerCaseType === 'shortanswer') {
+            normalizedType = 'Short Answer';
+          } else if (lowerCaseType === 'fillup' || lowerCaseType === 'fillintheblank') {
+            normalizedType = 'Fill in Blank';
+          }
+
+          return {
+            ...q,
+            id: generateId(`q${index}`),
+            type: normalizedType,
+          };
+        });
 
         const quiz = {
           id: generateId(),
