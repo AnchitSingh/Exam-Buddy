@@ -1,0 +1,375 @@
+react-dom_client.js?v=0ee1c82c:17995 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+App.jsx:23 === EXAM BUDDY INIT ===
+App.jsx:25 hasVisited: true
+App.jsx:31 Returning user - showing home
+App.jsx:56 App reset - cleared localStorage
+App.jsx:23 === EXAM BUDDY INIT ===
+App.jsx:25 hasVisited: null
+App.jsx:28 First time user - showing landing
+(index):1 No output language was specified in a LanguageModel API request. An output language should be specified to ensure optimal output quality and properly attest to output safety. Please specify a supported output language code: [en, es, ja]
+App.jsx:39 Navigating from landing to home 
+App.jsx:43 Marked user as visited
+QuizSetupModal.jsx:179 Starting quiz with config: {sourceType: 'manual', sourceValue: '', topic: 'physics', context: 'thermodynamics', questionCount: 5, …}
+App.jsx:39 Navigating from home to quiz with data
+api.js:34 🚀 Generating quiz with Chrome AI...
+api.js:23 🤖 [ExamBuddy AI] Quiz Generation Request - 10:15:15 PM
+api.js:24 Data: {sourceType: 'manual', sourceValue: '', topic: 'physics', context: 'thermodynamics', questionCount: 5, …}
+api.js:26 JSON: {
+  "sourceType": "manual",
+  "sourceValue": "",
+  "topic": "physics",
+  "context": "thermodynamics",
+  "questionCount": 5,
+  "difficulty": "medium",
+  "questionTypes": [
+    "MCQ"
+  ],
+  "immediateFeedback": true,
+  "totalTimer": 0,
+  "pdfFile": null,
+  "timerEnabled": false,
+  "extractedSource": {
+    "sourceType": "manual",
+    "title": "physics",
+    "url": "",
+    "domain": "",
+    "excerpt": "thermodynamics",
+    "wordCount": 1,
+    "chunks": [
+      {
+        "id": "chunk_1",
+        "text": "thermodynamics",
+        "start": 0,
+        "end": 14,
+        "tokenEstimate": 1
+      }
+    ],
+    "text": "thermodynamics",
+    "meta": {}
+  }
+}
+api.js:41 📊 AI Status: {available: true, status: 'available', detail: null}
+chromeAI.js:65 Model download: 0%
+chromeAI.js:65 Model download: 100%
+api.js:23 🤖 [ExamBuddy AI] Quiz Generated (73481ms) - 10:16:29 PM
+api.js:24 Data: {questions: Array(5)}
+api.js:26 JSON: {
+  "questions": [
+    {
+      "type": "MCQ",
+      "question": "Which of the following statements best describes the zeroth law of thermodynamics?",
+      "options": [
+        {
+          "text": "Entropy is a measure of disorder in a system.",
+          "isCorrect": false
+        },
+        {
+          "text": "Two systems are in thermal equilibrium if they are in thermal contact.",
+          "isCorrect": true
+        },
+        {
+          "text": "The enthalpy of a system is constant during a reversible process.",
+          "isCorrect": false
+        },
+        {
+          "text": "Gibbs free energy is always negative for a spontaneous process.",
+          "isCorrect": false
+        }
+      ],
+      "explanation": "The zeroth law states that if two systems are in thermal equilibrium, they are in thermal equilibrium with a third system. This implies that there exists a temperature equilibrium between the three systems.",
+      "difficulty": "medium",
+      "subject": "physics"
+    },
+    {
+      "type": "MCQ",
+      "question": "What is the primary purpose of a Carnot engine?",
+      "options": [
+        {
+          "text": "To convert heat directly into mechanical work with 100% efficiency.",
+          "isCorrect": false
+        },
+        {
+          "text": "To demonstrate the theoretical maximum efficiency of a heat engine operating between two temperatures.",
+          "isCorrect": true
+        },
+        {
+          "text": "To cool a system to absolute zero.",
+          "isCorrect": false
+        },
+        {
+          "text": "To convert mechanical work directly into electrical energy.",
+          "isCorrect": false
+        }
+      ],
+      "explanation": "The Carnot engine represents the theoretical limit of efficiency for any heat engine operating between two temperatures. Its efficiency is given by the Carnot efficiency formula (T_cold/T_hot-1), where T_cold and T_hot are the absolute temperatures of the cold and hot reservoirs, respectively.",
+      "difficulty": "medium",
+      "subject": "physics"
+    },
+    {
+      "type": "True/False",
+      "question": "Increasing the temperature of a substance always increases its entropy.",
+      "options": [
+        {
+          "text": "True",
+          "isCorrect": false
+        },
+        {
+          "text": "False",
+          "isCorrect": true
+        }
+      ],
+      "explanation": "Entropy is related to the number of possible microscopic arrangements of the molecules in a system. While increasing temperature often increases microscopic motion, it doesn't automatically guarantee an increase in entropy. Entropy increases when the number of possible arrangements increases (e.g., through phase changes or mixing).",
+      "difficulty": "medium",
+      "subject": "physics"
+    },
+    {
+      "type": "MCQ",
+      "question": "Which thermodynamic process is characterized by a constant temperature?",
+      "options": [
+        {
+          "text": "Isothermal",
+          "isCorrect": false
+        },
+        {
+          "text": "Adiabatic",
+          "isCorrect": false
+        },
+        {
+          "text": "Isobaric",
+          "isCorrect": false
+        },
+        {
+          "text": "Isochoric (Isometric)",
+          "isCorrect": true
+        }
+      ],
+      "explanation": "An isothermal process occurs at a constant temperature. This is achieved by using a heat reservoir to maintain the temperature constant during the process.",
+      "difficulty": "medium",
+      "subject": "physics"
+    },
+    {
+      "type": "MCQ",
+      "question": "What does the Gibbs free energy (G) represent?",
+      "options": [
+        {
+          "text": "The enthalpy (H) of a system.",
+          "isCorrect": false
+        },
+        {
+          "text": "The entropy (S) of a system.",
+          "isCorrect": false
+        },
+        {
+          "text": "The amount of heat absorbed by a system during a process.",
+          "isCorrect": false
+        },
+        {
+          "text": "The amount of energy available to perform useful work at constant temperature and pressure.",
+          "isCorrect": true
+        }
+      ],
+      "explanation": "Gibbs free energy combines enthalpy (H) and entropy (S) to provide a measure of the spontaneity of a process at constant temperature and pressure. A negative Gibbs free energy indicates a spontaneous process.",
+      "difficulty": "medium",
+      "subject": "physics"
+    }
+  ]
+}
+api.js:23 🤖 [ExamBuddy AI] Final Quiz Object - 10:16:29 PM
+api.js:24 Data: {id: '1759077989146_ic9p24xcv', title: 'AI Generated Quiz - 9/28/2025', description: "Quiz generated using Chrome's built-in AI", questions: Array(5), config: {…}, …}
+api.js:26 JSON: {
+  "id": "1759077989146_ic9p24xcv",
+  "title": "AI Generated Quiz - 9/28/2025",
+  "description": "Quiz generated using Chrome's built-in AI",
+  "questions": [
+    {
+      "type": "MCQ",
+      "question": "Which of the following statements best describes the zeroth law of thermodynamics?",
+      "options": [
+        {
+          "text": "Entropy is a measure of disorder in a system.",
+          "isCorrect": false
+        },
+        {
+          "text": "Two systems are in thermal equilibrium if they are in thermal contact.",
+          "isCorrect": true
+        },
+        {
+          "text": "The enthalpy of a system is constant during a reversible process.",
+          "isCorrect": false
+        },
+        {
+          "text": "Gibbs free energy is always negative for a spontaneous process.",
+          "isCorrect": false
+        }
+      ],
+      "explanation": "The zeroth law states that if two systems are in thermal equilibrium, they are in thermal equilibrium with a third system. This implies that there exists a temperature equilibrium between the three systems.",
+      "difficulty": "medium",
+      "subject": "physics",
+      "id": "q0_1759077989146_ax23r9sxz"
+    },
+    {
+      "type": "MCQ",
+      "question": "What is the primary purpose of a Carnot engine?",
+      "options": [
+        {
+          "text": "To convert heat directly into mechanical work with 100% efficiency.",
+          "isCorrect": false
+        },
+        {
+          "text": "To demonstrate the theoretical maximum efficiency of a heat engine operating between two temperatures.",
+          "isCorrect": true
+        },
+        {
+          "text": "To cool a system to absolute zero.",
+          "isCorrect": false
+        },
+        {
+          "text": "To convert mechanical work directly into electrical energy.",
+          "isCorrect": false
+        }
+      ],
+      "explanation": "The Carnot engine represents the theoretical limit of efficiency for any heat engine operating between two temperatures. Its efficiency is given by the Carnot efficiency formula (T_cold/T_hot-1), where T_cold and T_hot are the absolute temperatures of the cold and hot reservoirs, respectively.",
+      "difficulty": "medium",
+      "subject": "physics",
+      "id": "q1_1759077989146_82f695d7z"
+    },
+    {
+      "type": "True/False",
+      "question": "Increasing the temperature of a substance always increases its entropy.",
+      "options": [
+        {
+          "text": "True",
+          "isCorrect": false
+        },
+        {
+          "text": "False",
+          "isCorrect": true
+        }
+      ],
+      "explanation": "Entropy is related to the number of possible microscopic arrangements of the molecules in a system. While increasing temperature often increases microscopic motion, it doesn't automatically guarantee an increase in entropy. Entropy increases when the number of possible arrangements increases (e.g., through phase changes or mixing).",
+      "difficulty": "medium",
+      "subject": "physics",
+      "id": "q2_1759077989146_kh5tpjlul"
+    },
+    {
+      "type": "MCQ",
+      "question": "Which thermodynamic process is characterized by a constant temperature?",
+      "options": [
+        {
+          "text": "Isothermal",
+          "isCorrect": false
+        },
+        {
+          "text": "Adiabatic",
+          "isCorrect": false
+        },
+        {
+          "text": "Isobaric",
+          "isCorrect": false
+        },
+        {
+          "text": "Isochoric (Isometric)",
+          "isCorrect": true
+        }
+      ],
+      "explanation": "An isothermal process occurs at a constant temperature. This is achieved by using a heat reservoir to maintain the temperature constant during the process.",
+      "difficulty": "medium",
+      "subject": "physics",
+      "id": "q3_1759077989146_mr92bwl59"
+    },
+    {
+      "type": "MCQ",
+      "question": "What does the Gibbs free energy (G) represent?",
+      "options": [
+        {
+          "text": "The enthalpy (H) of a system.",
+          "isCorrect": false
+        },
+        {
+          "text": "The entropy (S) of a system.",
+          "isCorrect": false
+        },
+        {
+          "text": "The amount of heat absorbed by a system during a process.",
+          "isCorrect": false
+        },
+        {
+          "text": "The amount of energy available to perform useful work at constant temperature and pressure.",
+          "isCorrect": true
+        }
+      ],
+      "explanation": "Gibbs free energy combines enthalpy (H) and entropy (S) to provide a measure of the spontaneity of a process at constant temperature and pressure. A negative Gibbs free energy indicates a spontaneous process.",
+      "difficulty": "medium",
+      "subject": "physics",
+      "id": "q4_1759077989146_qhjcq0935"
+    }
+  ],
+  "config": {
+    "showAnswers": true,
+    "allowRetake": true,
+    "difficulty": "medium",
+    "subject": "physics"
+  },
+  "createdAt": "2025-09-28T16:46:29.147Z",
+  "metadata": {
+    "source": "chrome-ai",
+    "model": "gemini-nano",
+    "generationTime": 73481,
+    "questionCount": 5
+  }
+}
+useQuizState.js:421 Saving answer at index: 0 Answer: {questionId: 'q0_1759077989146_ax23r9sxz', questionType: 'MCQ', selectedOption: 0, isCorrect: false, timeSpent: 30, …}
+useQuizState.js:421 Saving answer at index: 1 Answer: {questionId: 'q1_1759077989146_82f695d7z', questionType: 'MCQ', selectedOption: 2, isCorrect: false, timeSpent: 30, …}
+useQuizState.js:421 Saving answer at index: 2 Answer: {questionId: 'q2_1759077989146_kh5tpjlul', questionType: 'True/False', selectedOption: 1, isCorrect: true, timeSpent: 30, …}
+useQuizState.js:421 Saving answer at index: 3 Answer: {questionId: 'q3_1759077989146_mr92bwl59', questionType: 'MCQ', selectedOption: 1, isCorrect: false, timeSpent: 30, …}
+useQuizState.js:421 Saving answer at index: 4 Answer: {questionId: 'q4_1759077989146_qhjcq0935', questionType: 'MCQ', selectedOption: 3, isCorrect: true, timeSpent: 30, …}
+useQuizState.js:240 Final answers being submitted: (5) [{…}, {…}, {…}, {…}, {…}]
+api.js:443 ✅ Completing quiz: 1759077989146_ic9p24xcv (5) [{…}, {…}, {…}, {…}, {…}] {id: '1759077989146_ic9p24xcv', title: 'AI Generated Quiz - 9/28/2025', description: "Quiz generated using Chrome's built-in AI", questions: Array(5), config: {…}, …}
+QuizResultsPage.jsx:273 Received NaN for the `children` attribute. If this is expected, cast the value to a string.
+validateProperty @ react-dom_client.js?v=0ee1c82c:2395
+warnUnknownProperties @ react-dom_client.js?v=0ee1c82c:2545
+validatePropertiesInDevelopment @ react-dom_client.js?v=0ee1c82c:12240
+setInitialProperties @ react-dom_client.js?v=0ee1c82c:12667
+completeWork @ react-dom_client.js?v=0ee1c82c:8181
+runWithFiberInDEV @ react-dom_client.js?v=0ee1c82c:1485
+completeUnitOfWork @ react-dom_client.js?v=0ee1c82c:10976
+performUnitOfWork @ react-dom_client.js?v=0ee1c82c:10882
+workLoopSync @ react-dom_client.js?v=0ee1c82c:10728
+renderRootSync @ react-dom_client.js?v=0ee1c82c:10711
+performWorkOnRoot @ react-dom_client.js?v=0ee1c82c:10330
+performSyncWorkOnRoot @ react-dom_client.js?v=0ee1c82c:11635
+flushSyncWorkAcrossRoots_impl @ react-dom_client.js?v=0ee1c82c:11536
+processRootScheduleInMicrotask @ react-dom_client.js?v=0ee1c82c:11558
+(anonymous) @ react-dom_client.js?v=0ee1c82c:11649
+<div>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=0ee1c82c:250
+QuizResultsPage @ QuizResultsPage.jsx:273
+react_stack_bottom_frame @ react-dom_client.js?v=0ee1c82c:17424
+renderWithHooks @ react-dom_client.js?v=0ee1c82c:4206
+updateFunctionComponent @ react-dom_client.js?v=0ee1c82c:6619
+beginWork @ react-dom_client.js?v=0ee1c82c:7654
+runWithFiberInDEV @ react-dom_client.js?v=0ee1c82c:1485
+performUnitOfWork @ react-dom_client.js?v=0ee1c82c:10868
+workLoopSync @ react-dom_client.js?v=0ee1c82c:10728
+renderRootSync @ react-dom_client.js?v=0ee1c82c:10711
+performWorkOnRoot @ react-dom_client.js?v=0ee1c82c:10330
+performSyncWorkOnRoot @ react-dom_client.js?v=0ee1c82c:11635
+flushSyncWorkAcrossRoots_impl @ react-dom_client.js?v=0ee1c82c:11536
+processRootScheduleInMicrotask @ react-dom_client.js?v=0ee1c82c:11558
+(anonymous) @ react-dom_client.js?v=0ee1c82c:11649
+<QuizResultsPage>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=0ee1c82c:250
+QuizPage @ QuizPage.jsx:518
+react_stack_bottom_frame @ react-dom_client.js?v=0ee1c82c:17424
+renderWithHooks @ react-dom_client.js?v=0ee1c82c:4206
+updateFunctionComponent @ react-dom_client.js?v=0ee1c82c:6619
+beginWork @ react-dom_client.js?v=0ee1c82c:7654
+runWithFiberInDEV @ react-dom_client.js?v=0ee1c82c:1485
+performUnitOfWork @ react-dom_client.js?v=0ee1c82c:10868
+workLoopSync @ react-dom_client.js?v=0ee1c82c:10728
+renderRootSync @ react-dom_client.js?v=0ee1c82c:10711
+performWorkOnRoot @ react-dom_client.js?v=0ee1c82c:10330
+performSyncWorkOnRoot @ react-dom_client.js?v=0ee1c82c:11635
+flushSyncWorkAcrossRoots_impl @ react-dom_client.js?v=0ee1c82c:11536
+processRootScheduleInMicrotask @ react-dom_client.js?v=0ee1c82c:11558
+(anonymous) @ react-dom_client.js?v=0ee1c82c:11649

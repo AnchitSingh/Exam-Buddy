@@ -1,129 +1,276 @@
 // src/utils/chromeAI.js
-
 import { buildQuizPrompt, buildEvaluatePrompt, buildRecommendPrompt } from './prompts';
-import { parseWithRepair } from './jsonGuard';
 import { validateQuiz, validateEvaluation, validateRecommendations } from './schema';
 
-// Preference keys are implementation hints; Prompt API specifics may vary by channel/version.
-const SESSION_OPTIONS = {
-  // temperature, topK may be supported depending on build; keep conservative defaults.
-  temperature: 0.3,
-  topK: 32
-};
-
 let session = null;
+let modelParams = null;
 
-async function getModelSurface() {
-  // Try window.ai (web Prompt API) first, then chrome.ai.* (extensions) if exposed.
-  // This keeps code robust across channels while remaining extension-friendly.
-  const hasWindowAI = typeof window !== 'undefined' && window.ai && window.ai.languageModel;
-  const hasChromeAI = typeof chrome !== 'undefined' && chrome.ai && chrome.ai.languageModel;
-  return { hasWindowAI, hasChromeAI };
+// Get the LanguageModel API surface (web or extension)
+function getLanguageModel() {
+  // Standard web API (Chrome 127+)
+  if (globalThis.LanguageModel) return globalThis.LanguageModel;
+  // Extension origin trial (experimental)
+  if (typeof chrome !== 'undefined' && chrome?.aiOriginTrial?.languageModel) {
+    return chrome.aiOriginTrial.languageModel;
+  }
+  return null;
 }
 
+// Check model availability using official status strings
 async function checkAvailability() {
-  const { hasWindowAI, hasChromeAI } = await getModelSurface();
   try {
-    if (hasWindowAI) {
-      const caps = await window.ai.languageModel.capabilities();
-      return { available: caps?.available === 'readily' || caps?.available === 'after-download', detail: caps };
-    }
-    if (hasChromeAI) {
-      const caps = await chrome.ai.languageModel.capabilities();
-      return { available: caps?.available === 'readily' || caps?.available === 'after-download', detail: caps };
-    }
-    return { available: false, detail: null };
-  } catch (e) {
-    return { available: false, detail: null, error: e?.message || 'Availability check failed' };
+    const LM = getLanguageModel();
+    if (!LM) return { available: false, status: 'no-api', detail: null };
+    
+    const availability = await LM.availability();
+    return { 
+      available: availability !== 'unavailable', 
+      status: availability, 
+      detail: null 
+    };
+  } catch (error) {
+    return { 
+      available: false, 
+      status: 'error', 
+      detail: null, 
+      error: error?.message || 'Availability check failed' 
+    };
   }
 }
 
+// Create session with proper parameter clamping and user activation handling
 async function createSessionIfNeeded() {
   if (session) return session;
-  const { hasWindowAI, hasChromeAI } = await getModelSurface();
-  if (hasWindowAI) {
-    session = await window.ai.languageModel.create({ ...SESSION_OPTIONS });
-    return session;
+  
+  const LM = getLanguageModel();
+  if (!LM) throw new Error('Prompt API not available');
+  
+  const availability = await LM.availability();
+  if (availability === 'unavailable') {
+    throw new Error('Model unavailable on this device/configuration');
   }
-  if (hasChromeAI) {
-    session = await chrome.ai.languageModel.create({ ...SESSION_OPTIONS });
-    return session;
+  
+  if (!modelParams) {
+    modelParams = await LM.params();
   }
-  throw new Error('Prompt API not available');
-}
-
-async function promptRaw(text) {
-  const s = await createSessionIfNeeded();
-  // Unified prompt method name for both surfaces.
-  if (typeof s.prompt === 'function') {
-    return await s.prompt(text);
-  }
-  if (typeof s.generate === 'function') {
-    const res = await s.generate(text);
-    return typeof res === 'string' ? res : (res?.output || '');
-  }
-  throw new Error('Unknown session interface for Prompt API');
-}
-
-async function promptJSON({ text, schema, validate, repairInstruction }) {
-  const raw = await promptRaw(text);
-  const repaired = await parseWithRepair({
-    raw,
-    schema,
-    validate,
-    repairFn: async (broken) => {
-      const repairPrompt = `${repairInstruction}\n\n---\nSchema:\n${JSON.stringify(schema, null, 2)}\n---\nBroken:\n${broken}\n---\nReturn corrected JSON only.`;
-      return await promptRaw(repairPrompt);
+  
+  session = await LM.create({
+    temperature: Math.min(0.3, modelParams.maxTemperature || 1.0),
+    topK: Math.min(8, modelParams.maxTopK || 40),
+    expectedOutputs: [
+      { type: "text", languages: ["en"] }
+    ],
+    monitor(monitor) {
+      monitor.addEventListener('downloadprogress', (e) => {
+        console.log(`Model download: ${Math.round(e.loaded * 100)}%`);
+      });
     }
   });
-  return repaired;
+  
+  return session;
+}
+
+
+// Prompt with structured JSON output using responseConstraint
+async function promptJSON({ text, schema, validate, fallbackRepair = true }) {
+  try {
+    const s = await createSessionIfNeeded();
+    
+    // Try structured output first (Chrome 137+)
+    const result = await s.prompt(text, {
+      responseConstraint: schema,
+      omitResponseConstraintInput: true
+    });
+    
+    const parsed = JSON.parse(result);
+    
+    // Validate with custom validator if provided
+    if (validate && !validate(parsed)) {
+      if (!fallbackRepair) throw new Error('Validation failed');
+      // Fallback to repair prompt if validation fails
+      return await promptJSONWithRepair({ text, schema, validate });
+    }
+    
+    return parsed;
+  } catch (error) {
+    // Fallback to repair approach for older versions or validation failures
+    if (fallbackRepair && error.name !== 'NotSupportedError') {
+      console.warn('Structured output failed, attempting repair approach:', error.message);
+      return await promptJSONWithRepair({ text, schema, validate });
+    }
+    throw error;
+  }
+}
+
+// Fallback repair approach for compatibility
+async function promptJSONWithRepair({ text, schema, validate }) {
+  const s = await createSessionIfNeeded();
+  
+  const enhancedPrompt = `${text}
+
+IMPORTANT: Respond with valid JSON only that matches this schema:
+${JSON.stringify(schema, null, 2)}`;
+  
+  const raw = await s.prompt(enhancedPrompt);
+  
+  try {
+    const parsed = JSON.parse(raw);
+    if (validate && !validate(parsed)) {
+      throw new Error('Validation failed');
+    }
+    return parsed;
+  } catch (parseError) {
+    // Attempt repair
+    const repairPrompt = `The following output was not valid JSON or didn't match the required schema. Please fix it and return valid JSON only:
+
+Schema:
+${JSON.stringify(schema, null, 2)}
+
+Broken output:
+${raw}
+
+Return corrected JSON only:`;
+    
+    const repaired = await s.prompt(repairPrompt);
+    const repairedParsed = JSON.parse(repaired);
+    
+    if (validate && !validate(repairedParsed)) {
+      throw new Error('Repair validation failed');
+    }
+    
+    return repairedParsed;
+  }
+}
+
+// Streaming prompt for long responses
+async function promptStreaming(text) {
+  const s = await createSessionIfNeeded();
+  return s.promptStreaming(text);
+}
+
+// Session management
+export async function resetSession() {
+  if (session) {
+    session.destroy();
+    session = null;
+  }
+}
+
+export async function cloneSession() {
+  if (!session) throw new Error('No active session to clone');
+  return await session.clone();
 }
 
 // Public API
-
 export async function available() {
   return await checkAvailability();
 }
 
 export async function generateQuizJSON({ extractedSource, config }) {
   const prompt = buildQuizPrompt({ extractedSource, config });
-  const repairInstruction = 'The previous output was not valid JSON. Repair it to exactly match the schema and return JSON only.';
-  const data = await promptJSON({
+  const schema = {
+    type: 'object',
+    required: ['questions'],
+    properties: {
+      questions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['type', 'question', 'options', 'explanation'],
+          properties: {
+            type: { type: 'string' },
+            question: { type: 'string' },
+            options: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['text', 'isCorrect'],
+                properties: {
+                  text: { type: 'string' },
+                  isCorrect: { type: 'boolean' }
+                }
+              }
+            },
+            explanation: { type: 'string' },
+            difficulty: { type: 'string' },
+            subject: { type: 'string' }
+          }
+        }
+      }
+    }
+  };
+  
+  return await promptJSON({
     text: prompt,
-    schema: { type: 'object', required: ['questions'], properties: {} }, // minimal anchor; validator enforces shape
-    validate: validateQuiz,
-    repairInstruction
+    schema,
+    validate: validateQuiz
   });
-  return data;
 }
 
 export async function evaluateSubjectiveJSON({ question, canonical, userAnswer }) {
   const prompt = buildEvaluatePrompt({ question, canonical, userAnswer });
-  const repairInstruction = 'Return valid JSON only that conforms to the evaluation schema.';
-  const data = await promptJSON({
+  const schema = {
+    type: 'object',
+    required: ['isCorrect', 'rationale'],
+    properties: {
+      isCorrect: { type: 'boolean' },
+      rationale: { type: 'string' },
+      score: { type: 'number', minimum: 0, maximum: 100 }
+    }
+  };
+  
+  return await promptJSON({
     text: prompt,
-    schema: { type: 'object', required: ['isCorrect', 'rationale'], properties: {} },
-    validate: validateEvaluation,
-    repairInstruction
+    schema,
+    validate: validateEvaluation
   });
-  return data;
 }
 
 export async function recommendPlanJSON({ summary }) {
   const prompt = buildRecommendPrompt({ summary });
-  const repairInstruction = 'Return valid JSON only that conforms to the recommendations schema.';
-  const data = await promptJSON({
+  const schema = {
+    type: 'object',
+    required: ['strengths', 'weaknesses', 'nextSteps'],
+    properties: {
+      strengths: { type: 'array', items: { type: 'string' } },
+      weaknesses: { type: 'array', items: { type: 'string' } },
+      nextSteps: { type: 'array', items: { type: 'string' } },
+      priority: { type: 'string', enum: ['high', 'medium', 'low'] }
+    }
+  };
+  
+  return await promptJSON({
     text: prompt,
-    schema: { type: 'object', required: ['strengths', 'weaknesses', 'nextSteps'], properties: {} },
-    validate: validateRecommendations,
-    repairInstruction
+    schema,
+    validate: validateRecommendations
   });
-  return data;
+}
+
+// Additional utilities
+export async function getModelInfo() {
+  const LM = getLanguageModel();
+  if (!LM) return null;
+  
+  try {
+    const params = await LM.params();
+    return {
+      defaultTemperature: params.defaultTemperature,
+      maxTemperature: params.maxTemperature,
+      defaultTopK: params.defaultTopK,
+      maxTopK: params.maxTopK
+    };
+  } catch {
+    return null;
+  }
 }
 
 export default {
   available,
   generateQuizJSON,
   evaluateSubjectiveJSON,
-  recommendPlanJSON
+  recommendPlanJSON,
+  promptStreaming,
+  resetSession,
+  cloneSession,
+  getModelInfo
 };

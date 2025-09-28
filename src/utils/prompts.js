@@ -1,115 +1,106 @@
 // src/utils/prompts.js
-
 function trimAndCap(text, max = 6000) {
     if (!text) return '';
     return text.length > max ? `${text.slice(0, max)}…` : text;
-  }
-  
-  export function buildQuizPrompt({ extractedSource, config }) {
+}
+
+export function buildQuizPrompt({ extractedSource, config }) {
     const {
       title, domain, chunks = [], text = ''
     } = extractedSource || {};
+    
     const {
       questionCount = 5,
       difficulty = 'medium',
-      questionTypes = ['MCQ'], // MCQ | True/False | Short Answer | Fill in Blank
+      questionTypes = ['MCQ'],
       immediateFeedback = true
     } = config || {};
-  
-    // Prefer first chunk to stay small/on-device-friendly; caller can iterate for more coverage if needed.
+    
     const sourceSnippet = chunks?.[0]?.text || text || '';
-    const safeSource = trimAndCap(sourceSnippet, 5500);
+    
+    // Handle minimal content by expanding the topic
+    let expandedContent = sourceSnippet;
+    if (sourceSnippet.length < 50) {
+      expandedContent = `Topic: ${sourceSnippet}. Generate questions about this topic using your knowledge.`;
+    }
+    
+    const safeSource = trimAndCap(expandedContent, 5500);
+    
+    return `You are generating a quiz about the following topic. Create educational questions that test understanding of key concepts.
   
-    return `
-  You are generating an adaptive quiz from the provided source text. Use only the information in the text. Keep questions concise and unambiguous.
+  Topic/Content: "${safeSource}"
   
-  Constraints:
-  - number_of_questions: ${questionCount}
-  - allowed_types: ${questionTypes.join(', ')}
-  - difficulty: ${difficulty}
-  - output: JSON only, no prose.
+  Generate exactly ${questionCount} questions with these constraints:
+  - Question types MUST be one of: ${questionTypes.join(', ')}
+  - Difficulty: ${difficulty}
+  - Each MCQ needs exactly 4 options, with one marked as correct.
+  - Each True/False needs exactly 2 options: [{ "text": "True", "isCorrect": boolean }, { "text": "False", "isCorrect": boolean }], with one marked as correct.
   
-  JSON schema (shape and keys to follow):
+  Return ONLY valid JSON with this exact structure:
   {
     "questions": [
       {
-        "id": "string",
-        "type": "MCQ | True/False | Short Answer | Fill in Blank",
-        "stem": "string",
-        "options": [{"text": "string", "isCorrect": boolean}]  // required for MCQ/True/False
-        "correctAnswer": 0, // index for MCQ or True/False
-        "canonicalAnswers": ["string", "..."], // for Short Answer / Fill in Blank
-        "explanation": "string",
-        "tags": ["string"]
+        "type": "MCQ",
+        "question": "Clear question text here?",
+        "options": [
+          { "text": "Option A", "isCorrect": true },
+          { "text": "Option B", "isCorrect": false },
+          { "text": "Option C", "isCorrect": false },
+          { "text": "Option D", "isCorrect": false }
+        ],
+        "explanation": "Why this is correct",
+        "difficulty": "${difficulty}",
+        "subject": "${title || 'General'}"
       }
-    ],
-    "meta": {
-      "sourceTitle": "${title || ''}",
-      "sourceDomain": "${domain || ''}"
-    }
+    ]
+  }`;
   }
   
-  Source:
-  """
-  ${safeSource}
-  """
-  Return JSON only.
-  `.trim();
-  }
-  
-  export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
-    const stem = question?.stem || '';
-    const canonicalList = Array.isArray(canonical) ? canonical : (question?.canonicalAnswers || []);
-    const safeCanon = canonicalList.slice(0, 6).join('\n- ');
+
+export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
+    const questionText = question?.question || question?.stem || '';
+    const correctAnswer = question?.correctAnswer || canonical;
     const safeUser = (userAnswer || '').slice(0, 1500);
-  
-    return `
-  You evaluate a learner's short answer using the rubric below. Be strict but fair and concise.
+
+    return `You evaluate a learner's answer using the rubric below. Be strict but fair.
   
   Rubric:
-  - Compare key ideas to reference answer.
-  - Accept equivalent wording.
-  - Penalize missing core concepts or contradictions.
+  - Compare key ideas to reference answer
+  - Accept equivalent wording
+  - Penalize missing core concepts or contradictions
   
-  Return JSON only:
+  Return JSON with this EXACT structure:
   {
     "isCorrect": boolean,
     "score": number, // 0.0 to 1.0
-    "rationale": "string", // <= 2 sentences
-    "tip": "string" // 1 actionable suggestion
+    "feedback": {
+      "message": "string (brief assessment)",
+      "explanation": "string (detailed explanation)"
+    },
+    "explanation": "string (why this answer is/isn't correct)"
   }
   
-  Question:
-  "${stem}"
+  Question: "${questionText}"
+  Correct Answer: "${correctAnswer}"
+  Student Answer: "${safeUser}"
   
-  Reference key points:
-  - ${safeCanon}
-  
-  Learner answer:
-  "${safeUser}"
-  
-  Return JSON only.
-  `.trim();
-  }
-  
-  export function buildRecommendPrompt({ summary }) {
-    // summary includes per-tag accuracy, list of misses, and short section names.
+  Return valid JSON only:`.trim();
+}
+
+export function buildRecommendPrompt({ summary }) {
     const compact = JSON.stringify(summary || {}).slice(0, 5500);
+
+    return `You are a study coach. Read the quiz performance summary and produce a study plan.
   
-    return `
-  You are a study coach. Read the quiz performance summary and produce a concise study plan.
+  Performance summary: ${compact}
   
-  Performance summary (JSON):
-  ${compact}
-  
-  Return JSON only:
+  Return JSON with this EXACT structure:
   {
-    "strengths": ["string"],
-    "weaknesses": ["string"],
-    "nextSteps": [
-      { "topic": "string", "action": "string", "count": 3 }
-    ]
-  }
-  `.trim();
+    "strengths": ["string", "string"],
+    "weaknesses": ["string", "string"], 
+    "nextSteps": ["string", "string", "string"]
   }
   
+  Each array should contain 2-4 concise items.
+  Return valid JSON only:`.trim();
+}

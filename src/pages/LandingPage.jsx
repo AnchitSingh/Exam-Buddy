@@ -1,6 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { getAIStatus } from '../utils/aiAvailability';
 
 const LandingPage = ({ onGetStarted }) => {
+    const [aiStatus, setAiStatus] = useState({
+        loading: true,
+        available: false,
+        error: null,
+        state: null
+    });
+
+    useEffect(() => {
+        const checkAI = async () => {
+            try {
+                const status = await getAIStatus();
+                setAiStatus({
+                    loading: false,
+                    available: status.state === 'ready',
+                    error: status.error || null,
+                    state: status.state
+                });
+            } catch (error) {
+                setAiStatus({
+                    loading: false,
+                    available: false,
+                    error: error.message,
+                    state: 'error'
+                });
+            }
+        };
+
+        checkAI();
+    }, []);
+
     return (
         <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 overflow-x-hidden">
             {/* Background Elements */}
@@ -84,17 +115,49 @@ const LandingPage = ({ onGetStarted }) => {
 
                                   {/* CTA Section */}
                                 <div className="mb-6">
-                                    <button 
-                                        onClick={onGetStarted}
-                                        className="group relative inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-amber-600 to-orange-600 rounded-2xl shadow-xl shadow-amber-600/25 hover:shadow-amber-600/40 hover:scale-105 transform transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 w-full"
-                                    >
-                                        <span className="flex items-center">
-                                        Get Started Free
-                                        <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                                        </svg>
-                                        </span>
-                                    </button>
+                                    {aiStatus.loading ? (
+                                        <div className="flex flex-col items-center">
+                                            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                                                <svg className="w-8 h-8 text-amber-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                            </div>
+                                            <p className="text-slate-600 mb-4">Checking AI availability...</p>
+                                        </div>
+                                    ) : aiStatus.available ? (
+                                        <button 
+                                            onClick={onGetStarted}
+                                            className="group relative inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-amber-600 to-orange-600 rounded-2xl shadow-xl shadow-amber-600/25 hover:shadow-amber-600/40 hover:scale-105 transform transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 w-full"
+                                        >
+                                            <span className="flex items-center">
+                                            Get Started Free
+                                            <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                            </svg>
+                                            </span>
+                                        </button>
+                                    ) : (
+                                        <div className="text-center">
+                                            <button 
+                                                disabled
+                                                className="group relative inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-slate-400 rounded-2xl w-full cursor-not-allowed opacity-50"
+                                            >
+                                                <span className="flex items-center">
+                                                Get Started Free
+                                                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                                </svg>
+                                                </span>
+                                            </button>
+                                            <p className="text-red-600 text-sm mt-3 font-medium">
+                                                {aiStatus.state === 'unavailable' 
+                                                    ? 'Chrome AI is not available in your browser. Please use Chrome 117+ with Chrome AI enabled.' 
+                                                    : aiStatus.state === 'downloading' 
+                                                        ? 'Chrome AI model is downloading. Please wait and try again.' 
+                                                        : 'Error checking AI availability. Please try again.'}
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Trust Indicators */}
@@ -150,19 +213,50 @@ const LandingPage = ({ onGetStarted }) => {
                                 </p>
 
                                 {/* CTA Section */}
-                                <div className="flex items-center gap-4 mb-8">
-                                    <button 
-                                        onClick={onGetStarted}
-                                        className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-amber-600 to-orange-600 rounded-2xl shadow-xl shadow-amber-600/25 hover:shadow-amber-600/40 hover:scale-105 transform transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 min-h-[3rem]"
-                                    >
-                                        <span className="flex items-center">
-                                            Get Started Free
-                                            <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                                            </svg>
-                                        </span>
-                                    </button>
-                                    
+                                <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+                                    {aiStatus.loading ? (
+                                        <div className="flex flex-col items-center">
+                                            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                                                <svg className="w-8 h-8 text-amber-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                            </div>
+                                            <p className="text-slate-600 mb-4">Checking AI availability...</p>
+                                        </div>
+                                    ) : aiStatus.available ? (
+                                        <button 
+                                            onClick={onGetStarted}
+                                            className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-amber-600 to-orange-600 rounded-2xl shadow-xl shadow-amber-600/25 hover:shadow-amber-600/40 hover:scale-105 transform transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 min-h-[3rem] w-full sm:w-auto"
+                                        >
+                                            <span className="flex items-center">
+                                                Get Started Free
+                                                <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                                </svg>
+                                            </span>
+                                        </button>
+                                    ) : (
+                                        <div className="w-full sm:w-auto">
+                                            <button 
+                                                disabled
+                                                className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-slate-400 rounded-2xl w-full cursor-not-allowed opacity-50 min-h-[3rem]"
+                                            >
+                                                <span className="flex items-center">
+                                                    Get Started Free
+                                                    <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                                    </svg>
+                                                </span>
+                                            </button>
+                                            <p className="text-red-600 text-sm mt-3 font-medium text-center">
+                                                {aiStatus.state === 'unavailable' 
+                                                    ? 'Chrome AI is not available in your browser. Please use Chrome 117+ with Chrome AI enabled.' 
+                                                    : aiStatus.state === 'downloading' 
+                                                        ? 'Chrome AI model is downloading. Please wait and try again.' 
+                                                        : 'Error checking AI availability. Please try again.'}
+                                            </p>
+                                        </div>
+                                    )}
                                     <button className="inline-flex items-center px-6 py-4 text-slate-700 hover:text-slate-900 font-medium transition-colors duration-200">
                                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
