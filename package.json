@@ -13,10 +13,12 @@
     "@tailwindcss/postcss": "^4.1.13",
     "@tailwindcss/vite": "^4.1.13",
     "@types/chrome": "^0.1.12",
+    "apexcharts": "^5.3.5",
     "clsx": "^2.1.1",
     "lucide-react": "^0.544.0",
     "pdfjs-dist": "^5.4.149",
     "react": "^19.1.1",
+    "react-apexcharts": "^1.7.0",
     "react-dom": "^19.1.1",
     "react-hot-toast": "^2.6.0",
     "tailwind-merge": "^3.3.1"

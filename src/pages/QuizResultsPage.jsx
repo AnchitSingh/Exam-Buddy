@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import GlobalHeader from '../components/ui/GlobalHeader';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
+import Modal from '../components/ui/Modal';
 
 const QuizResultsPage = ({ results, onNavigate }) => {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [showMobileNav, setShowMobileNav] = useState(false);
+	const [isSolutionsModalOpen, setSolutionsModalOpen] = useState(false);
 
 	if (!results) {
 		return (
@@ -306,131 +308,13 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 								</button>
 							</div>
 
-							{/* Question-Solution Section */}
-							<div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50">
-								<h3 className="text-lg font-semibold text-slate-800 mb-4">Question Solutions</h3>
-								
-								{/* Question Navigator */}
-								<div className="mb-4 overflow-x-auto pb-2">
-									<div className="flex space-x-2 min-w-max p-4">
-										{[...Array(totalQuestions)].map((_, idx) => {
-											const answer = answers?.[idx];
-											const isActive = idx === currentQuestionIndex;
-											const isCorrect = answer?.isCorrect;
-											const isUnanswered = answer?.unanswered;
-
-											return (
-												<button
-													key={idx}
-													onClick={() => setCurrentQuestionIndex(idx)}
-													className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${
-														isActive
-															? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110'
-															: isUnanswered
-																? 'bg-slate-100 text-slate-400 border border-slate-200'
-																: isCorrect
-																	? 'bg-green-100 text-green-700 border border-green-200'
-																	: 'bg-red-100 text-red-700 border border-red-200'
-													}`}
-												>
-													{idx + 1}
-												</button>
-											);
-										})}
-									</div>
-								</div>
-
-								{/* Current Question Display */}
-								{currentQuestion && (
-									<div className="space-y-4 max-w-full overflow-hidden">
-										{/* Question */}
-										<div className="p-4 bg-slate-50 rounded-xl max-w-full">
-											<div className="flex items-start space-x-3 max-w-full">
-												<div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-													currentAnswer?.unanswered ? 'bg-slate-200 text-slate-600' :
-													currentAnswer?.isCorrect ? 'bg-green-100 text-green-700' :
-													'bg-red-100 text-red-700'
-												}`}>
-													{currentAnswer?.unanswered ? '?' : currentAnswer?.isCorrect ? '✓' : '✗'}
-												</div>
-												<div className="flex-1 min-w-0">
-													<p className="text-sm text-slate-500 mb-1">Question {currentQuestionIndex + 1}</p>
-													<p className="text-slate-800 font-medium break-words">{currentQuestion.question}</p>
-												</div>
-											</div>
-										</div>
-
-										{/* Answer Section */}
-										{currentAnswer?.unanswered ? (
-											<div className="mb-6">
-												<div className="p-4 rounded-xl bg-slate-100/60 backdrop-blur-sm text-slate-600 font-medium text-center mb-4 border border-white/50">
-													Not Answered
-												</div>
-												{currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False' ? (
-													<div className="space-y-3">
-														{(currentQuestion.options || []).map((option, optionIndex) => {
-															const isCorrectOption = option.isCorrect;
-															return (
-																<div key={optionIndex} className={`flex items-center space-x-3 p-4 rounded-xl backdrop-blur-sm border ${isCorrectOption ? 'bg-green-50/60 border-green-200/50' : 'bg-white/60 border-white/50'
-																	}`}>
-																	<span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${isCorrectOption ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
-																		}`}>
-																		{String.fromCharCode(65 + optionIndex)}
-																	</span>
-																	<span className="flex-1 text-slate-700 break-words">{option.text}</span>
-																	{isCorrectOption && <span className="text-sm font-medium text-green-600">Correct Answer</span>}
-																</div>
-															);
-														})}
-													</div>
-												) : (
-													<div className="p-4 rounded-xl bg-green-50/60 backdrop-blur-sm border border-green-200/50 text-green-800">
-														<strong>Correct Answer:</strong> {currentQuestion.explanation}
-													</div>
-												)}
-											</div>
-										) : currentQuestion.type === 'Short Answer' || currentQuestion.type === 'Fill in Blank' ? (
-											<div className="mb-6">
-												{renderSubjectiveAnswer(currentQuestion, currentAnswer)}
-											</div>
-										) : (
-											<div className="space-y-3 mb-6">
-												{(currentQuestion.options || []).map((option, optionIndex) => {
-													const isSelected = currentAnswer?.selectedOption === optionIndex;
-													const isCorrectOption = option.isCorrect;
-
-													return (
-														<div key={optionIndex} className={`flex items-center space-x-3 p-4 rounded-xl backdrop-blur-sm border ${isSelected && isCorrectOption ? 'bg-green-100/60 border-green-300/50' :
-															isSelected && !isCorrectOption ? 'bg-red-100/60 border-red-300/50' :
-																!isSelected && isCorrectOption ? 'bg-green-50/60 border-green-200/50' :
-																	'bg-white/60 border-white/50'
-															}`}>
-															<span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${isSelected && isCorrectOption ? 'bg-green-200 text-green-800' :
-																isSelected && !isCorrectOption ? 'bg-red-200 text-red-800' :
-																	!isSelected && isCorrectOption ? 'bg-green-100 text-green-700' :
-																		'bg-slate-100 text-slate-600'
-																}`}>
-																{String.fromCharCode(65 + optionIndex)}
-															</span>
-															<span className="flex-1 text-slate-700 break-words">{option.text}</span>
-															{isSelected && <span className="text-sm font-medium text-slate-600">Your Answer</span>}
-															{!isSelected && isCorrectOption && <span className="text-sm font-medium text-green-600">Correct</span>}
-														</div>
-													);
-												})}
-											</div>
-										)}
-
-										{/* Explanation */}
-										{currentQuestion.explanation && !currentAnswer?.unanswered && (
-											<div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-												<p className="text-sm font-semibold text-blue-800 mb-1">Explanation</p>
-												<p className="text-sm text-blue-700 break-words">{currentQuestion.explanation}</p>
-											</div>
-										)}
-									</div>
-								)}
-							</div>
+							{/* View Solutions Button */}
+							<button
+								onClick={() => setSolutionsModalOpen(true)}
+								className="w-full bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50 text-lg font-semibold text-slate-800 hover:shadow-xl transition-all duration-300"
+							>
+								View Question Solutions
+							</button>
 						</div>
 					</div>
 				</div>
@@ -573,137 +457,144 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 						</button>
 					</div>
 
-					{/* Question Solutions - Mobile */}
-					<div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg border border-white/50">
-						<h3 className="text-base sm:text-lg font-semibold text-slate-800 mb-3">Question Solutions</h3>
-						
-						{/* Question Navigator - Mobile */}
-						<div className="mb-4 overflow-x-auto pb-2">
-							<div className="flex space-x-2 min-w-max p-4">
-								{[...Array(totalQuestions)].map((_, idx) => {
-									const answer = answers?.[idx];
-									const isActive = idx === currentQuestionIndex;
-									const isCorrect = answer?.isCorrect;
-									const isUnanswered = answer?.unanswered;
-
-									return (
+										{/* View Solutions Button - Mobile */}
 										<button
-											key={idx}
-											onClick={() => setCurrentQuestionIndex(idx)}
-											className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${
-												isActive
-													? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110'
-													: isUnanswered
-														? 'bg-slate-100 text-slate-400 border border-slate-200'
-														: isCorrect
-															? 'bg-green-100 text-green-700 border border-green-200'
-															: 'bg-red-100 text-red-700 border border-red-200'
-											}`}
+											onClick={() => setSolutionsModalOpen(true)}
+											className="w-full bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg border border-white/50 text-base sm:text-lg font-semibold text-slate-800"
 										>
-											{idx + 1}
-										</button>
-									);
-								})}
-							</div>
-						</div>
+											View Question Solutions
+										</button>				</div>
+			</main>
 
-						{/* Current Question Display - Mobile */}
-						{currentQuestion && (
-							<div className="space-y-3 max-w-full overflow-hidden">
-								{/* Question */}
-								<div className="p-3 sm:p-4 bg-slate-50 rounded-lg sm:rounded-xl max-w-full">
-									<div className="flex items-start space-x-2 sm:space-x-3 max-w-full">
-										<div className={`flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold ${
-											currentAnswer?.unanswered ? 'bg-slate-200 text-slate-600' :
-											currentAnswer?.isCorrect ? 'bg-green-100 text-green-700' :
-											'bg-red-100 text-red-700'
-										}`}>
-											{currentAnswer?.unanswered ? '?' : currentAnswer?.isCorrect ? '✓' : '✗'}
-										</div>
-										<div className="flex-1 min-w-0">
-											<p className="text-xs sm:text-sm text-slate-500 mb-1">Question {currentQuestionIndex + 1}</p>
-											<p className="text-sm sm:text-base text-slate-800 font-medium break-words">{currentQuestion.question}</p>
-										</div>
+			<Modal
+				isOpen={isSolutionsModalOpen}
+				onClose={() => setSolutionsModalOpen(false)}
+				title="Question Solutions"
+				size="xl"
+			>
+				<div className="text-left">
+					{/* Question Navigator */}
+					<div className="mb-4 overflow-x-auto pb-2">
+						<div className="flex space-x-2 min-w-max p-4">
+							{[...Array(totalQuestions)].map((_, idx) => {
+								const answer = answers?.[idx];
+								const isActive = idx === currentQuestionIndex;
+								const isCorrect = answer?.isCorrect;
+								const isUnanswered = answer?.unanswered;
+
+								return (
+									<button
+										key={idx}
+										onClick={() => setCurrentQuestionIndex(idx)}
+										className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${
+											isActive
+												? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110'
+												: isUnanswered
+													? 'bg-slate-100 text-slate-400 border border-slate-200'
+													: isCorrect
+														? 'bg-green-100 text-green-700 border border-green-200'
+														: 'bg-red-100 text-red-700 border border-red-200'
+										}`}
+									>
+										{idx + 1}
+									</button>
+								);
+							})}
+						</div>
+					</div>
+
+					{/* Current Question Display */}
+					{currentQuestion && (
+						<div className="space-y-4 max-w-full overflow-hidden">
+							{/* Question */}
+							<div className="p-4 bg-slate-50 rounded-xl max-w-full">
+								<div className="flex items-start space-x-3 max-w-full">
+									<div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+										currentAnswer?.unanswered ? 'bg-slate-200 text-slate-600' :
+										currentAnswer?.isCorrect ? 'bg-green-100 text-green-700' :
+										'bg-red-100 text-red-700'
+									}`}>
+										{currentAnswer?.unanswered ? '?' : currentAnswer?.isCorrect ? '✓' : '✗'}
+									</div>
+									<div className="flex-1 min-w-0">
+										<p className="text-sm text-slate-500 mb-1">Question {currentQuestionIndex + 1}</p>
+										<p className="text-slate-800 font-medium break-words">{currentQuestion.question}</p>
 									</div>
 								</div>
+							</div>
 
-								{/* Answer Section - Mobile */}
-								{currentAnswer?.unanswered ? (
-									<div>
-										<div className="p-3 rounded-lg bg-slate-100/60 backdrop-blur-sm text-slate-600 font-medium text-center mb-3 border border-white/50 text-sm">
-											Not Answered
-										</div>
-										{currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False' ? (
-											<div className="space-y-2">
-												{(currentQuestion.options || []).map((option, optionIndex) => {
-													const isCorrectOption = option.isCorrect;
-													return (
-														<div key={optionIndex} className={`flex items-center space-x-2 p-2.5 rounded-lg backdrop-blur-sm border ${isCorrectOption ? 'bg-green-50/60 border-green-200/50' : 'bg-white/60 border-white/50'
-															}`}>
-															<span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs font-medium ${isCorrectOption ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
-																}`}>
-																{String.fromCharCode(65 + optionIndex)}
-															</span>
-															<span className="flex-1 text-xs sm:text-sm text-slate-700 break-words">{option.text}</span>
-															{isCorrectOption && <span className="text-xs font-medium text-green-600">✓</span>}
-														</div>
-													);
-												})}
-											</div>
-										) : (
-											<div className="p-3 rounded-lg bg-green-50/60 backdrop-blur-sm border border-green-200/50 text-green-800 text-sm">
-												<strong>Correct Answer:</strong> {currentQuestion.explanation}
-											</div>
-										)}
+							{/* Answer Section */}
+							{currentAnswer?.unanswered ? (
+								<div className="mb-6">
+									<div className="p-4 rounded-xl bg-slate-100/60 backdrop-blur-sm text-slate-600 font-medium text-center mb-4 border border-white/50">
+										Not Answered
 									</div>
-								) : currentQuestion.type === 'Short Answer' || currentQuestion.type === 'Fill in Blank' ? (
-									<div>
-										{renderSubjectiveAnswer(currentQuestion, currentAnswer)}
-									</div>
-								) : (
-									<div className="space-y-2">
-										{(currentQuestion.options || []).map((option, optionIndex) => {
-											const isSelected = currentAnswer?.selectedOption === optionIndex;
-											const isCorrectOption = option.isCorrect;
-
-											return (
-												<div key={optionIndex} className={`p-2.5 sm:p-3 rounded-lg border ${
-													isSelected && isCorrectOption ? 'bg-green-50 border-green-300' :
-													isSelected && !isCorrectOption ? 'bg-red-50 border-red-300' :
-													!isSelected && isCorrectOption ? 'bg-green-50/50 border-green-200' :
-													'bg-white border-slate-200'
-												}`}>
-													<div className="flex items-center space-x-2">
-														<span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-															isSelected && isCorrectOption ? 'bg-green-200 text-green-800' :
-															isSelected && !isCorrectOption ? 'bg-red-200 text-red-800' :
-															!isSelected && isCorrectOption ? 'bg-green-100 text-green-700' :
-															'bg-slate-100 text-slate-600'
+									{currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False' ? (
+										<div className="space-y-3">
+											{(currentQuestion.options || []).map((option, optionIndex) => {
+												const isCorrectOption = option.isCorrect;
+												return (
+													<div key={optionIndex} className={`flex items-center space-x-3 p-4 rounded-xl backdrop-blur-sm border ${isCorrectOption ? 'bg-green-50/60 border-green-200/50' : 'bg-white/60 border-white/50'
 														}`}>
+														<span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${isCorrectOption ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+															}`}>
 															{String.fromCharCode(65 + optionIndex)}
 														</span>
-														<span className="flex-1 text-xs sm:text-sm text-slate-700 break-words">{option.text}</span>
-														{isSelected && <span className="text-xs font-medium text-slate-600">Your</span>}
-														{!isSelected && isCorrectOption && <span className="text-xs font-medium text-green-600">✓</span>}
+														<span className="flex-1 text-slate-700 break-words">{option.text}</span>
+														{isCorrectOption && <span className="text-sm font-medium text-green-600">Correct Answer</span>}
 													</div>
-												</div>
-											);
-										})}
-									</div>
-								)}
+												);
+											})}
+										</div>
+									) : (
+										<div className="p-4 rounded-xl bg-green-50/60 backdrop-blur-sm border border-green-200/50 text-green-800">
+											<strong>Correct Answer:</strong> {currentQuestion.explanation}
+										</div>
+									)}
+								</div>
+							) : currentQuestion.type === 'Short Answer' || currentQuestion.type === 'Fill in Blank' ? (
+								<div className="mb-6">
+									{renderSubjectiveAnswer(currentQuestion, currentAnswer)}
+								</div>
+							) : (
+								<div className="space-y-3 mb-6">
+									{(currentQuestion.options || []).map((option, optionIndex) => {
+										const isSelected = currentAnswer?.selectedOption === optionIndex;
+										const isCorrectOption = option.isCorrect;
 
-								{/* Explanation - Mobile */}
-								{currentQuestion.explanation && !currentAnswer?.unanswered && (
-									<div className="p-2.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
-										<p className="text-xs sm:text-sm font-semibold text-blue-800 mb-1">Explanation</p>
-										<p className="text-xs sm:text-sm text-blue-700 break-words">{currentQuestion.explanation}</p>
-									</div>
-								)}
-							</div>
-						)}
-					</div>
+										return (
+											<div key={optionIndex} className={`flex items-center space-x-3 p-4 rounded-xl backdrop-blur-sm border ${isSelected && isCorrectOption ? 'bg-green-100/60 border-green-300/50' :
+												isSelected && !isCorrectOption ? 'bg-red-100/60 border-red-300/50' :
+													!isSelected && isCorrectOption ? 'bg-green-50/60 border-green-200/50' :
+														'bg-white/60 border-white/50'
+												}`}>
+												<span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${isSelected && isCorrectOption ? 'bg-green-200 text-green-800' :
+														isSelected && !isCorrectOption ? 'bg-red-200 text-red-800' :
+															!isSelected && isCorrectOption ? 'bg-green-100 text-green-700' :
+																'bg-slate-100 text-slate-600'
+													}`}>
+													{String.fromCharCode(65 + optionIndex)}
+												</span>
+												<span className="flex-1 text-slate-700 break-words">{option.text}</span>
+												{isSelected && <span className="text-sm font-medium text-slate-600">Your Answer</span>}
+												{!isSelected && isCorrectOption && <span className="text-sm font-medium text-green-600">Correct</span>}
+											</div>
+										);
+									})}
+								</div>
+							)}
+
+							{/* Explanation */}
+							{currentQuestion.explanation && !currentAnswer?.unanswered && (
+								<div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+									<p className="text-sm font-semibold text-blue-800 mb-1">Explanation</p>
+									<p className="text-sm text-blue-700 break-words">{currentQuestion.explanation}</p>
+								</div>
+							)}
+						</div>
+					)}
 				</div>
-			</main>
+			</Modal>
 
 			{/* Custom Styles */}
 			<style>{`
