@@ -80,7 +80,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       const existingAnswer = userAnswers[currentQuestionIndex];
 
       if (existingAnswer?.textAnswer) {
-        if (currentQuestion.type === 'Short Answer' && typeof existingAnswer.textAnswer === 'string') {
+        if ((currentQuestion.type === 'Short Answer' || currentQuestion.type === 'Subjective') && typeof existingAnswer.textAnswer === 'string') {
           setTextAnswer(existingAnswer.textAnswer);
         }
         if (currentQuestion.type === 'Fill in Blank' && Array.isArray(existingAnswer.textAnswer)) {
@@ -101,7 +101,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   // Add auto-save on text change (debounced)
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      if ((currentQuestion?.type === 'Short Answer' && textAnswer) ||
+      if (((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Subjective') && textAnswer) ||
         (currentQuestion?.type === 'Fill in Blank' && fillBlanks.some(b => b))) {
         saveDraftAnswer();
       }
@@ -126,7 +126,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   };
 
   const handleSubjectiveAnswer = () => {
-    if (currentQuestion?.type === 'Short Answer' && textAnswer.trim()) {
+    if ((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Subjective') && textAnswer.trim()) {
       const isCorrect = false; // Short answers need AI evaluation
       selectAnswer(0, isCorrect, false, textAnswer.trim(), false); // Not a draft
     } else if (currentQuestion?.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
@@ -141,7 +141,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
   const handleNext = () => {
     // Save the current answer before moving
-    if (currentQuestion?.type === 'Short Answer' && textAnswer.trim()) {
+    if ((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Subjective') && textAnswer.trim()) {
       selectAnswer(0, false, false, textAnswer.trim(), false);
     } else if (currentQuestion?.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
       const isCorrect = currentQuestion.acceptableAnswers?.some(acceptableSet =>
@@ -191,7 +191,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
         // Check if we need to save a text-based answer
         if (!currentAnswer || !currentAnswer.textAnswer) {
-          if (currentQuestion.type === 'Short Answer' && textAnswer.trim()) {
+          if ((currentQuestion.type === 'Short Answer' || currentQuestion.type === 'Subjective') && textAnswer.trim()) {
             const answer = {
               questionId: currentQuestion.id,
               questionType: 'Short Answer',
@@ -304,8 +304,11 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     switch (type) {
       case 'MCQ': return 'Multiple Choice';
       case 'True/False': return 'True/False';
+      case 'TrueFalse': return 'True/False';
       case 'Short Answer': return 'Short Answer';
+      case 'Subjective': return 'Short Answer';
       case 'Fill in Blank': return 'Fill in the Blank';
+      case 'FillUp': return 'Fill in the Blank';
       default: return 'Multiple Choice';
     }
   };
@@ -347,8 +350,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
             ))}
           </div>
         );
-
-      case 'True/False':
+      case 'TrueFalse':
         return (
           <div className="grid grid-cols-2 gap-4">
             <button
@@ -386,6 +388,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         );
 
       case 'Fill in Blank':
+      case 'FillUp':
         return (
           <div className="space-y-4">
             <div className="text-lg text-slate-700 leading-relaxed">
@@ -410,9 +413,9 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
               ))}
             </div>
           </div>
-        );
-
+        );      
       case 'Short Answer':
+      case 'Subjective':
         return (
           <textarea
             value={textAnswer}

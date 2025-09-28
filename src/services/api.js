@@ -233,15 +233,15 @@ class ExamBuddyAPI {
         }
 
         // For subjective questions: use AI evaluation
-        if (question.type === 'Short Answer' || question.type === 'Fill in Blank') {
+        if (question.type === 'Short Answer' || question.type === 'Fill in Blank' || question.type === 'Subjective') {
           try {
             console.log('🧠 Evaluating subjective answer with Chrome AI...');
             const startTime = performance.now();
             
             const evaluation = await chromeAI.evaluateSubjectiveJSON({
               question,
-              canonical: question.correctAnswer,
-              userAnswer: answer
+              canonical: question.explanation, // Use explanation as the reference answer
+              userAnswer: answer.textAnswer // Pass the user's text answer
             });
             
             const endTime = performance.now();

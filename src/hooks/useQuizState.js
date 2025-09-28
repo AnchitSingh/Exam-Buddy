@@ -67,14 +67,14 @@ const useQuizState = (quizConfig = null, answerRef) => {
 
   // Initialize quiz when config changes
   useEffect(() => {
-    if (quizConfig) {
+    if (quizConfig && !quiz) {
       if (quizConfig.quizId) {
         loadExistingQuiz(quizConfig.quizId);
       } else if (quizConfig.questions || quizConfig.topic) {
         initializeQuiz(quizConfig);
       }
     }
-  }, [quizConfig]);
+  }, [quizConfig, quiz]);
 
   // Handle existing answers when question changes
   useEffect(() => {
