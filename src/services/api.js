@@ -1,20 +1,170 @@
 // This will be the single point where backend integration happens later
 // Frontend components will ONLY call these functions, never access data directly
+import chromeAI from '../utils/chromeAI';
+import { getQuizByTopic, getDefaultQuiz } from '../data/mockQuizTemplates';
+
+async function aiReady() {
+    const st = await chromeAI.available();
+    return !!st?.available;
+}
 
 class ExamBuddyAPI {
     constructor() {
-        this.isProduction = false; // Switch this to enable real backend calls
+        this.isProduction = true; // Switch this to enable real backend calls
     }
 
-    // Quiz Generation
-    async generateQuiz(config) {
-        if (this.isProduction) {
-            // TODO: Real Chrome AI integration
-            return this._makeRequest('/api/quiz/generate', { method: 'POST', body: config });
+    async generateQuiz(input) {
+        const canAI = this.useAI && await aiReady();
+        if (canAI && input?.extractedSource) {
+            const data = await chromeAI.generateQuizJSON({
+                extractedSource: input.extractedSource,
+                config: input
+            });
+            // The validator ensures shape; return as-is for UI.
+            return {
+                success: true, data: {
+                    id: `quiz_${Date.now()}`,
+                    title: `${input.topic || input.extractedSource?.title || 'Adaptive'} Quiz`,
+                    subject: detectSubject(input.extractedSource?.text || input.topic || ''),
+                    difficulty: input.difficulty || 'medium',
+                    totalQuestions: data.questions?.length || 0,
+                    questions: data.questions || [],
+                    config: input,
+                    source: input.extractedSource || null,
+                    createdAt: new Date().toISOString(),
+                    timeLimit: input?.timerEnabled ? (input?.totalTimer || 600) : null
+                }
+            };
         }
 
-        // Mock implementation
-        return this._mockGenerateQuiz(config);
+        // Fallback mock path:
+        const { topic = '', questionCount = 5 } = input || {};
+        const subject = detectSubject(input?.extractedSource?.text || topic);
+        const template = getQuizByTopic(subject) || getDefaultQuiz();
+        const selected = template.questions.slice(0, questionCount);
+        return {
+            success: true, data: {
+                id: `quiz_${Date.now()}`,
+                title: `${topic || input?.extractedSource?.title || 'Adaptive'} Quiz`,
+                subject,
+                difficulty: input?.difficulty || 'medium',
+                totalQuestions: selected.length,
+                questions: selected,
+                config: input,
+                source: input?.extractedSource || null,
+                createdAt: new Date().toISOString(),
+                timeLimit: input?.timerEnabled ? (input?.totalTimer || 600) : null
+            }
+        };
+    }
+
+    async submitAnswer(quizId, questionId, answer) {
+        // Objective handled locally; subjective types call AI if available.
+        const isSubjective = (answer?.questionType === 'Short Answer' || answer?.questionType === 'Fill in Blank') && !answer?.autoSelected;
+        const canAI = this.useAI && await aiReady();
+        if (isSubjective && canAI) {
+            const evaluation = await chromeAI.evaluateSubjectiveJSON({
+                question: { stem: answer?.stem || '' },
+                canonical: answer?.canonicalAnswers || [],
+                userAnswer: answer?.textAnswer || ''
+            });
+            return {
+                success: true,
+                data: {
+                    isCorrect: !!evaluation.isCorrect,
+                    feedback: {
+                        message: evaluation.isCorrect ? 'Great job!' : 'Keep refining your understanding.',
+                        explanation: evaluation.rationale || ''
+                    },
+                    explanation: evaluation.rationale || '',
+                    score: typeof evaluation.score === 'number' ? evaluation.score : (evaluation.isCorrect ? 1 : 0)
+                }
+            };
+        }
+
+        // Fallback/local:
+        return {
+            success: true,
+            data: {
+                isCorrect: !!answer.isCorrect,
+                feedback: {
+                    message: answer.isCorrect ? 'Great job!' : 'Review the concept and try again.',
+                    explanation: answer.explanation || ''
+                },
+                explanation: answer.explanation || '',
+                score: answer.isCorrect ? 1 : 0
+            }
+        };
+    }
+
+    async completeQuiz(quizId, finalAnswers, extras = {}) {
+        const totalQuestions = finalAnswers.length;
+        const correctAnswers = finalAnswers.filter(a => a?.isCorrect).length;
+        const percentage = Math.round((correctAnswers / Math.max(1, totalQuestions)) * 100);
+        const timeSpent = finalAnswers.reduce((acc, a) => acc + (a?.timeSpent || 0), 0);
+
+        const summary = {
+            quizId,
+            totalQuestions,
+            correctAnswers,
+            percentage,
+            perTag: extras?.perTag || {},
+            misses: finalAnswers
+                .map((a, i) => ({ index: i, isCorrect: !!a?.isCorrect, tags: a?.tags || [] }))
+                .filter(x => !x.isCorrect),
+            source: {
+                title: extras?.sourceTitle || '',
+                domain: extras?.sourceDomain || ''
+            }
+        };
+
+        let plan = { strengths: [], weaknesses: [], nextSteps: [] };
+        const canAI = this.useAI && await aiReady();
+        if (canAI) {
+            try {
+                plan = await chromeAI.recommendPlanJSON({ summary });
+            } catch {
+                // keep default if recommendation fails
+            }
+        } else {
+            // simple heuristics
+            plan = {
+                strengths: percentage >= 70 ? ['Solid grasp of core ideas'] : [],
+                weaknesses: percentage < 70 ? ['Revise missed concepts'] : [],
+                nextSteps: [{ topic: 'Review missed tags', action: 'Practice 3 targeted questions', count: 3 }]
+            };
+        }
+
+        const results = {
+            quizId,
+            score: correctAnswers,
+            totalQuestions,
+            percentage,
+            timeSpent,
+            answers: finalAnswers,
+            completedAt: new Date().toISOString(),
+            insights: {
+                strengths: plan.strengths || [],
+                improvements: plan.weaknesses || []
+            },
+            recommendations: plan
+        };
+
+        // Persist to history
+        const history = JSON.parse(localStorage.getItem('exam_buddy_quiz_history') || '[]');
+        history.push({
+            id: quizId,
+            title: extras?.title || 'Quiz',
+            score: correctAnswers,
+            totalQuestions,
+            percentage,
+            completedAt: results.completedAt,
+            subject: extras?.subject || 'General'
+        });
+        if (history.length > 50) history.splice(0, history.length - 50);
+        localStorage.setItem('exam_buddy_quiz_history', JSON.stringify(history));
+
+        return { success: true, data: results };
     }
 
     // Quiz Management
@@ -332,46 +482,46 @@ class ExamBuddyAPI {
     // Helper methods
     // ————— Helpers —————
 
-  _detectSubject(text = '') {
-    const t = (text || '').toLowerCase();
-    const map = {
-      physics: ['physics', 'thermodynamics', 'kinematics', 'entropy', 'newton', 'quantum'],
-      mathematics: ['calculus', 'algebra', 'matrix', 'derivative', 'integral', 'vector'],
-      biology: ['cell', 'mitochondria', 'genetics', 'photosynthesis', 'organism'],
-      chemistry: ['atom', 'molecule', 'reaction', 'organic', 'inorganic'],
-      'computer science': ['algorithm', 'programming', 'javascript', 'python', 'computational'],
-      history: ['ancient', 'medieval', 'war', 'civilization', 'empire']
-    };
-    for (const [subject, keys] of Object.entries(map)) {
-      if (keys.some(k => t.includes(k))) return subject;
+    _detectSubject(text = '') {
+        const t = (text || '').toLowerCase();
+        const map = {
+            physics: ['physics', 'thermodynamics', 'kinematics', 'entropy', 'newton', 'quantum'],
+            mathematics: ['calculus', 'algebra', 'matrix', 'derivative', 'integral', 'vector'],
+            biology: ['cell', 'mitochondria', 'genetics', 'photosynthesis', 'organism'],
+            chemistry: ['atom', 'molecule', 'reaction', 'organic', 'inorganic'],
+            'computer science': ['algorithm', 'programming', 'javascript', 'python', 'computational'],
+            history: ['ancient', 'medieval', 'war', 'civilization', 'empire']
+        };
+        for (const [subject, keys] of Object.entries(map)) {
+            if (keys.some(k => t.includes(k))) return subject;
+        }
+        return 'general';
     }
-    return 'general';
-  }
 
-  _generateInsights(answers) {
-    const correct = answers.filter(a => a?.isCorrect).length;
-    const totalTime = answers.reduce((acc, a) => acc + (a?.timeSpent || 0), 0);
-    const avgTime = answers.length ? totalTime / answers.length : 0;
-    return {
-      strengths: [
-        correct >= Math.ceil(answers.length * 0.7) ? 'Strong overall performance' : null,
-        avgTime < 45 ? 'Efficient time management' : null
-      ].filter(Boolean),
-      improvements: [
-        correct < Math.ceil(answers.length * 0.6) ? 'Review fundamental concepts' : null,
-        avgTime > 90 ? 'Practice under time constraints' : null
-      ].filter(Boolean)
-    };
-  }
-
-  _generateRecommendations(scorePct, answers) {
-    if (scorePct >= 80) {
-      return ['Try a harder difficulty', 'Explore advanced topics', 'Teach concepts to reinforce learning'];
-    } else if (scorePct >= 60) {
-      return ['Review missed concepts', 'Practice similar questions', 'Focus identified weak areas'];
+    _generateInsights(answers) {
+        const correct = answers.filter(a => a?.isCorrect).length;
+        const totalTime = answers.reduce((acc, a) => acc + (a?.timeSpent || 0), 0);
+        const avgTime = answers.length ? totalTime / answers.length : 0;
+        return {
+            strengths: [
+                correct >= Math.ceil(answers.length * 0.7) ? 'Strong overall performance' : null,
+                avgTime < 45 ? 'Efficient time management' : null
+            ].filter(Boolean),
+            improvements: [
+                correct < Math.ceil(answers.length * 0.6) ? 'Review fundamental concepts' : null,
+                avgTime > 90 ? 'Practice under time constraints' : null
+            ].filter(Boolean)
+        };
     }
-    return ['Start with easier sets', 'Review basics before next quiz', 'Short, frequent practice sessions'];
-  }
+
+    _generateRecommendations(scorePct, answers) {
+        if (scorePct >= 80) {
+            return ['Try a harder difficulty', 'Explore advanced topics', 'Teach concepts to reinforce learning'];
+        } else if (scorePct >= 60) {
+            return ['Review missed concepts', 'Practice similar questions', 'Focus identified weak areas'];
+        }
+        return ['Start with easier sets', 'Review basics before next quiz', 'Short, frequent practice sessions'];
+    }
     _delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -463,26 +613,26 @@ class ExamBuddyAPI {
 
     async _getRecentActivity() {
         return [
-          { type: 'quiz_completed', title: 'Physics Quiz - Completed', score: '8/10', time: '2 hours ago', id: 'a1' },
-          { type: 'quiz_paused', title: 'Math Quiz - Paused', progress: '3/15', time: 'Yesterday', id: 'a2' },
-          { type: 'bookmark_added', title: '5 Questions Bookmarked', source: 'Chemistry Quiz', time: '3 days ago', id: 'a3' }
+            { type: 'quiz_completed', title: 'Physics Quiz - Completed', score: '8/10', time: '2 hours ago', id: 'a1' },
+            { type: 'quiz_paused', title: 'Math Quiz - Paused', progress: '3/15', time: 'Yesterday', id: 'a2' },
+            { type: 'bookmark_added', title: '5 Questions Bookmarked', source: 'Chemistry Quiz', time: '3 days ago', id: 'a3' }
         ];
-      }
-    
-      _saveToHistory(results) {
+    }
+
+    _saveToHistory(results) {
         const history = JSON.parse(localStorage.getItem('exam_buddy_quiz_history') || '[]');
         history.push({
-          id: results.quizId,
-          title: results.title || 'Quiz',
-          score: results.score,
-          totalQuestions: results.totalQuestions,
-          percentage: results.percentage,
-          completedAt: results.completedAt,
-          subject: results.subject || 'General'
+            id: results.quizId,
+            title: results.title || 'Quiz',
+            score: results.score,
+            totalQuestions: results.totalQuestions,
+            percentage: results.percentage,
+            completedAt: results.completedAt,
+            subject: results.subject || 'General'
         });
         if (history.length > 50) history.splice(0, history.length - 50);
         localStorage.setItem('exam_buddy_quiz_history', JSON.stringify(history));
-      }
+    }
 
 }
 

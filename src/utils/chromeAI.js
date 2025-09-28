@@ -1,72 +1,129 @@
-class ChromeAI {
-    constructor() {
-      this.promptSession = null;
-      this.summarizerSession = null;
+// src/utils/chromeAI.js
+
+import { buildQuizPrompt, buildEvaluatePrompt, buildRecommendPrompt } from './prompts';
+import { parseWithRepair } from './jsonGuard';
+import { validateQuiz, validateEvaluation, validateRecommendations } from './schema';
+
+// Preference keys are implementation hints; Prompt API specifics may vary by channel/version.
+const SESSION_OPTIONS = {
+  // temperature, topK may be supported depending on build; keep conservative defaults.
+  temperature: 0.3,
+  topK: 32
+};
+
+let session = null;
+
+async function getModelSurface() {
+  // Try window.ai (web Prompt API) first, then chrome.ai.* (extensions) if exposed.
+  // This keeps code robust across channels while remaining extension-friendly.
+  const hasWindowAI = typeof window !== 'undefined' && window.ai && window.ai.languageModel;
+  const hasChromeAI = typeof chrome !== 'undefined' && chrome.ai && chrome.ai.languageModel;
+  return { hasWindowAI, hasChromeAI };
+}
+
+async function checkAvailability() {
+  const { hasWindowAI, hasChromeAI } = await getModelSurface();
+  try {
+    if (hasWindowAI) {
+      const caps = await window.ai.languageModel.capabilities();
+      return { available: caps?.available === 'readily' || caps?.available === 'after-download', detail: caps };
     }
-  
-    async checkAvailability() {
-      if (!window.ai) {
-        throw new Error('Chrome AI not available');
-      }
-      
-      const promptAvailable = await window.ai.prompt.capabilities();
-      return promptAvailable.available === 'readily';
+    if (hasChromeAI) {
+      const caps = await chrome.ai.languageModel.capabilities();
+      return { available: caps?.available === 'readily' || caps?.available === 'after-download', detail: caps };
     }
-  
-    async generateQuiz(content, options = {}) {
-      try {
-        if (!this.promptSession) {
-          this.promptSession = await window.ai.prompt.create({
-            temperature: 0.7,
-            topK: 3,
-          });
-        }
-  
-        const prompt = `Create a quiz from this content: "${content}"
-        
-        Generate ${options.questionCount || 5} multiple choice questions with 4 options each.
-        Difficulty: ${options.difficulty || 'medium'}
-        Format as JSON: {
-          "questions": [
-            {
-              "question": "...",
-              "options": ["A", "B", "C", "D"],
-              "correctAnswer": 0,
-              "explanation": "..."
-            }
-          ]
-        }`;
-  
-        const response = await this.promptSession.prompt(prompt);
-        return JSON.parse(response);
-      } catch (error) {
-        console.error('Quiz generation failed:', error);
-        throw error;
-      }
-    }
-  
-    async summarizeContent(content) {
-      try {
-        if (!this.summarizerSession) {
-          this.summarizerSession = await window.ai.summarizer.create();
-        }
-        
-        return await this.summarizerSession.summarize(content);
-      } catch (error) {
-        console.error('Summarization failed:', error);
-        throw error;
-      }
-    }
-  
-    destroy() {
-      if (this.promptSession) {
-        this.promptSession.destroy();
-      }
-      if (this.summarizerSession) {
-        this.summarizerSession.destroy();
-      }
-    }
+    return { available: false, detail: null };
+  } catch (e) {
+    return { available: false, detail: null, error: e?.message || 'Availability check failed' };
   }
-  
-  export const chromeAI = new ChromeAI();
-  
+}
+
+async function createSessionIfNeeded() {
+  if (session) return session;
+  const { hasWindowAI, hasChromeAI } = await getModelSurface();
+  if (hasWindowAI) {
+    session = await window.ai.languageModel.create({ ...SESSION_OPTIONS });
+    return session;
+  }
+  if (hasChromeAI) {
+    session = await chrome.ai.languageModel.create({ ...SESSION_OPTIONS });
+    return session;
+  }
+  throw new Error('Prompt API not available');
+}
+
+async function promptRaw(text) {
+  const s = await createSessionIfNeeded();
+  // Unified prompt method name for both surfaces.
+  if (typeof s.prompt === 'function') {
+    return await s.prompt(text);
+  }
+  if (typeof s.generate === 'function') {
+    const res = await s.generate(text);
+    return typeof res === 'string' ? res : (res?.output || '');
+  }
+  throw new Error('Unknown session interface for Prompt API');
+}
+
+async function promptJSON({ text, schema, validate, repairInstruction }) {
+  const raw = await promptRaw(text);
+  const repaired = await parseWithRepair({
+    raw,
+    schema,
+    validate,
+    repairFn: async (broken) => {
+      const repairPrompt = `${repairInstruction}\n\n---\nSchema:\n${JSON.stringify(schema, null, 2)}\n---\nBroken:\n${broken}\n---\nReturn corrected JSON only.`;
+      return await promptRaw(repairPrompt);
+    }
+  });
+  return repaired;
+}
+
+// Public API
+
+export async function available() {
+  return await checkAvailability();
+}
+
+export async function generateQuizJSON({ extractedSource, config }) {
+  const prompt = buildQuizPrompt({ extractedSource, config });
+  const repairInstruction = 'The previous output was not valid JSON. Repair it to exactly match the schema and return JSON only.';
+  const data = await promptJSON({
+    text: prompt,
+    schema: { type: 'object', required: ['questions'], properties: {} }, // minimal anchor; validator enforces shape
+    validate: validateQuiz,
+    repairInstruction
+  });
+  return data;
+}
+
+export async function evaluateSubjectiveJSON({ question, canonical, userAnswer }) {
+  const prompt = buildEvaluatePrompt({ question, canonical, userAnswer });
+  const repairInstruction = 'Return valid JSON only that conforms to the evaluation schema.';
+  const data = await promptJSON({
+    text: prompt,
+    schema: { type: 'object', required: ['isCorrect', 'rationale'], properties: {} },
+    validate: validateEvaluation,
+    repairInstruction
+  });
+  return data;
+}
+
+export async function recommendPlanJSON({ summary }) {
+  const prompt = buildRecommendPrompt({ summary });
+  const repairInstruction = 'Return valid JSON only that conforms to the recommendations schema.';
+  const data = await promptJSON({
+    text: prompt,
+    schema: { type: 'object', required: ['strengths', 'weaknesses', 'nextSteps'], properties: {} },
+    validate: validateRecommendations,
+    repairInstruction
+  });
+  return data;
+}
+
+export default {
+  available,
+  generateQuizJSON,
+  evaluateSubjectiveJSON,
+  recommendPlanJSON
+};

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import GlobalHeader from '../components/ui/GlobalHeader';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
 import Modal from '../components/ui/Modal';
-const RECOMMENDED_TOPICS = ['Advanced React Patterns', 'TypeScript Best Practices', 'System Design'];
 
 const QuizResultsPage = ({ results, onNavigate }) => {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -31,13 +30,13 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 	const answeredCount = (answers || []).filter(a => a != null && !a.unanswered).length;
 	const unansweredCount = totalQuestions - answeredCount;
 	const incorrectCount = answeredCount - score;
-
-
+	
+	
 	// Calculate performance level - always use amber/orange gradient for uniform appearance
 	const getPerformanceLevel = () => {
 		// Always use the amber to orange gradient for consistent appearance
 		const uniformGradient = "from-amber-500 to-orange-500";
-
+		
 		if (percentage >= 90) return { text: "Outstanding!", color: uniformGradient };
 		if (percentage >= 75) return { text: "Great job!", color: uniformGradient };
 		if (percentage >= 60) return { text: "Good effort!", color: uniformGradient };
@@ -181,12 +180,12 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 				<div className="hidden lg:flex h-screen pt-24">
 					{/* Left Side - Fixed */}
 					<div className="w-1/2 flex-shrink-0 flex items-center justify-center p-8">
-						<div className="w-full max-w-lg space-y-6 gap-12 flex flex-col h-full justify-center">
+						<div className="w-full max-w-lg space-y-6">
 							{/* Score Circle */}
 							<div className="flex flex-col items-center">
 								<div className="relative inline-flex items-center justify-center mb-6">
 									<div className="absolute inset-0 bg-gradient-to-r from-amber-200/20 to-orange-200/20 rounded-full blur-2xl animate-pulse-slow"></div>
-
+									
 									<div className="relative bg-white rounded-full w-48 h-48 shadow-2xl flex flex-col items-center justify-center border border-amber-100/50">
 										<div className={`text-6xl font-bold bg-gradient-to-r ${performance.color} bg-clip-text text-transparent animate-scale-in`}>
 											{percentage}%
@@ -215,7 +214,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 										</defs>
 									</svg>
 								</div>
-
+								
 								<h2 className="text-3xl font-bold">
 									<span className={`bg-gradient-to-r ${performance.color} bg-clip-text text-transparent`}>
 										{performance.text}
@@ -226,41 +225,6 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 								) : (
 									<p className="text-lg text-slate-600">Quiz completed successfully</p>
 								)}
-							</div>
-
-							
-							<button className="w-full relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-2 border-amber-200/50 hover:border-amber-300 text-lg font-semibold text-slate-800 hover:shadow-xl hover:shadow-amber-100/30 transform hover:-translate-y-0.5 transition-all duration-300 group">
-								<span className="flex items-center justify-center">
-									<svg
-										className="w-5 h-5 mr-2 text-amber-600 group-hover:scale-110 transition-transform duration-300"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											strokeWidth="2"
-											d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-										/>
-									</svg>
-									View Question Solutions
-								</span>
-							</button>
-							
-						</div>
-					</div>
-
-					{/* Right Side - Scrollable */}
-					<div className="w-1/2 flex-shrink-0 overflow-y-auto p-8">
-						<div className="bg-white/80 backdrop-blur-sm rounded-2xl max-w-2xl mx-auto space-y-6 shadow-lg border border-white/50 p-4 h-full flex flex-col justify-evenly">
-							<div className="p-6 mb-0">
-								<h2 className="text-5xl font-bold text-slate-800 mb-4 flex items-center">
-									AI Feedback
-								</h2>
-								<p className="text-slate-600 leading-relaxed">
-									Keep practicing! This is a learning opportunity. Focus on understanding core concepts and practice regularly. Don't be discouraged - every expert was once a beginner.
-								</p>
 							</div>
 
 							{/* Quick Stats */}
@@ -290,13 +254,10 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 								)}
 							</div>
 
-							{/* <div className="p-6">
-								<h4 className="text-xl font-semibold">Recommendations</h4>
-							</div> */}
 							{/* Recommendations Carousel */}
-							<div className="bg-white/80  p-6">
+							<div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50">
 								<h3 className="text-lg font-semibold text-slate-800 mb-4">Recommended for You</h3>
-								<div className="overflow-x-auto pb-2 px-0 py-4">
+								<div className="overflow-x-auto pb-2">
 									<div className="flex space-x-4 min-w-max">
 										{recommendedQuizzes.map((quiz) => (
 											<button
@@ -315,7 +276,55 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 									</div>
 								</div>
 							</div>
-							
+						</div>
+					</div>
+
+					{/* Right Side - Scrollable */}
+					<div className="w-1/2 flex-shrink-0 overflow-y-auto p-8">
+						<div className="max-w-2xl mx-auto space-y-6">
+							{/* AI Feedback Section */}
+							<div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50">
+								<h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center">
+									<svg className="w-6 h-6 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+									</svg>
+									AI Feedback
+								</h2>
+								<p className="text-slate-600 leading-relaxed">
+									{aiFeedback}
+								</p>
+							</div>
+
+							{/* Action Buttons */}
+							<div className="flex gap-4">
+								<button
+									onClick={() => onNavigate('setup')}
+									className="flex-1 relative bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold py-3.5 px-6 rounded-xl shadow-xl hover:shadow-2xl hover:shadow-amber-200/50 transform hover:-translate-y-0.5 transition-all duration-300 overflow-hidden group"
+								>
+									<span className="relative z-10">Take New Quiz</span>
+									<div className="absolute inset-0 bg-gradient-to-r from-amber-600 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+								</button>
+								<button
+									onClick={() => onNavigate('story')}
+									className="flex-1 relative bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3.5 px-6 rounded-xl shadow-xl hover:shadow-2xl hover:shadow-purple-200/50 transform hover:-translate-y-0.5 transition-all duration-300 overflow-hidden group"
+								>
+									<span className="relative z-10">Story Mode</span>
+									<div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+								</button>
+							</div>
+
+							{/* View Solutions Button */}
+							<button
+								onClick={() => setSolutionsModalOpen(true)}
+								className="w-full relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-2 border-amber-200/50 hover:border-amber-300 text-lg font-semibold text-slate-800 hover:shadow-xl hover:shadow-amber-100/30 transform hover:-translate-y-0.5 transition-all duration-300 group"
+							>
+								<span className="flex items-center justify-center">
+									<svg className="w-5 h-5 mr-2 text-amber-600 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+									</svg>
+									View Question Solutions
+								</span>
+							</button>
 						</div>
 					</div>
 				</div>
@@ -326,7 +335,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 					<div className="flex flex-col items-center">
 						<div className="relative inline-flex items-center justify-center mb-4">
 							<div className="absolute inset-0 bg-gradient-to-r from-amber-200/20 to-orange-200/20 rounded-full blur-xl animate-pulse-slow"></div>
-
+							
 							<div className="relative bg-white rounded-full w-36 h-36 sm:w-44 sm:h-44 shadow-xl flex flex-col items-center justify-center border border-amber-100/50">
 								<div className={`text-4xl sm:text-5xl font-bold bg-gradient-to-r ${performance.color} bg-clip-text text-transparent`}>
 									{percentage}%
@@ -366,7 +375,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 								</defs>
 							</svg>
 						</div>
-
+						
 						<h2 className="text-2xl sm:text-3xl font-bold text-center">
 							<span className={`bg-gradient-to-r ${performance.color} bg-clip-text text-transparent`}>
 								{performance.text}
@@ -495,14 +504,15 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 									<button
 										key={idx}
 										onClick={() => setCurrentQuestionIndex(idx)}
-										className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${isActive
+										className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-300 flex-shrink-0 ${
+											isActive
 												? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-110'
 												: isUnanswered
 													? 'bg-slate-100 text-slate-400 border border-slate-200'
 													: isCorrect
 														? 'bg-green-100 text-green-700 border border-green-200'
 														: 'bg-red-100 text-red-700 border border-red-200'
-											}`}
+										}`}
 									>
 										{idx + 1}
 									</button>
@@ -517,10 +527,11 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 							{/* Question */}
 							<div className="p-4 bg-slate-50 rounded-xl max-w-full">
 								<div className="flex items-start space-x-3 max-w-full">
-									<div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${currentAnswer?.unanswered ? 'bg-slate-200 text-slate-600' :
-											currentAnswer?.isCorrect ? 'bg-green-100 text-green-700' :
-												'bg-red-100 text-red-700'
-										}`}>
+									<div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+										currentAnswer?.unanswered ? 'bg-slate-200 text-slate-600' :
+										currentAnswer?.isCorrect ? 'bg-green-100 text-green-700' :
+										'bg-red-100 text-red-700'
+									}`}>
 										{currentAnswer?.unanswered ? '?' : currentAnswer?.isCorrect ? '✓' : '✗'}
 									</div>
 									<div className="flex-1 min-w-0">
@@ -576,9 +587,9 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 														'bg-white/60 border-white/50'
 												}`}>
 												<span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${isSelected && isCorrectOption ? 'bg-green-200 text-green-800' :
-													isSelected && !isCorrectOption ? 'bg-red-200 text-red-800' :
-														!isSelected && isCorrectOption ? 'bg-green-100 text-green-700' :
-															'bg-slate-100 text-slate-600'
+														isSelected && !isCorrectOption ? 'bg-red-200 text-red-800' :
+															!isSelected && isCorrectOption ? 'bg-green-100 text-green-700' :
+																'bg-slate-100 text-slate-600'
 													}`}>
 													{String.fromCharCode(65 + optionIndex)}
 												</span>
