@@ -119,23 +119,33 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 		}
 
 		if (Array.isArray(textAnswer)) { // Fill in the Blank
-			const parts = question.question.split('_______');
-			const userAnswerSentence = parts.reduce((acc, part, i) => {
-				const blank = textAnswer[i] ? `<strong class="text-amber-700 font-semibold">${textAnswer[i]}</strong>` : '_______';
-				return acc + part + (i < parts.length - 1 ? blank : '');
-			}, '');
+			const parts = question.question.split(/(_{3,})/);
+			let blankIndex = 0;
+			const userAnswerSentence = parts.map((part) => {
+				if (/_{3,}/.test(part)) {
+					const blank = textAnswer[blankIndex] ? `<strong class="text-amber-700 font-semibold">${textAnswer[blankIndex]}</strong>` : '_______';
+                    blankIndex++;
+					return blank;
+				}
+                return part;
+			}).join('');
 
 			const correctAnswer = question.acceptableAnswers?.[0];
 			let correctAnswerSentence = '';
 			if (!answer.isCorrect && correctAnswer) {
-				correctAnswerSentence = parts.reduce((acc, part, i) => {
-					const blank = correctAnswer[i] ? `<strong class="text-green-700 font-semibold">${correctAnswer[i]}</strong>` : '_______';
-					return acc + part + (i < parts.length - 1 ? blank : '');
-				}, '');
+                blankIndex = 0;
+				correctAnswerSentence = parts.map((part) => {
+                    if (/_{3,}/.test(part)) {
+                        const blank = correctAnswer[blankIndex] ? `<strong class="text-green-700 font-semibold">${correctAnswer[blankIndex]}</strong>` : '_______';
+                        blankIndex++;
+                        return blank;
+                    }
+                    return part;
+                }).join('');
 			}
 
 			return (
-				<div>
+				<div className="space-y-3">
 					<div className="mb-3 bg-white/60 backdrop-blur-sm border border-white/50 rounded-xl p-3">
 						<p className="text-sm text-slate-600 mb-1">Your answer:</p>
 						<p className="text-slate-800 leading-relaxed break-words" dangerouslySetInnerHTML={{ __html: userAnswerSentence }} />
@@ -152,12 +162,25 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 
 		// Short Answer
 		return (
-			<div className="bg-white/60 backdrop-blur-sm border border-white/50 rounded-xl p-3">
-				<p className="text-sm text-slate-600 mb-1">Your answer:</p>
-				<p className="text-slate-800 font-medium break-words">{textAnswer}</p>
+			<div className="space-y-3">
+				<div className="bg-white/60 backdrop-blur-sm border border-white/50 rounded-xl p-3">
+					<p className="text-sm text-slate-600 mb-1">Your answer:</p>
+					<p className="text-slate-800 font-medium break-words">{textAnswer}</p>
+				</div>
 				{answer?.aiEvaluated && (
-					<div className="mt-2 text-xs text-purple-600">
-						✨ Evaluated by AI
+					<div className={`p-3 rounded-lg border ${
+                        answer.isCorrect ? 'bg-green-50/80 border-green-200/50' : 'bg-red-50/80 border-red-200/50'
+                    }`}>
+						<p className={`text-sm font-semibold mb-1 ${
+                            answer.isCorrect ? 'text-green-800' : 'text-red-800'
+                        }`}>
+							✨ AI Evaluation: {answer.feedback?.message || (answer.isCorrect ? 'Correct' : 'Incorrect')}
+						</p>
+						<p className={`text-sm ${
+                            answer.isCorrect ? 'text-green-700' : 'text-red-700'
+                        }`}>
+							{answer.feedback?.explanation || answer.explanation}
+						</p>
 					</div>
 				)}
 			</div>
