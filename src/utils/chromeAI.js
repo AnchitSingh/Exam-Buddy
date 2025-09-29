@@ -1,5 +1,4 @@
-// src/utils/chromeAI.js
-import { buildQuizPrompt, buildEvaluatePrompt, buildRecommendPrompt } from './prompts';
+import { buildQuizPrompt, buildEvaluatePrompt, buildRecommendPrompt, buildOverallStreamingPrompt, buildRecommendationsPrompt } from './prompts';
 import { validateQuiz, validateEvaluation, validateRecommendations } from './schema';
 
 let session = null;
@@ -246,6 +245,45 @@ export async function recommendPlanJSON({ summary }) {
   });
 }
 
+export async function streamOverallFeedback({ quizMeta, stats }) {
+  const prompt = buildOverallStreamingPrompt({ quizMeta, stats });
+  const s = await createSessionIfNeeded();
+  return s.promptStreaming(prompt);
+}
+
+export async function getQuizRecommendationsJSON({ quizMeta, stats }) {
+  const prompt = buildRecommendationsPrompt({ quizMeta, stats });
+  const schema = {
+    type: 'object',
+    required: ['recommendations'],
+    properties: {
+      recommendations: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['topic', 'reason', 'suggested_count', 'types'],
+          properties: {
+            topic: { type: 'string' },
+            reason: { type: 'string' },
+            suggested_count: { type: 'number' },
+            types: { type: 'array', items: { type: 'string', enum: ["MCQ","TrueFalse","Subjective","FillUp"] } }
+          }
+        }
+      }
+    }
+  };
+  
+  const validate = (data) => {
+      return data && Array.isArray(data.recommendations) && data.recommendations.every(r => r.topic && r.reason && typeof r.suggested_count === 'number');
+  };
+
+  return await promptJSON({
+    text: prompt,
+    schema,
+    validate
+  });
+}
+
 // Additional utilities
 export async function getModelInfo() {
   const LM = getLanguageModel();
@@ -272,5 +310,7 @@ export default {
   promptStreaming,
   resetSession,
   cloneSession,
-  getModelInfo
+  getModelInfo,
+  streamOverallFeedback,
+  getQuizRecommendationsJSON
 };

@@ -252,16 +252,16 @@ export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
   Now return ONLY the final JSON for this student answer.
   <end_of_turn>
   <start_of_turn>model
-  `;
+`;
 }
 
 
 export function buildRecommendPrompt({ summary }) {
   const compact = JSON.stringify(summary || {}).slice(0, 5500);
 
-  return `You are a study coach. Read the quiz performance summary and produce a study plan.
+  return `You are a study coach. Read the quiz performance summary and produce a study plan. 
   
-  Performance summary: ${compact}
+  Performance summary: ${compact} 
   
   Return JSON with this EXACT structure:
   {
@@ -272,4 +272,64 @@ export function buildRecommendPrompt({ summary }) {
   
   Each array should contain 2-4 concise items.
   Return valid JSON only:`.trim();
+}
+
+export function buildOverallStreamingPrompt({ quizMeta, stats }) {
+  // quizMeta: { title, subject, difficulty }
+  // stats: { total_questions, total_correct, overall_accuracy, average_time_sec,
+  //          per_topic: [{ topic, correct, total, accuracy }],
+  //          per_type: [{ type, correct, total, accuracy }],
+  //          subjective: { graded, pending, avg_score }, fillup: { graded, pending, avg_score },
+  //          top_missed_topics: [{ topic, accuracy, wrong }],
+  //          examples: [{ type, topic, difficulty, text, was_correct, user_answer?, correct_answer?, ai_score? }]
+  const title = (quizMeta?.title || 'Quiz').slice(0, 120);
+  const subject = (quizMeta?.subject || 'General').slice(0, 60);
+  const difficulty = (quizMeta?.difficulty || 'mixed').slice(0, 20);
+  const compactStats = JSON.stringify(stats).slice(0, 12000);
+
+  // For Gemma 3n engines that prefer chat markers, you may wrap this content in a single user turn.
+  return `Act as a concise, supportive coach and write overall feedback based strictly on the metrics below.
+Subject: ${subject}
+Title: ${title}
+Difficulty: ${difficulty}
+
+Write 5–7 short paragraphs or bullet-style lines covering:
+- Overall score and performance profile.
+- 3 strengths (what went well).
+- 3 weaknesses (what to improve).
+- Any misconceptions observed.
+- Immediate next steps for study.
+
+Rules:
+- Plain text only. No markdown, no JSON, no code fences.
+- Base everything ONLY on the provided metrics. Do not invent facts.
+- Keep sentences short and specific; avoid generic advice.
+- If subjective/fill-ups are pending, mention it and base the score on graded items only.
+
+METRICS_JSON:
+${compactStats}
+
+Write the feedback now in plain text only.`;
+}
+
+export function buildRecommendationsPrompt({ quizMeta, stats }) {
+  const subject = (quizMeta?.subject || 'General').slice(0, 60);
+  const compactStats = JSON.stringify(stats).slice(0, 8000);
+
+  return `Based strictly on the metrics, return ONLY valid JSON matching EXACTLY:
+{
+  "recommendations": [
+    { "topic": "string", "reason": "string", "suggested_count": number, "types": ["MCQ","TrueFalse","Subjective","FillUp"] }
+  ]
+}
+Constraints:
+- 3 to 5 items, ranked by priority.
+- Each "reason" must cite an observed weakness (low accuracy, slow time, repeated error).
+- "suggested_count" between 3 and 8 (integer).
+- Use only the listed "types" enum values.
+- JSON only. No markdown, no prose.
+
+SUBJECT: "${subject}"
+METRICS_JSON:
+${compactStats}`;
 }

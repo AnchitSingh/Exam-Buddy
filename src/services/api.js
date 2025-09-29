@@ -712,6 +712,32 @@ class ExamBuddyAPI {
     };
   }
 
+  async streamQuizFeedback(quizMeta, stats) {
+    console.log('🧠 Streaming overall feedback...');
+    try {
+      const aiStatus = await chromeAI.available();
+      if (!aiStatus.available) throw new Error('Chrome AI unavailable');
+      return await chromeAI.streamOverallFeedback({ quizMeta, stats });
+    } catch (error) {
+      console.error('❌ AI Streaming Feedback Error:', error);
+      async function* errorStream() { yield "Sorry, I was unable to generate feedback at this time."; }
+      return errorStream();
+    }
+  }
+
+  async getQuizRecommendations(quizMeta, stats) {
+    console.log('💡 Getting quiz recommendations...');
+    try {
+      const aiStatus = await chromeAI.available();
+      if (!aiStatus.available) throw new Error('Chrome AI unavailable');
+      const result = await chromeAI.getQuizRecommendationsJSON({ quizMeta, stats });
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('❌ AI Recommendations Error:', error);
+      return { success: false, error: error.message, data: null };
+    }
+  }
+
   // Dummy methods as requested
   getUserProfile() {
     return {
@@ -761,7 +787,9 @@ export const {
   clearDebugData,
   getUserProfile,
   getPausedQuizzes,
-  getBookmarks
+  getBookmarks,
+  streamQuizFeedback,
+  getQuizRecommendations
 } = examBuddyAPI;
 
 export default examBuddyAPI;

@@ -1,13 +1,81 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlobalHeader from '../components/ui/GlobalHeader';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
 import Modal from '../components/ui/Modal';
+import examBuddyAPI from '../services/api';
+
 const RECOMMENDED_TOPICS = ['Advanced React Patterns', 'TypeScript Best Practices', 'System Design'];
 
 const QuizResultsPage = ({ results, onNavigate }) => {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [showMobileNav, setShowMobileNav] = useState(false);
 	const [isSolutionsModalOpen, setSolutionsModalOpen] = useState(false);
+	const [aiOverallFeedback, setAiOverallFeedback] = useState('');
+    const [isFeedbackLoading, setIsFeedbackLoading] = useState(true);
+    const [aiRecommendations, setAiRecommendations] = useState(null);
+    const [isRecsLoading, setIsRecsLoading] = useState(true);
+
+	useEffect(() => {
+        if (!results) return;
+
+        let isActive = true;
+        const generateFeedbackAndRecs = async () => {
+            const { quiz, answers, config, score, totalQuestions, timeSpent } = results;
+            const quizMeta = {
+                title: quiz.title,
+                subject: config.subject,
+                difficulty: config.difficulty,
+            };
+
+            const stats = {
+                total_questions: totalQuestions,
+                total_correct: score,
+                overall_accuracy: totalQuestions > 0 ? score / totalQuestions : 0,
+                average_time_sec: answers.length > 0 ? timeSpent / answers.length : 0,
+                examples: answers.slice(0, 5).map((ans, i) => ({
+                    type: quiz.questions[i].type,
+                    topic: quiz.questions[i].topic || quizMeta.subject,
+                    difficulty: quiz.questions[i].difficulty,
+                    text: quiz.questions[i].question,
+                    was_correct: ans.isCorrect,
+                }))
+            };
+
+            // Fetch streaming feedback
+            try {
+                setIsFeedbackLoading(true);
+                const stream = await examBuddyAPI.streamQuizFeedback(quizMeta, stats);
+                for await (const chunk of stream) {
+                    if (isActive) {
+                        setAiOverallFeedback(prev => prev + chunk);
+                    }
+                }
+            } catch (error) {
+                if (isActive) setAiOverallFeedback("Sorry, an error occurred while generating feedback.");
+            } finally {
+                if (isActive) setIsFeedbackLoading(false);
+            }
+
+            // Fetch JSON recommendations
+            try {
+                setIsRecsLoading(true);
+                const response = await examBuddyAPI.getQuizRecommendations(quizMeta, stats);
+                if (isActive && response.success) {
+                    setAiRecommendations(response.data.recommendations);
+                }
+            } catch (error) {
+                // Handle error silently for recommendations
+            } finally {
+                if (isActive) setIsRecsLoading(false);
+            }
+        };
+
+        generateFeedbackAndRecs();
+
+        return () => {
+            isActive = false;
+        };
+    }, [results]);
 
 	if (!results) {
 		return (
@@ -277,13 +345,19 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 					{/* Right Side - Scrollable */}
 					<div className="w-1/2 flex-shrink-0 overflow-y-auto p-8">
 						<div className="bg-white/80 backdrop-blur-sm rounded-2xl max-w-2xl mx-auto space-y-6 shadow-lg border border-white/50 p-4 h-full flex flex-col justify-evenly">
-							<div className="p-6 mb-0">
-								<h2 className="text-5xl font-bold text-slate-800 mb-4 flex items-center">
-									AI Feedback
+							<div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50">
+								<h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center">
+									<svg className="w-6 h-6 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+									</svg>
+									Overall AI Feedback
 								</h2>
-								<p className="text-slate-600 leading-relaxed">
-									Keep practicing! This is a learning opportunity. Focus on understanding core concepts and practice regularly. Don't be discouraged - every expert was once a beginner.
-								</p>
+								<div className="text-slate-600 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
+									{aiOverallFeedback}
+									{isFeedbackLoading && (
+										<span className="inline-block w-2 h-4 bg-slate-600 animate-pulse ml-1"></span>
+									)}
+								</div>
 							</div>
 
 							{/* Quick Stats */}
@@ -313,25 +387,22 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 								)}
 							</div>
 
-							{/* <div className="p-6">
-								<h4 className="text-xl font-semibold">Recommendations</h4>
-							</div> */}
 							{/* Recommendations Carousel */}
-							<div className="bg-white/80  p-6">
+							<div className="bg-white/80 p-6">
 								<h3 className="text-lg font-semibold text-slate-800 mb-4">Recommended for You</h3>
 								<div className="overflow-x-auto pb-2 px-0 py-4">
 									<div className="flex space-x-4 min-w-max">
-										{recommendedQuizzes.map((quiz) => (
+										{(aiRecommendations || []).map((rec) => (
 											<button
-												key={quiz.id}
-												onClick={() => onNavigate('setup')}
+												key={rec.topic}
+												onClick={() => onNavigate('setup', { quizConfig: { topic: rec.topic, questionCount: rec.suggested_count, questionTypes: rec.types } })}
 												className="flex-shrink-0 w-40 bg-gradient-to-br from-white to-amber-50/30 rounded-xl p-3 border border-amber-200/50 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-100/50 transition-all duration-300 text-left group"
 											>
-												<div className="text-2xl mb-2 group-hover:scale-110 transition-transform duration-300">{quiz.icon}</div>
-												<h4 className="font-semibold text-slate-800 text-sm mb-1">{quiz.title}</h4>
-												<p className="text-xs text-slate-600 mb-2">{quiz.reason}</p>
+												<div className="text-2xl mb-2 group-hover:scale-110 transition-transform duration-300">💡</div>
+												<h4 className="font-semibold text-slate-800 text-sm mb-1">{rec.topic}</h4>
+												<p className="text-xs text-slate-600 mb-2">{rec.reason}</p>
 												<span className="inline-block px-2 py-0.5 text-xs bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 rounded-md font-medium">
-													{quiz.difficulty}
+													{`${rec.suggested_count} questions`}
 												</span>
 											</button>
 										))}
