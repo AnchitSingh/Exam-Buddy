@@ -81,7 +81,7 @@ class ExamBuddyAPI {
             normalizedType = 'True/False';
           } else if (lowerCaseType === 'subjective' || lowerCaseType === 'shortanswer') {
             normalizedType = 'Short Answer';
-          } else if (lowerCaseType === 'fillup' || lowerCaseType === 'fillintheblank') {
+          } else if (lowerCaseType === 'fillup' || lowerCaseType === 'fillintheblank' || lowerCaseType === 'fillinblank') {
             normalizedType = 'Fill in Blank';
           }
 

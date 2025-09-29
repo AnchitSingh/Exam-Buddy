@@ -1,177 +1,197 @@
 // src/utils/prompts.js
 function trimAndCap(text, max = 6000) {
-    if (!text) return '';
-    return text.length > max ? `${text.slice(0, max)}…` : text;
+  if (!text) return '';
+  return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
 export function buildQuizPrompt({ extractedSource, config }) {
-    const { title, domain, chunks = [], text = '' } = extractedSource || {};
-    const {
-        questionCount = 5,
-        difficulty = 'medium',
-        questionTypes = ['MCQ'],
-        immediateFeedback = true
-    } = config || {};
+  const { title, domain, chunks = [], text = '' } = extractedSource || {};
+  const {
+    questionCount = 5,
+    difficulty = 'medium',
+    questionTypes = ['MCQ'],
+    immediateFeedback = true
+  } = config || {};
 
-    const sourceSnippet = chunks?.[0]?.text || text || '';
+  const sourceSnippet = chunks?.[0]?.text || text || '';
 
-    // Handle minimal content by expanding the topic
-    let expandedContent = sourceSnippet;
-    if ((sourceSnippet || '').length < 50) {
-        expandedContent = `Topic: ${sourceSnippet}. Generate questions about this topic using your knowledge.`;
-    }
-
-    const safeSource = trimAndCap(expandedContent, 5500);
-
-    // Normalize types to a constrained set Gemma can follow reliably
-    const normalize = (t) => {
-        const s = String(t || '').toLowerCase().replace(/[\s/_-]+/g, '');
-        if (s === 'truefalse' || s === 'true' || s === 'tf') return 'TrueFalse';
-        if (s === 'mcq' || s === 'multiplechoice') return 'MCQ';
-        if (s === 'subjective' || s === 'shortanswer') return 'Subjective';
-        if (s === 'fillup' || s === 'fillintheblank' || s === 'fillups' || s === 'fitb') return 'FillUp';
-        return 'MCQ';
-    };
-
-    const allowedTypes = Array.from(new Set((questionTypes || []).map(normalize)));
-    const types = allowedTypes.length ? allowedTypes : ['MCQ'];
-
-    // Even distribution with stable remainder allocation
-    const base = Math.floor(questionCount / types.length);
-    const remainder = questionCount - base * types.length;
-    const typeDistribution = types.map((type, i) => ({
-        type,
-        count: base + (i < remainder ? 1 : 0),
-    }));
-
-    const distributionText = typeDistribution.map(x => `${x.count} ${x.type}`).join(', ');
-
-    // Conditional few-shot exemplars (short, flat, schema-conformant)
-    const exMCQ = `{
-    "id": "ex1",
-    "type": "MCQ",
-    "text": "Which data structure uses FIFO order?",
-    "options": [
-      {"text": "Queue", "correct": true},
-      {"text": "Stack", "correct": false},
-      {"text": "Tree", "correct": false},
-      {"text": "Graph", "correct": false}
-    ],
-    "explanation": "A queue processes elements in first-in, first-out order.",
-    "difficulty": "${difficulty}",
-    "topic": "${title || 'General'}"
-  }`;
-
-    const exTF = `{
-    "id": "ex2",
-    "type": "TrueFalse",
-    "text": "Bubble sort has an average time complexity of O(n^2).",
-    "options": [
-      {"text": "True", "correct": true},
-      {"text": "False", "correct": false}
-    ],
-    "explanation": "Bubble sort is quadratic on average.",
-    "difficulty": "${difficulty}",
-    "topic": "${title || 'General'}"
-  }`;
-
-    const exSubj = `{
-    "id": "ex3",
-    "type": "Subjective",
-    "text": "Explain the difference between supervised and unsupervised learning in 40–60 words.",
-    "answer": "Supervised learning uses labeled data to learn input-output mappings for tasks like classification or regression, while unsupervised learning finds structure in unlabeled data through methods like clustering or dimensionality reduction. The key difference is the presence of labels guiding the learning objective.",
-    "explanation": "Answer should mention labels, mapping vs structure discovery, and examples.",
-    "difficulty": "${difficulty}",
-    "topic": "${title || 'General'}"
-  }`;
-
-    const exFill = `{
-    "id": "ex4",
-    "type": "FillUp",
-    "text": "The bias–variance trade‑off is central to model _____.",
-    "answer": "generalization",
-    "explanation": "It relates to how well a model generalizes to unseen data.",
-    "difficulty": "${difficulty}",
-    "topic": "${title || 'General'}"
-  }`;
-
-    const examples = []
-        .concat(types.includes('MCQ') ? [exMCQ] : [])
-        .concat(types.includes('TrueFalse') ? [exTF] : [])
-        .concat(types.includes('Subjective') ? [exSubj] : [])
-        .concat(types.includes('FillUp') ? [exFill] : [])
-        .join('\n\n');
-
-    // Build Gemma-style chat prompt with explicit turn markers
-    // If using HF apply_chat_template, pass only the inner user content instead of these markers.
-    return `<start_of_turn>user
-  Act as a quiz generator for the following content. Generate educational questions that test understanding of key concepts.
-  
-  CONTENT:
-  "${safeSource}"
-  
-  STRICT REQUIREMENTS:
-  - Generate EXACTLY ${questionCount} questions with this distribution: ${distributionText}
-  - Do NOT generate any other question types beyond: ${types.join(', ')}
-  - Difficulty for all questions: ${difficulty}
-  - Output ONLY valid JSON. No markdown, no code fences, no prose outside JSON.
-  - Use the exact schema below. Do not add or rename properties.
-  - Use IDs "q1"..."q${questionCount}" in order.
-  
-  SCHEMA (one JSON object):
-  {
-    "questions": [
-      {
-        "id": "q1",
-        "type": "MCQ|TrueFalse|Subjective|FillUp",
-        "text": "question text",
-        "options": [{"text": "option", "correct": true/false}],
-        "answer": "for non-MCQ types only",
-        "explanation": "brief reason or feedback",
-        "difficulty": "${difficulty}",
-        "topic": "${title || 'General'}"
-      }
-    ]
+  let expandedContent = sourceSnippet || '';
+  if (expandedContent.length < 50) {
+    expandedContent = `Topic: ${expandedContent}. Generate questions about this topic using your knowledge.`;
   }
-  
-  NOTES:
-  - MCQ must have EXACTLY 4 options with exactly one correct=true.
-  - TrueFalse must have EXACTLY these 2 options: [{"text":"True","correct":true/false}, {"text":"False","correct":true/false}] with exactly one correct=true.
-  - Subjective must NOT include options; use "answer" as the expected answer.
-  - FillUp must NOT include options; use "answer" as the canonical fill.
-  
-  EXAMPLES (format only; content is illustrative):
-  ${examples}
-  
-  Now return the final JSON for ${distributionText} about the content above.
-  <end_of_turn>
-  <start_of_turn>model
-  `;
+
+  const safeSource = trimAndCap(expandedContent, 5500);
+
+  // Normalize allowed types to a strict set
+  const normalize = (t) => {
+    const s = String(t || '').toLowerCase().replace(/[\s/_-]+/g, '');
+    if (s === 'mcq' || s === 'multiplechoice') return 'MCQ';
+    if (s === 'truefalse' || s === 'tf' || s === 'true' || s === 'false') return 'TrueFalse';
+    if (s === 'subjective' || s === 'shortanswer') return 'Subjective';
+    if (s === 'fillup' || s === 'fillintheblank' || s === 'fillintheblankss' || s === 'fillups' || s === 'fitb' || s === 'fillinblank') return 'FillUp';
+    return 'MCQ';
+  };
+
+  const dedup = (arr) => Array.from(new Set(arr));
+  const types = dedup((questionTypes || []).map(normalize));
+  const finalTypes = types.length ? types : ['MCQ'];
+
+  // Even distribution with remainder to early types
+  const base = Math.floor(questionCount / finalTypes.length);
+  const remainder = questionCount - base * finalTypes.length;
+  const typeDistribution = finalTypes.map((type, i) => ({
+    type,
+    count: base + (i < remainder ? 1 : 0),
+  }));
+  const distributionText = typeDistribution.map(x => `${x.count} ${x.type}`).join(', ');
+
+  // Few-shot examples (only for requested types)
+  const exFillGood = `{
+  "id": "exF1",
+  "type": "FillUp",
+  "text": "The constancy of the speed of light is a postulate of _____.",
+  "answer": "special relativity",
+  "explanation": "Special relativity is built on the postulate that light speed in vacuum is constant.",
+  "difficulty": "${difficulty}",
+  "topic": "${title || 'General'}"
+}`;
+
+  const exFillBadThenFixed = `BAD (do not output this):
+{
+  "id": "bad1",
+  "type": "Fill in Blank",
+  "question": "Special relativity states that the speed of light is constant for all observers.",
+  "options": []
 }
+GOOD (corrected form):
+{
+  "id": "exF2",
+  "type": "FillUp",
+  "text": "According to special relativity, time dilation increases with higher _____.",
+  "answer": "velocity",
+  "explanation": "Greater relative velocity increases time dilation.",
+  "difficulty": "${difficulty}",
+  "topic": "${title || 'General'}"
+}`;
+
+  const exMCQ = `{
+  "id": "exM1",
+  "type": "MCQ",
+  "text": "Which structure follows FIFO?",
+  "options": [
+    {"text": "Queue", "correct": true},
+    {"text": "Stack", "correct": false},
+    {"text": "Tree", "correct": false},
+    {"text": "Graph", "correct": false}
+  ],
+  "explanation": "A queue is first-in, first-out.",
+  "difficulty": "${difficulty}",
+  "topic": "${title || 'General'}"
+}`;
+
+  const exTF = `{
+  "id": "exT1",
+  "type": "TrueFalse",
+  "text": "Bubble sort has average complexity O(n^2).",
+  "options": [
+    {"text": "True", "correct": true},
+    {"text": "False", "correct": false}
+  ],
+  "explanation": "Average is quadratic.",
+  "difficulty": "${difficulty}",
+  "topic": "${title || 'General'}"
+}`;
+
+  const exSubj = `{
+  "id": "exS1",
+  "type": "Subjective",
+  "text": "Explain spacetime curvature in 30–50 words.",
+  "answer": "Mass-energy curves spacetime; objects follow geodesics in this curved geometry, producing gravitational effects without invoking a force in the Newtonian sense.",
+  "explanation": "Must mention mass-energy, curvature, geodesics.",
+  "difficulty": "${difficulty}",
+  "topic": "${title || 'General'}"
+}`;
+
+  const examples = []
+    .concat(finalTypes.includes('FillUp') ? [exFillGood, exFillBadThenFixed] : [])
+    .concat(finalTypes.includes('MCQ') ? [exMCQ] : [])
+    .concat(finalTypes.includes('TrueFalse') ? [exTF] : [])
+    .concat(finalTypes.includes('Subjective') ? [exSubj] : [])
+    .join('\n\n');
+
+  return `<start_of_turn>user
+Act as a quiz generator for the following content. Generate educational questions that test understanding of key concepts.
+
+CONTENT:
+"${safeSource}"
+
+STRICT REQUIREMENTS:
+- Generate EXACTLY ${questionCount} questions with this distribution: ${distributionText}
+- Do NOT generate any other question types beyond: ${finalTypes.join(', ')}
+- Difficulty for all questions: ${difficulty}
+- Output ONLY valid JSON. No markdown, no code fences, no prose outside JSON.
+- Use the exact schema below. Do not add or rename properties.
+- Use IDs "q1"..."q${questionCount}" in order.
+
+SCHEMA (one JSON object):
+{
+  "questions": [
+    {
+      "id": "q1",
+      "type": "MCQ|TrueFalse|Subjective|FillUp",
+      "text": "question text",
+      "options": [{"text": "option", "correct": true/false}],
+      "answer": "for non-MCQ types only",
+      "explanation": "brief reason or feedback",
+      "difficulty": "${difficulty}",
+      "topic": "${title || 'General'}"
+    }
+  ]
+}
+
+NOTES:
+- MCQ must have EXACTLY 4 options with exactly one correct=true.
+- TrueFalse must have EXACTLY these 2 options: [{"text":"True","correct":true/false}, {"text":"False","correct":true/false}] with exactly one correct=true.
+- Subjective must NOT include options; use "answer" as the expected answer.
+- FillUp must:
+  - Use type value EXACTLY "FillUp" (no synonyms like "Fill in Blank", "Fill-in-the-Blank", "FITB").
+  - Include EXACTLY one blank placeholder "_____" in "text".
+  - NOT include "options".
+  - Include a non-empty "answer" string (canonical fill).
+
+EXAMPLES (format only; content is illustrative):
+${examples}
+
+Now return the final JSON for ${distributionText} about the content above.
+<end_of_turn>
+<start_of_turn>model
+`;
+}
+
 
 
 
 export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
-    const questionText =
-        question?.text ||
-        question?.question ||
-        question?.stem ||
-        '';
+  const questionText =
+    question?.text ||
+    question?.question ||
+    question?.stem ||
+    '';
 
-    const referenceAnswer =
-        question?.expected_answer ||
-        question?.answer ||
-        question?.correctAnswer ||
-        canonical ||
-        '';
+  const referenceAnswer =
+    question?.expected_answer ||
+    question?.answer ||
+    question?.correctAnswer ||
+    canonical ||
+    '';
 
-    const safeQuestion = trimAndCap(String(questionText || ''), 1200);
-    const safeReference = trimAndCap(String(referenceAnswer || ''), 1200);
-    const safeUser = trimAndCap(String(userAnswer || ''), 1500);
+  const safeQuestion = trimAndCap(String(questionText || ''), 1200);
+  const safeReference = trimAndCap(String(referenceAnswer || ''), 1200);
+  const safeUser = trimAndCap(String(userAnswer || ''), 1500);
 
-    // If integrating with tokenizer.apply_chat_template, pass only the inner
-    // user content (without <start_of_turn>/<end_of_turn> markers).
-    return `<start_of_turn>user
+  // If integrating with tokenizer.apply_chat_template, pass only the inner
+  // user content (without <start_of_turn>/<end_of_turn> markers).
+  return `<start_of_turn>user
   Act as a strict but fair grader for ONE subjective question. Evaluate the student's answer against the reference, focusing on key ideas and factual correctness.
   
   GRADING POLICY:
@@ -237,9 +257,9 @@ export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
 
 
 export function buildRecommendPrompt({ summary }) {
-    const compact = JSON.stringify(summary || {}).slice(0, 5500);
+  const compact = JSON.stringify(summary || {}).slice(0, 5500);
 
-    return `You are a study coach. Read the quiz performance summary and produce a study plan.
+  return `You are a study coach. Read the quiz performance summary and produce a study plan.
   
   Performance summary: ${compact}
   

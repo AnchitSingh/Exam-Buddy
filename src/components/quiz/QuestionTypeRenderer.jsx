@@ -16,9 +16,14 @@ const QuestionTypeRenderer = forwardRef(({
     // Always reset state first to prevent using old answers for different question types
     setTextAnswer('');
     
-    // Fixed: Safe initialization of fill blanks
-    const blanksCount = question.question ? question.question.split('_______').length - 1 : 0;
-    setFillBlanks(Array(Math.max(0, blanksCount)).fill(''));
+    // Fixed: Safe initialization of fill blanks - use regex to find blank patterns
+    // For FillUp questions, AI might use 'text' field instead of 'question' field
+    const questionText = (question.question || question.text || '');
+    // Count any run of 3+ underscores as one blank
+    const blankCount = ((questionText.match(/_{3,}/g)) || []).length;
+    // Ensure at least one input if the type is Fill in Blank
+    const atLeastOne = question.type === 'Fill in Blank' ? Math.max(1, blankCount) : blankCount;
+    setFillBlanks(Array(atLeastOne).fill(''));
 
     if (selectedAnswer?.textAnswer) {
       if (question.type === 'Short Answer' && typeof selectedAnswer.textAnswer === 'string') {
@@ -125,21 +130,32 @@ const QuestionTypeRenderer = forwardRef(({
       return (
         <div className="space-y-4">
           <div className="text-lg leading-relaxed">
-            {question.question?.split('_______').map((part, index, array) => (
-              <span key={index}>
-                {part}
-                {index < array.length - 1 && (
-                  <input
-                    type="text"
-                    value={fillBlanks[index] || ''}
-                    onChange={(e) => handleBlankChange(index, e.target.value)}
-                    disabled={disabled}
-                    className="mx-2 px-3 py-1 border-b-2 border-amber-300 bg-transparent focus:border-amber-600 outline-none text-amber-700 font-semibold min-w-[120px] disabled:bg-slate-50"
-                    placeholder={`Blank ${index + 1}`}
-                  />
-                )}
-              </span>
-            ))}
+            {(() => {
+              const questionText = question.question || question.text || '';
+              // Split by 5 or more underscores pattern, keeping the separators
+              const parts = questionText.split(/(_{5,})/);
+              
+              return parts.map((part, index) => {
+                // If part matches the blank pattern (5 or more underscores), render input
+                if (/_{5,}/.test(part)) {
+                  // Find the corresponding blank index
+                  const blankIndex = parts.slice(0, index).filter(p => /_{5,}/.test(p)).length;
+                  return (
+                    <input
+                      key={index}
+                      type="text"
+                      value={fillBlanks[blankIndex] || ''}
+                      onChange={(e) => handleBlankChange(blankIndex, e.target.value)}
+                      disabled={disabled}
+                      className="mx-2 px-3 py-1 border-b-2 border-amber-300 bg-transparent focus:border-amber-600 outline-none text-amber-700 font-semibold min-w-[120px] disabled:bg-slate-50"
+                      placeholder={`Blank ${blankIndex + 1}`}
+                    />
+                  );
+                }
+                // Otherwise, return the text part
+                return <span key={index}>{part}</span>;
+              });
+            })()}
           </div>
           {immediateFeedback && !disabled && (
             <button 

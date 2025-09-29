@@ -71,9 +71,11 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       setTextAnswer('');
 
       if (currentQuestion.type === 'Fill in Blank') {
-        const questionText = currentQuestion.question || '';
-        const blanksCount = (questionText.match(/_______/g) || []).length;
-        setFillBlanks(Array(Math.max(0, blanksCount)).fill(''));
+        const questionText = (currentQuestion.question || currentQuestion.text || '');
+        // Count any run of 5+ underscores as one blank
+        const blanksCount = ((questionText.match(/_{3,}/g)) || []).length;
+        // Ensure at least one input if the item is marked Fill in Blank
+        setFillBlanks(Array(Math.max(1, blanksCount)).fill(''));
       } else {
         setFillBlanks(['']);
       }
@@ -390,25 +392,34 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
         return (
           <div className="space-y-4">
             <div className="text-lg text-slate-700 leading-relaxed">
-              {currentQuestion.question?.split('_______').map((part, index, array) => (
-                <span key={index}>
-                  {part}
-                  {index < array.length - 1 && (
-                    <input
-                      type="text"
-                      value={fillBlanks[index] || ''}
-                      onChange={(e) => {
-                        const newBlanks = [...fillBlanks];
-                        newBlanks[index] = e.target.value;
-                        setFillBlanks(newBlanks);
-                      }}
-                      disabled={selectedAnswer !== null && config.immediateFeedback}
-                      placeholder="your answer"
-                      className="inline-block mx-2 px-4 py-2 bg-white/80 backdrop-blur-sm border-b-2 border-amber-400 focus:border-amber-600 outline-none rounded-lg min-w-[150px] text-center font-medium text-amber-700 placeholder-amber-300 disabled:opacity-50"
-                    />
-                  )}
-                </span>
-              ))}
+              {(() => {
+                const questionText = currentQuestion.question || '';
+                const parts = questionText.split(/(_{3,})/); // Use regex for 3+ underscores
+                let blankIndex = 0;
+
+                return parts.map((part, index) => {
+                  if (/_{3,}/.test(part)) {
+                    const currentBlankIndex = blankIndex;
+                    blankIndex++;
+                    return (
+                      <input
+                        key={index}
+                        type="text"
+                        value={fillBlanks[currentBlankIndex] || ''}
+                        onChange={(e) => {
+                          const newBlanks = [...fillBlanks];
+                          newBlanks[currentBlankIndex] = e.target.value;
+                          setFillBlanks(newBlanks);
+                        }}
+                        disabled={selectedAnswer !== null && config.immediateFeedback}
+                        placeholder="your answer"
+                        className="inline-block mx-2 px-4 py-2 bg-white/80 backdrop-blur-sm border-b-2 border-amber-400 focus:border-amber-600 outline-none rounded-lg min-w-[150px] text-center font-medium text-amber-700 placeholder-amber-300 disabled:opacity-50"
+                      />
+                    );
+                  }
+                  return <span key={index}>{part}</span>;
+                });
+              })()}
             </div>
           </div>
         );
