@@ -1,26 +1,34 @@
 // src/utils/summaryProcessor.js
 
-// Chrome Summarizer API wrapper for content processing
+// Chrome Summarizer API wrapper for content processing - FIXED VERSION
 
 let summarizerCache = null;
 
 // Check if Summarizer API is available
 export async function checkSummarizerAvailability() {
-  if (typeof window === 'undefined' || !window.Summarizer) {
-    return { available: false, reason: 'API not supported' };
+    if (typeof window === 'undefined' || !window.ai?.summarizer) {
+      if (!window.Summarizer) {
+        return { available: false, reason: 'API not supported in this browser' };
+      }
+    }
+  
+    try {
+      const availability = await window.ai?.summarizer?.availability() || await window.Summarizer?.availability();
+      
+      // FIX: Accept both 'readily' AND 'available' as valid
+      const isAvailable = availability === 'readily' || availability === 'available';
+      
+      return {
+        available: isAvailable,
+        status: availability,
+        downloadNeeded: availability === 'available',  // Model needs download
+        reason: !isAvailable ? `Model status: ${availability}` : null
+      };
+    } catch (error) {
+      return { available: false, reason: error.message };
+    }
   }
-
-  try {
-    const availability = await window.Summarizer.capabilities();
-    return {
-      available: availability.available === 'readily',
-      status: availability.available,
-      reason: availability.available !== 'readily' ? 'Model not ready' : null
-    };
-  } catch (error) {
-    return { available: false, reason: error.message };
-  }
-}
+  
 
 // Create a summarizer with quiz-focused context
 export async function createSummarizer(options = {}) {
@@ -41,13 +49,18 @@ export async function createSummarizer(options = {}) {
   const sharedContext = contextParts.join('. ');
 
   try {
-    const summarizer = await window.Summarizer.create({
+    // Use either window.ai.summarizer or window.Summarizer (legacy)
+    const SummarizerAPI = window.ai?.summarizer || window.Summarizer;
+    
+    if (!SummarizerAPI) {
+      throw new Error('Summarizer API not found');
+    }
+
+    const summarizer = await SummarizerAPI.create({
+      sharedContext,
       type: 'key-points',
       format: 'plain-text',
-      length: 'medium',
-      sharedContext,
-      outputLanguage: 'en',
-      expectedInputLanguages: ['en']
+      length: 'medium'
     });
 
     summarizerCache = summarizer;
@@ -66,6 +79,7 @@ export async function summarizeChunk(chunk, summarizer, options = {}) {
   const { context = '' } = options;
 
   try {
+    // Use summarize() with optional context
     const summary = await summarizer.summarize(chunk.text, {
       context: context || 'Extract key educational concepts and facts'
     });
@@ -170,7 +184,7 @@ export function assembleSummaries(summaryResults) {
     totalOriginalLength: summaryResults.reduce((sum, r) => sum + (r.originalLength || 0), 0),
     totalSummaryLength: validSummaries.reduce((sum, r) => sum + (r.summaryLength || 0), 0),
     compressionRatio: summaryResults.reduce((sum, r) => sum + (r.originalLength || 0), 0) / 
-                     validSummaries.reduce((sum, r) => sum + (r.summaryLength || 0), 0),
+                     Math.max(1, validSummaries.reduce((sum, r) => sum + (r.summaryLength || 0), 0)),
     fallbacks: summaryResults.filter(r => r.fallback).length,
     errors: summaryResults.filter(r => r.error).length
   };

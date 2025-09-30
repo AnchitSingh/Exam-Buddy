@@ -18,10 +18,19 @@ async function finalizeSource({
   quizConfig = {},
   onProgress = null
 }) {
+  console.log('🎯 finalizeSource: Starting extraction process');
+  console.log('📊 Input text length:', rawText?.length, 'characters');
+  console.log('📊 Input word count:', rawText ? rawText.split(/\s+/).length : 0, 'words');
+  
   const text = cleanToPromptReady(rawText || '');
   const wordCount = text ? text.split(/\s+/).length : 0;
   const excerpt = buildExcerpt(text);
   const chunks = chunkText(text);
+  
+  console.log('📊 Chunks created:', chunks.length);
+  chunks.forEach((chunk, index) => {
+    console.log(`Chunk ${index + 1}: ${chunk.text.length} chars, needsSummarization: ${chunk.needsSummarization}`);
+  });
 
   const domain = (() => {
     try { return url ? new URL(url).hostname : ''; } catch { return ''; }
@@ -36,7 +45,11 @@ async function finalizeSource({
   };
 
   // Check if summarization is needed and available
-  if (shouldSummarize(chunks)) {
+  const needsSummarization = shouldSummarize(chunks);
+  console.log('🎯 Summarization needed:', needsSummarization);
+  
+  if (needsSummarization) {
+    console.log('🎯 Proceeding with summarization...');
     try {
       if (onProgress) {
         onProgress({ 
@@ -46,8 +59,10 @@ async function finalizeSource({
       }
 
       const availability = await checkSummarizerAvailability();
+      console.log('🎯 Summarizer availability:', availability);
       
       if (availability.available) {
+        console.log('🎯 Summarizer is available, proceeding with chunk processing');
         if (onProgress) {
           onProgress({ 
             status: 'summarizing', 
@@ -59,6 +74,7 @@ async function finalizeSource({
         processingMeta.summarizationAttempted = true;
         
         const summaryResults = await processChunks(chunks, quizConfig, (progress) => {
+          console.log('🎯 Chunk processing progress:', progress);
           if (onProgress) {
             onProgress({
               status: 'summarizing-chunk',
@@ -68,7 +84,13 @@ async function finalizeSource({
           }
         });
 
+        console.log('🎯 Summary results received:', summaryResults.length, 'results');
         const assembled = assembleSummaries(summaryResults);
+        console.log('🎯 Assembled summary:', {
+          wordCount: assembled.wordCount,
+          textLength: assembled.text?.length,
+          meta: assembled.meta
+        });
         
         if (assembled.text && assembled.wordCount > 50) {
           finalText = assembled.text;
@@ -79,15 +101,18 @@ async function finalizeSource({
             finalWordCount: assembled.wordCount
           };
 
+          console.log('🎯 Summarization successful! Final word count:', assembled.wordCount);
           if (onProgress) {
             onProgress({ 
               status: 'summarization-complete', 
               message: `Summarized to ${assembled.wordCount} words (${Math.round(assembled.meta.compressionRatio)}x compression)` 
             });
           }
+        } else {
+          console.log('🎯 Summarization result was too short, falling back to first chunk');
         }
       } else {
-        console.warn('Summarizer not available:', availability.reason);
+        console.warn('🎯 Summarizer not available:', availability.reason);
         if (onProgress) {
           onProgress({ 
             status: 'summarizer-unavailable', 
@@ -96,10 +121,10 @@ async function finalizeSource({
           });
         }
         // Fallback to first chunk
-        finalText = chunks[0]?.text || text.slice(0, 20000);
+        finalText = chunks[0]?.text || text.slice(0, 12000);
       }
     } catch (error) {
-      console.error('Summarization failed:', error);
+      console.error('🎯 Summarization failed:', error);
       if (onProgress) {
         onProgress({ 
           status: 'summarization-failed', 
@@ -108,10 +133,11 @@ async function finalizeSource({
         });
       }
       // Fallback to first chunk
-      finalText = chunks[0]?.text || text.slice(0, 20000);
+      finalText = chunks[0]?.text || text.slice(0, 12000);
     }
   } else {
     // Small content, use as-is
+    console.log('🎯 Content is small enough, no summarization needed');
     if (onProgress) {
       onProgress({ 
         status: 'no-summarization-needed', 
@@ -122,6 +148,9 @@ async function finalizeSource({
 
   // Rechunk the final text for quiz generation
   const finalChunks = chunkText(finalText);
+  console.log('🎯 Final text length after processing:', finalText.length, 'characters');
+  console.log('🎯 Final word count after processing:', finalText.split(/\s+/).length, 'words');
+  console.log('🎯 Final chunks count after processing:', finalChunks.length);
 
   return {
     sourceType,
