@@ -1,37 +1,66 @@
 // src/utils/textChunker.js
-// Splits long text into prompt-sized chunks with small overlap to preserve context.
+
+// Updated chunker for summarization: 20K chars per chunk, 200 char overlap
 
 function estimateTokens(text) {
-    // Rough heuristic: ~1.3 tokens per word.
-    const words = text.trim().split(/\s+/).length;
-    return Math.round(words * 1.3);
-  }
+  // More accurate: ~4 chars per token for Gemini Nano
+  return Math.round((text || '').length / 4);
+}
+
+export function chunkText(text, {
+  maxChars = 20000,  // Increased for summarization (fits ~5K tokens)
+  minChars = 4000,   // Minimum viable chunk size
+  overlap = 200,     // Small overlap for context continuity
+  maxChunks = 3      // Limit chunks for performance
+} = {}) {
+  const chunks = [];
+  const clean = text || '';
   
-  export function chunkText(text, {
-    maxChars = 4500,
-    minChars = 2000,
-    overlap = 200
-  } = {}) {
-    const chunks = [];
-    const clean = text || '';
-    let i = 0;
-    while (i < clean.length) {
-      let end = Math.min(i + maxChars, clean.length);
-      // Prefer cut at paragraph boundary if possible
-      const slice = clean.slice(i, end);
-      const lastBreak = slice.lastIndexOf('\n\n');
-      const cut = (lastBreak >= minChars) ? i + lastBreak : end;
-      const part = clean.slice(i, cut);
-      chunks.push({
-        id: `chunk_${chunks.length + 1}`,
-        text: part,
-        start: i,
-        end: cut,
-        tokenEstimate: estimateTokens(part)
-      });
-      if (cut >= clean.length) break;
-      i = Math.max(0, cut - overlap);
-    }
-    return chunks;
+  if (clean.length <= minChars) {
+    // Single small chunk - no need to split
+    return [{
+      id: `chunk_1`,
+      text: clean,
+      start: 0,
+      end: clean.length,
+      tokenEstimate: estimateTokens(clean),
+      needsSummarization: false
+    }];
   }
-  
+
+  let i = 0;
+  let chunkCount = 0;
+
+  while (i < clean.length && chunkCount < maxChunks) {
+    let end = Math.min(i + maxChars, clean.length);
+    
+    // Prefer cut at paragraph boundary if possible
+    const slice = clean.slice(i, end);
+    const lastBreak = slice.lastIndexOf('\n\n');
+    const cut = (lastBreak >= minChars) ? i + lastBreak : end;
+    
+    const part = clean.slice(i, cut);
+    
+    chunks.push({
+      id: `chunk_${chunks.length + 1}`,
+      text: part,
+      start: i,
+      end: cut,
+      tokenEstimate: estimateTokens(part),
+      needsSummarization: part.length > minChars // Flag for summarization
+    });
+
+    if (cut >= clean.length) break;
+    i = Math.max(0, cut - overlap);
+    chunkCount++;
+  }
+
+  return chunks;
+}
+
+// Helper to determine if content needs summarization
+export function shouldSummarize(chunks) {
+  if (!chunks || chunks.length === 0) return false;
+  if (chunks.length === 1 && chunks[0].text.length < 4000) return false;
+  return chunks.some(chunk => chunk.needsSummarization);
+}
