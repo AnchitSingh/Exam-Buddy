@@ -108,9 +108,26 @@ class ExamBuddyAPI {
         
         // Transform AI result to match frontend expectations
         const transformedQuestions = (aiResult.questions || []).map((q, index) => {
+          const questionText = q.question || q.text;
+
+          let processedOptions = q.options;
+          // For MCQs, derive isCorrect from the top-level answer if present
+          if (q.type === 'MCQ' && q.answer && Array.isArray(q.options)) {
+            processedOptions = q.options.map(opt => ({
+              text: opt.text, // ensure clean option object
+              isCorrect: opt.text === q.answer,
+            }));
+          } 
+          // For other types (like True/False), handle `correct` or `isCorrect`
+          else if (Array.isArray(q.options)) {
+            processedOptions = q.options.map(opt => {
+              const isCorrect = opt.isCorrect !== undefined ? opt.isCorrect : opt.correct;
+              return { text: opt.text, isCorrect: !!isCorrect };
+            });
+          }
+
           let normalizedType = q.type;
           const lowerCaseType = q.type.toLowerCase().replace(/[\s\/_-]/g, '');
-
           if (lowerCaseType === 'truefalse') {
             normalizedType = 'True/False';
           } else if (lowerCaseType === 'subjective' || lowerCaseType === 'shortanswer') {
@@ -119,11 +136,23 @@ class ExamBuddyAPI {
             normalizedType = 'Fill in Blank';
           }
 
-          return {
-            ...q,
+          // Build the clean, standardized question object
+          const newQuestion = {
+            ...q, // bring over other fields like explanation, difficulty
             id: generateId(`q${index}`),
             type: normalizedType,
+            question: questionText,
+            options: processedOptions,
           };
+
+          // Clean up redundant/old properties
+          delete newQuestion.text;
+          // Only delete answer field if it was used for MCQ processing
+          if (q.type === 'MCQ' && q.answer) {
+            delete newQuestion.answer;
+          }
+          
+          return newQuestion;
         });
 
         const quiz = {
