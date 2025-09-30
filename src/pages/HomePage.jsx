@@ -239,7 +239,12 @@ const HomePage = ({ onNavigate, navigationData }) => {
         try {
             switch (config.sourceType) {
                 case SOURCE_TYPE.PAGE:
-                    extractedSource = await extractFromCurrentPage();
+                    // If selectedTab is available, extract from that specific tab
+                    if (config.selectedTab) {
+                        extractedSource = await extractFromCurrentPage(config, () => {}); // Pass empty progress function for now
+                    } else {
+                        extractedSource = await extractFromCurrentPage(config, () => {}); // Active tab extraction
+                    }
                     break;
 
                 case SOURCE_TYPE.PDF:

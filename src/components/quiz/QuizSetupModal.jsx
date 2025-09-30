@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
+import TabSelectionModal from './TabSelectionModal';
 import { SOURCE_TYPE } from '../../utils/messages';
 
 // Constants
@@ -23,7 +24,7 @@ const questionCounts = [3, 5, 10, 15, 20];
 
 const sourceOptions = [
   { value: SOURCE_TYPE.MANUAL, label: 'Custom Topic', icon: '✏️', description: 'Create quiz from any topic' },
-  { value: SOURCE_TYPE.PAGE, label: 'Current Page', icon: '📄', description: 'Use active browser tab' },
+  { value: SOURCE_TYPE.PAGE, label: 'Choose Tab', icon: '📋', description: 'Select from open browser tabs' },
   { value: SOURCE_TYPE.URL, label: 'From URL', icon: '🔗', description: 'Enter a webpage URL' },
   { value: SOURCE_TYPE.PDF, label: 'From PDF', icon: '📎', description: 'Upload a PDF file' },
 ];
@@ -36,6 +37,8 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
   const fileInputRef = useRef(null);
   const modalBodyRef = useRef(null);
   const [isStartingQuiz, setIsStartingQuiz] = useState(false);
+  const [showTabSelection, setShowTabSelection] = useState(false);
+  const [selectedTab, setSelectedTab] = useState(null);
 
   const [config, setConfig] = useState({
     sourceType: SOURCE_TYPE.MANUAL,
@@ -87,6 +90,19 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
       fileInputRef.current.value = '';
     }
     setErrors({});
+    // Clear selected tab when switching source types
+    if (sourceType !== SOURCE_TYPE.PAGE) {
+      setSelectedTab(null);
+    }
+  };
+
+  const handleSelectTab = (tab) => {
+    setSelectedTab(tab);
+    // Update sourceValue to include tab info for display purposes
+    setConfig(prev => ({
+      ...prev,
+      sourceValue: `${tab.title} (${tab.url})`
+    }));
   };
 
   const handleFileChange = (e) => {
@@ -133,6 +149,10 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
       if (config.sourceType === SOURCE_TYPE.PDF && !pdfFile) {
         newErrors.sourceValue = 'Please select a PDF file';
       }
+      
+      if (config.sourceType === SOURCE_TYPE.PAGE && !selectedTab) {
+        newErrors.sourceValue = 'Please select a tab';
+      }
     }
     
     if (step === 2) {
@@ -173,7 +193,8 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
       const finalConfig = { 
         ...config, 
         pdfFile,
-        timerEnabled: config.totalTimer > 0 
+        timerEnabled: config.totalTimer > 0,
+        selectedTab: selectedTab // Include selected tab info
       };
       
       console.log('Starting quiz with config:', finalConfig);
@@ -193,6 +214,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
         immediateFeedback: true,
         totalTimer: 0,
       });
+      setSelectedTab(null);
       setPdfFile(null);
       setCurrentStep(1);
       setShowAdvanced(false);
@@ -275,15 +297,39 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
         
       case SOURCE_TYPE.PAGE:
         return (
-          <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <div className="mt-4 space-y-3">
+            <button
+              onClick={() => setShowTabSelection(true)}
+              className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-dashed border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-slate-900">
+                    {selectedTab ? selectedTab.title : 'Select a browser tab'}
+                  </p>
+                  {selectedTab && (
+                    <p className="text-sm text-slate-500 truncate max-w-xs">
+                      {selectedTab.url}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
               </svg>
-              <p className="text-sm text-amber-800">
-                The current active browser tab will be used as the source for generating quiz questions.
-              </p>
-            </div>
+            </button>
+            {selectedTab && (
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <p className="text-sm text-slate-600">
+                  Content will be extracted from: <strong>{selectedTab.title}</strong>
+                </p>
+              </div>
+            )}
           </div>
         );
         
@@ -546,89 +592,98 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
   );
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title="" 
-      size="lg"
-      className="flex flex-col max-h-[90vh]"
-    >
-      <div className="flex flex-col h-full" ref={modalBodyRef} tabIndex={-1}>
-        {/* Fixed Header */}
-        <div className="px-6 py-4 border-b border-slate-200">
-          <h2 className="text-xl font-bold text-slate-900">Create Your Quiz</h2>
-          <div className="flex items-center gap-2 mt-3">
-            {[1, 2].map((step) => (
-              <React.Fragment key={step}>
-                <div className={`flex items-center gap-2 ${currentStep >= step ? 'text-amber-600' : 'text-slate-400'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
-                    currentStep >= step ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'
-                  }`}>
-                    {currentStep > step ? (
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    ) : step}
+    <>
+      <Modal 
+        isOpen={isOpen} 
+        onClose={onClose} 
+        title="" 
+        size="lg"
+        className="flex flex-col max-h-[90vh]"
+      >
+        <div className="flex flex-col h-full" ref={modalBodyRef} tabIndex={-1}>
+          {/* Fixed Header */}
+          <div className="px-6 py-4 border-b border-slate-200">
+            <h2 className="text-xl font-bold text-slate-900">Create Your Quiz</h2>
+            <div className="flex items-center gap-2 mt-3">
+              {[1, 2].map((step) => (
+                <React.Fragment key={step}>
+                  <div className={`flex items-center gap-2 ${currentStep >= step ? 'text-amber-600' : 'text-slate-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                      currentStep >= step ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      {currentStep > step ? (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : step}
+                    </div>
+                    <span className="text-xs font-medium hidden sm:inline">
+                      {step === 1 ? 'Source' : 'Configure'}
+                    </span>
                   </div>
-                  <span className="text-xs font-medium hidden sm:inline">
-                    {step === 1 ? 'Source' : 'Configure'}
-                  </span>
-                </div>
-                {step < 2 && (
-                  <div className={`flex-1 h-0.5 transition-colors ${
-                    currentStep > step ? 'bg-amber-200' : 'bg-slate-200'
-                  }`} />
-                )}
-              </React.Fragment>
-            ))}
+                  {step < 2 && (
+                    <div className={`flex-1 h-0.5 transition-colors ${
+                      currentStep > step ? 'bg-amber-200' : 'bg-slate-200'
+                    }`} />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          {currentStep === 1 ? renderStep1() : renderStep2()}
-        </div>
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            {currentStep === 1 ? renderStep1() : renderStep2()}
+          </div>
 
-        {/* Fixed Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 bg-white">
-          <div className="flex gap-3">
-            {currentStep > 1 && (
+          {/* Fixed Footer */}
+          <div className="px-6 py-4 border-t border-slate-200 bg-white">
+            <div className="flex gap-3">
+              {currentStep > 1 && (
+                <Button
+                  onClick={handleBack}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+              )}
               <Button
-                onClick={handleBack}
+                onClick={onClose}
                 variant="secondary"
                 className="flex-1"
               >
-                Back
+                Cancel
               </Button>
-            )}
-            <Button
-              onClick={onClose}
-              variant="secondary"
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            {currentStep === 1 ? (
-              <Button
-                onClick={handleNext}
-                className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                onClick={handleStartQuiz}
-                loading={isStartingQuiz}
-                disabled={isStartingQuiz}
-                className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
-              >
-                {isStartingQuiz ? 'Starting Quiz...' : 'Start Quiz'}
-              </Button>
-            )}
+              {currentStep === 1 ? (
+                <Button
+                  onClick={handleNext}
+                  className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleStartQuiz}
+                  loading={isStartingQuiz}
+                  disabled={isStartingQuiz}
+                  className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+                >
+                  {isStartingQuiz ? 'Starting Quiz...' : 'Start Quiz'}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+      
+      <TabSelectionModal
+        isOpen={showTabSelection}
+        onClose={() => setShowTabSelection(false)}
+        onSelectTab={handleSelectTab}
+        selectedTabId={selectedTab?.id}
+      />
+    </>
   );
 };
 

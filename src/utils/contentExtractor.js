@@ -144,20 +144,38 @@ export async function extractFromCurrentPage(quizConfig = {}, onProgress = null)
     onProgress({ status: 'extracting-dom', message: 'Extracting page content...' });
   }
 
-  const { html, title, url } = await extractionService.getDOMHTML();
+  // Check if a specific tab was selected
+  let extractionResult;
+  if (quizConfig.selectedTab && quizConfig.selectedTab.id) {
+    // Extract from the specific selected tab
+    extractionResult = await extractionService.getDOMHTML(quizConfig.selectedTab.id);
+  } else {
+    // Extract from the current active tab
+    extractionResult = await extractionService.getDOMHTML();
+  }
+  
+  const { html, title, url } = extractionResult;
   
   if (onProgress) {
-    onProgress({ status: 'processing-readability', message: 'Processing with Readability...' });
+    onProgress({ 
+      status: 'processing-readability', 
+      message: `Processing with Readability...`,
+      tabTitle: quizConfig.selectedTab?.title || title
+    });
   }
 
   const readable = extractReadableFromHTML(html, url);
 
   return finalizeSource({
     sourceType: SOURCE_TYPE.PAGE,
-    title: readable.title || title,
-    url,
+    title: readable.title || title || (quizConfig.selectedTab?.title),
+    url: url || quizConfig.selectedTab?.url || '',
     rawText: readable.text,
-    meta: { byline: readable.byline || '', length: readable.length || 0 },
+    meta: { 
+      byline: readable.byline || '', 
+      length: readable.length || 0,
+      selectedTab: quizConfig.selectedTab // Include selected tab info in meta
+    },
     quizConfig,
     onProgress
   });

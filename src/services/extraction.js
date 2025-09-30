@@ -13,11 +13,10 @@ async function getActiveTabId() {
     return tabs[0].id;
 }
 
-async function sendToActiveTab(message) {
+async function sendToTab(tabId, message) {
     if (!isExtensionContext()) {
         throw new Error('Extraction requires Chrome extension context with content script loaded.');
     }
-    const tabId = await getActiveTabId();
     return new Promise((resolve, reject) => {
         chrome.tabs.sendMessage(tabId, message, (response) => {
             const err = chrome.runtime.lastError;
@@ -27,35 +26,48 @@ async function sendToActiveTab(message) {
     });
 }
 
-async function pingContent() {
+async function sendToActiveTab(message) {
+    const tabId = await getActiveTabId();
+    return sendToTab(tabId, message);
+}
+
+async function pingContent(tabId = null) {
     try {
-        const res = await sendToActiveTab({ type: MSG.PING_CONTENT });
-        return !!res;
+        const message = { type: MSG.PING_CONTENT };
+        if (tabId) {
+            await sendToTab(tabId, message);
+        } else {
+            await sendToActiveTab(message);
+        }
+        return true;
     } catch {
         return false;
     }
 }
 
-async function getDOMHTML() {
-    const ok = await pingContent();
+async function getDOMHTML(tabId = null) {
+    const targetTabId = tabId || await getActiveTabId();
+    const ok = await pingContent(targetTabId);
     if (!ok) throw new Error('Content script not available on this page.');
-    const res = await sendToActiveTab({ type: MSG.EXTRACT_DOM_HTML });
+    const res = await sendToTab(targetTabId, { type: MSG.EXTRACT_DOM_HTML });
     if (!res || !res.html) throw new Error('Failed to extract DOM HTML.');
     return res; // { html, title, url }
 }
 
-async function getSelectionText() {
-    const ok = await pingContent();
+async function getSelectionText(tabId = null) {
+    const targetTabId = tabId || await getActiveTabId();
+    const ok = await pingContent(targetTabId);
     if (!ok) throw new Error('Content script not available on this page.');
-    const res = await sendToActiveTab({ type: MSG.EXTRACT_SELECTION });
+    const res = await sendToTab(targetTabId, { type: MSG.EXTRACT_SELECTION });
     if (!res || !res.text) throw new Error('No selection text found.');
     return res; // { text, title, url }
 }
 
-async function getMeta() {
-    const ok = await pingContent();
+async function getMeta(tabId = null) {
+    const targetTabId = tabId || await getActiveTabId();
+    const ok = await pingContent(targetTabId);
     if (!ok) throw new Error('Content script not available on this page.');
-    const res = await sendToActiveTab({ type: MSG.EXTRACT_META });
+    const res = await sendToTab(targetTabId, { type: MSG.EXTRACT_META });
     return res || {};
 }
 
@@ -63,7 +75,8 @@ const extractionService = {
     pingContent,
     getDOMHTML,
     getSelectionText,
-    getMeta
+    getMeta,
+    sendToTab
 };
 
 export default extractionService;

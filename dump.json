@@ -1,0 +1,287 @@
+Tue Sep 30 2025 22:22:21 GMT+0530 (India Standard Time)  ai_language_model.cc(249) Executing model with input context of 2809 tokens:
+<user><start_of_turn>user
+Act as a quiz generator for the following content. Generate educational questions that test understanding of key concepts.
+
+CONTENT:
+"Toggle the table of contents
+	Contents
+	move to sidebar
+	hide
+ (Top)
+ 1
+ History
+ 2
+ Etymology
+ 3
+ Definitions and descriptions
+ Toggle Definitions and descriptions subsection
+ 3.1
+ State variables and functions of state
+ 3.2
+ Reversible process
+ 3.3
+ Carnot cycle
+ 3.4
+ Classical thermodynamics
+ 3.5
+ Statistical mechanics
+ 3.6
+ Entropy of a system
+ 3.7
+ Equivalence of definitions
+ 4
+ Second law of thermodynamics
+ 5
+ Applications
+ Toggle Applications subsection
+ 5.1
+ The fundamental thermodynamic relation
+ 5.2
+ Entropy in chemical thermodynamics
+ 5.3
+ World's technological capacity to store and communicate entropic information
+ 5.4
+ Entropy balance equation for open systems
+ 6
+ Entropy change formulas for simple processes
+ Toggle Entropy change formulas for simple processes subsection
+ 6.1
+ Isothermal expansion or compression of an ideal gas
+ 6.2
+ Cooling and heating
+ 6.3
+ Phase transitions
+ 7
+ Approaches to understanding entropy
+ Toggle Approaches to understanding entropy subsection
+ 7.1
+ Standard textbook definitions
+ 7.2
+ Order and disorder
+ 7.3
+ Energy dispersal
+ 7.4
+ Relating entropy to energy usefulness
+ 7.5
+ Entropy and adiabatic accessibility
+ 7.6
+ Entropy in quantum mechanics
+ 7.7
+ Information theory
+ 7.8
+ Measurement
+ 8
+ Interdisciplinary applications
+ Toggle Interdisciplinary applications subsection
+ 8.1
+ Philosophy and theoretical physics
+ 8.2
+ Biology
+ 8.3
+ Cosmology
+ 8.4
+ Economics
+ 9
+ See also
+ 10
+ Notes
+ 11
+ References
+ 12
+ Further reading
+ 13
+ External links
+ Entropy
+90 languages
+ AfrikaansአማርኛالعربيةAsturianuAzərbaycancaবাংলা閩南語 / Bân-lâm-gíБеларускаяБеларуская (тарашкевіца)Bikol CentralБългарскиBoarischBosanskiBrezhonegCatalàЧӑвашлаČeštinaDanskالدارجةDeutschEestiΕλληνικάEspañolEsperantoEuskaraفارسیFrançaisGaeilgeGaelgGalego한국어Հայերենहिन्दीHrvatskiBahasa HulontaloBahasa IndonesiaInterlinguaItalianoעבריתಕನ್ನಡქართულიҚазақшаKreyòl ayisyenKurdîКыргызчаLatinaLatviešuLietuviųLombardMagyarМакедонскиമലയാളംМонголမြန်မာဘာသာNederlands日本語Norsk bokmålNorsk nynorskOccitanOromooOʻzbekcha / ўзбекчаਪੰਜਾਬੀپښتوPolskiPortuguêsRomânăРусскийSarduShqipSicilianuSimple EnglishSlovenčinaSlovenščinaکوردیСрпски / srpskiSrpskohrvatski / српскохрватскиSuomiSvenskaதமிழ்తెలుగుไทยTürkçeУкраїнськаاردوTiếng Việt文言吴语ייִדיש粵語中文
+ Edit links
+ ArticleTalk
+	English
+ ReadEditView history
+	Tools
+ Actions
+ General
+ What links hereRelated changesUpload filePermanent linkPage informationCite this pageGet shortened URLDownload QR code
+ Expand allEdit interlanguage links
+ Print/export
+ Download as PDFPrintable version
+ In other projects
+ Wikimedia CommonsWikibooksWikiquoteWikidata item
+ From Wikipedia, the free encyclopedia
+ Property of a thermodynamic system
+.mw-parser-output .hatnote{font-style:italic}.mw-parser-output div.hatnote{padding-left:1.6em;margin-bottom:0.5em}.mw-parser-output .hatnote i{font-style:normal}.mw-parser-output .hatnote+link+.hatnote{margin-top:-0.5em}@media print{body.ns-0 .mw-parser-output .hatnote{display:none!important}}For other uses, see Entropy (disambiguation). For a more accessible and less technical introduction to this topic, see Introduction to entropy. Not to be confused with Enthalpy.
+.mw-parser-output .infobox-subbox{padding:0;border:none;margin:-3px;width:auto;min-width:100%;font-size:100%;clear:none;float:none;background-color:transparent}.mw-parser-output .infobox-3cols-child{margin:auto}.mw-parser-output .infobox .navbar{font-size:100%}@media screen{html.skin-theme-clientpref-night .mw-parser-output .infobox-full-data:not(.notheme)>div:not(.notheme)[style]{background:#1f1f23!important;color:#f8f9fa}}@media screen and (prefers-color-scheme:dark){html.skin-theme-clientpref-os .mw-parser-output .infobox-full-data:not(.notheme)>div:not(.notheme)[style]{background:#1f1f23!important;color:#f8f9fa}}@media(min-width:640px){body.skin--responsive .mw-parser-output .infobox-table{display:table!important}body.skin--responsive .mw-parser-output .infobox-table>caption{display:table-caption!important}body.skin--responsive .mw-parser-output .infobox-table>tbody{display:table-row-group}body.skin--responsive .mw-parser-output .infobox-table th,body.skin--responsive .mw-parser-output .infobox-table td{padding-left:inherit;padding-right:inherit}}EntropyCommon symbolsSSI unitjoules per kelvin (J⋅K−1)In SI base unitskg⋅m2⋅s−2⋅K−1
+.mw-parser-output .hlist dl,.mw-parser-output .hlist ol,.mw-parser-output .hlist ul{margin:0;padding:0}.mw-parser-output .hlist dd,.mw-parser-output .hlist dt,.mw-parser-output .hlist li{margin:0;display:inline}.mw-parser-output .hlist.inline,.mw-parser-output .hlist.inline dl,.mw-parser-output .hlist.inline ol,.mw-parser-output .hlist.inline ul,.mw-parser-output .hlist dl dl,.mw-parser-output .hlist dl ol,.mw-parser-output .hlist dl ul,.mw-parser-output .hlist ol dl,.mw-parser-output .hlist ol ol,.mw-parser-output .hlist ol ul,.mw-parser-output .hlist ul dl,.mw-parser-output .hlist ul ol,.mw-parser-output .hlist ul ul{display:inline}.mw-parser-output .hlist .mw-empty-li{display:none}.mw-parser-output .hlist dt::after{content:": "}.mw-parser-output .hlist dd::after,.mw-parser-output .hlist li::after{content:" · ";font-weight:bold}.mw-parser-output .hlist dd:last-child::after,.mw-parser-output .hlist dt:last-child::after,.mw-parser-output .hlist li:last-child::after{content:none}.mw-parser-output .hlist dd dd:first-child::before,.mw-parser-output .hlist dd dt:first-child::before,.mw-parser-output .hlist dd li:first-child::before,.mw-parser-output .hlist dt dd:first-child::before,.mw…"
+
+STRICT REQUIREMENTS:
+- Generate EXACTLY 5 questions with this distribution: 2 MCQ, 1 FillUp, 1 Subjective, 1 TrueFalse
+- Do NOT generate any other question types beyond: MCQ, FillUp, Subjective, TrueFalse
+- Difficulty for all questions: medium
+- Output ONLY valid JSON. No markdown, no code fences, no prose outside JSON.
+- Use the exact schema below. Do not add or rename properties.
+- Use IDs "q1"..."q5" in order.
+
+SCHEMA (one JSON object):
+{
+  "questions": [
+    {
+      "id": "q1",
+      "type": "MCQ|TrueFalse|Subjective|FillUp",
+      "question": "question text",
+      "options": [{"text": "option", "correct": true/false}],
+      "answer": "for non-MCQ types only",
+      "explanation": "brief reason or feedback",
+      "difficulty": "medium",
+      "topic": "thermodynamics"
+    }
+  ]
+}
+
+NOTES:
+- MCQ must have EXACTLY 4 options with exactly one correct=true.
+- TrueFalse must have EXACTLY these 2 options: [{"text":"True","correct":true/false}, {"text":"False","correct":true/false}] with exactly one correct=true.
+- Subjective must NOT include options; use "answer" as the expected answer.
+- FillUp must:
+  - Use type value EXACTLY "FillUp" (no synonyms like "Fill in Blank", "Fill-in-the-Blank", "FITB").
+  - Include EXACTLY one blank placeholder "_____" in "question".
+  - NOT include "options".
+  - Include a non-empty "answer" string (canonical fill).
+
+EXAMPLES (format only; content is illustrative):
+{
+  "id": "exF1",
+  "type": "FillUp",
+  "question": "The constancy of the speed of light is a postulate of _____.",
+  "answer": "special relativity",
+  "explanation": "Special relativity is built on the postulate that light speed in vacuum is constant.",
+  "difficulty": "medium",
+  "topic": "thermodynamics"
+}
+
+BAD (do not output this):
+{
+  "id": "bad1",
+  "type": "Fill in Blank",
+  "question": "Special relativity states that the speed of light is constant for all observers.",
+  "options": []
+}
+GOOD (corrected form):
+{
+  "id": "exF2",
+  "type": "FillUp",
+  "question": "According to special relativity, time dilation increases with higher _____.",
+  "answer": "velocity",
+  "explanation": "Greater relative velocity increases time dilation.",
+  "difficulty": "medium",
+  "topic": "thermodynamics"
+}
+
+{
+  "id": "exM1",
+  "type": "MCQ",
+  "question": "Which structure follows FIFO?",
+  "options": [
+    {"text": "Queue", "correct": true},
+    {"text": "Stack", "correct": false},
+    {"text": "Tree", "correct": false},
+    {"text": "Graph", "correct": false}
+  ],
+  "explanation": "A queue is first-in, first-out.",
+  "difficulty": "medium",
+  "topic": "thermodynamics"
+}
+
+{
+  "id": "exT1",
+  "type": "TrueFalse",
+  "question": "Bubble sort has average complexity O(n^2).",
+  "options": [
+    {"text": "True", "correct": true},
+    {"text": "False", "correct": false}
+  ],
+  "explanation": "Average is quadratic.",
+  "difficulty": "medium",
+  "topic": "thermodynamics"
+}
+
+{
+  "id": "exS1",
+  "type": "Subjective",
+  "question": "Explain spacetime curvature in 30–50 words.",
+  "answer": "Mass-energy curves spacetime; objects follow geodesics in this curved geometry, producing gravitational effects without invoking a force in the Newtonian sense.",
+  "explanation": "Must mention mass-energy, curvature, geodesics.",
+  "difficulty": "medium",
+  "topic": "thermodynamics"
+}
+
+Now return the final JSON for 2 MCQ, 1 FillUp, 1 Subjective, 1 TrueFalse about the content above.
+<end_of_turn>
+<start_of_turn>model
+<end><model>
+Tue Sep 30 2025 22:22:47 GMT+0530 (India Standard Time)  ai_language_model.cc(359) Model generates raw response with PromptApi:
+```json
+{
+  "questions": [
+    {
+      "id": "q1",
+      "type": "MCQ",
+      "question": "Which of the following is a fundamental concept in thermodynamics related to energy transfer?",
+      "options": [
+        {"text": "Entropy", "correct": true},
+        {"text": "Temperature", "correct": false},
+        {"text": "Pressure", "correct": false},
+        {"text": "Volume", "correct": false}
+      ],
+      "answer": "Entropy",
+      "explanation": "Entropy is a measure of the disorder or randomness of a system, a fundamental concept in thermodynamics.",
+      "difficulty": "medium",
+      "topic": "thermodynamics"
+    },
+    {
+      "id": "q2",
+      "type": "MCQ",
+      "question": "What does the Carnot cycle represent in thermodynamics?",
+      "options": [
+        {"text": "A process that converts heat directly into work.", "correct": false},
+        {"text": "A thermodynamic cycle with four reversible processes.", "correct": true},
+        {"text": "A process that converts work directly into heat.", "correct": false},
+        {"text": "A process that involves only isothermal and adiabatic steps.", "correct": false}
+      ],
+      "answer": "A thermodynamic cycle with four reversible processes.",
+      "explanation": "The Carnot cycle is a theoretical thermodynamic cycle that represents the maximum possible efficiency of a heat engine.",
+      "difficulty": "medium",
+      "topic": "thermodynamics"
+    },
+    {
+      "id": "q3",
+      "type": "FillUp",
+      "question": "The process where a substance changes from a solid to a liquid is called _____.",
+      "answer": "melting",
+      "explanation": "Melting is the process of a solid changing into a liquid.",
+      "difficulty": "medium",
+      "topic": "thermodynamics"
+    },
+    {
+      "id": "q4",
+      "type": "TrueFalse",
+      "question": "The Second Law of Thermodynamics states that entropy in an isolated system always decreases.",
+      "options": [
+        {"text": "True", "correct": false},
+        {"text": "False", "correct": true}
+      ],
+      "explanation": "The Second Law of Thermodynamics states that the entropy of an isolated system always increases or remains constant.",
+      "difficulty": "medium",
+      "topic": "thermodynamics"
+    },
+    {
+      "id": "q5",
+      "type": "Subjective",
+      "question": "Describe the concept of entropy in simple terms.",
+      "answer": "Entropy is a measure of disorder or randomness within a system. Higher entropy means more disorder.",
+      "explanation": "Entropy is a fundamental concept in thermodynamics that describes the degree of randomness or disorder in a system.",
+      "difficulty": "medium",
+      "topic": "thermodynamics"
+    }
+  ]
+}
+```
