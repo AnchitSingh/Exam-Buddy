@@ -49,7 +49,7 @@ export function buildQuizPrompt({ extractedSource, config }) {
   const exFillGood = `{
   "id": "exF1",
   "type": "FillUp",
-  "text": "The constancy of the speed of light is a postulate of _____.",
+  "question": "The constancy of the speed of light is a postulate of _____.",
   "answer": "special relativity",
   "explanation": "Special relativity is built on the postulate that light speed in vacuum is constant.",
   "difficulty": "${difficulty}",
@@ -67,7 +67,7 @@ GOOD (corrected form):
 {
   "id": "exF2",
   "type": "FillUp",
-  "text": "According to special relativity, time dilation increases with higher _____.",
+  "question": "According to special relativity, time dilation increases with higher _____.",
   "answer": "velocity",
   "explanation": "Greater relative velocity increases time dilation.",
   "difficulty": "${difficulty}",
@@ -77,7 +77,7 @@ GOOD (corrected form):
   const exMCQ = `{
   "id": "exM1",
   "type": "MCQ",
-  "text": "Which structure follows FIFO?",
+  "question": "Which structure follows FIFO?",
   "options": [
     {"text": "Queue", "correct": true},
     {"text": "Stack", "correct": false},
@@ -92,7 +92,7 @@ GOOD (corrected form):
   const exTF = `{
   "id": "exT1",
   "type": "TrueFalse",
-  "text": "Bubble sort has average complexity O(n^2).",
+  "question": "Bubble sort has average complexity O(n^2).",
   "options": [
     {"text": "True", "correct": true},
     {"text": "False", "correct": false}
@@ -105,7 +105,7 @@ GOOD (corrected form):
   const exSubj = `{
   "id": "exS1",
   "type": "Subjective",
-  "text": "Explain spacetime curvature in 30–50 words.",
+  "question": "Explain spacetime curvature in 30–50 words.",
   "answer": "Mass-energy curves spacetime; objects follow geodesics in this curved geometry, producing gravitational effects without invoking a force in the Newtonian sense.",
   "explanation": "Must mention mass-energy, curvature, geodesics.",
   "difficulty": "${difficulty}",
@@ -139,7 +139,7 @@ SCHEMA (one JSON object):
     {
       "id": "q1",
       "type": "MCQ|TrueFalse|Subjective|FillUp",
-      "text": "question text",
+      "question": "question text",
       "options": [{"text": "option", "correct": true/false}],
       "answer": "for non-MCQ types only",
       "explanation": "brief reason or feedback",
@@ -155,7 +155,7 @@ NOTES:
 - Subjective must NOT include options; use "answer" as the expected answer.
 - FillUp must:
   - Use type value EXACTLY "FillUp" (no synonyms like "Fill in Blank", "Fill-in-the-Blank", "FITB").
-  - Include EXACTLY one blank placeholder "_____" in "text".
+  - Include EXACTLY one blank placeholder "_____" in "question".
   - NOT include "options".
   - Include a non-empty "answer" string (canonical fill).
 

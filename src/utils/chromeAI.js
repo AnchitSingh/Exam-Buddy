@@ -206,6 +206,11 @@ export async function generateQuizJSON({ extractedSource, config }) {
   });
 }
 
+export async function streamQuiz({ extractedSource, config }) {
+  const prompt = buildQuizPrompt({ extractedSource, config });
+  return await promptStreaming(prompt);
+}
+
 export async function evaluateSubjectiveJSON({ question, canonical, userAnswer }) {
   const prompt = buildEvaluatePrompt({ question, canonical, userAnswer });
   const schema = {
@@ -305,6 +310,7 @@ export async function getModelInfo() {
 export default {
   available,
   generateQuizJSON,
+  streamQuiz,
   evaluateSubjectiveJSON,
   recommendPlanJSON,
   promptStreaming,

@@ -46,7 +46,7 @@ class ExamBuddyAPI {
 
         // Generate quiz using Chrome AI
         const startTime = performance.now();
-        const aiResult = await chromeAI.generateQuizJSON({
+        const stream = await chromeAI.streamQuiz({
           extractedSource: {
             // Fix the source structure for AI
             title: config.topic || config.extractedSource?.title || 'Quiz Topic',
@@ -66,6 +66,40 @@ class ExamBuddyAPI {
             immediateFeedback: config.immediateFeedback !== false
           }
         });
+
+        let jsonString = '';
+        for await (const chunk of stream) {
+            console.log(chunk);
+            jsonString += chunk;
+        }
+
+        // The prompt asks for JSON only, but let's be safe and extract it.
+        const firstBrace = jsonString.indexOf('{');
+        if (firstBrace === -1) {
+          throw new Error('No JSON object found in the stream');
+        }
+        
+        // Find the matching closing brace
+        let depth = 0;
+        let lastBraceIndex = -1;
+        for (let i = firstBrace; i < jsonString.length; i++) {
+            if (jsonString[i] === '{') {
+                depth++;
+            } else if (jsonString[i] === '}') {
+                depth--;
+                if (depth === 0) {
+                    lastBraceIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (lastBraceIndex === -1) {
+          throw new Error('Could not find the end of the JSON object');
+        }
+
+        const jsonBlock = jsonString.substring(firstBrace, lastBraceIndex + 1);
+        const aiResult = JSON.parse(jsonBlock);
         
         const endTime = performance.now();
         const duration = Math.round(endTime - startTime);
