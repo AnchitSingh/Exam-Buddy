@@ -11,7 +11,7 @@ export function chunkText(text, {
   maxChars = 12000,  // Increased for summarization (fits ~5K tokens)
   minChars = 4000,   // Minimum viable chunk size
   overlap = 200,     // Small overlap for context continuity
-  maxChunks = 3      // Limit chunks for performance
+  maxChunks = 2      // Limit chunks for performance
 } = {}) {
   console.log('🎯 chunkText: Starting chunking process');
   console.log('🎯 chunkText: Input text length:', text?.length, 'characters');

@@ -243,8 +243,12 @@ export async function extractFromPDFResult({ text, fileName, pageCount = 0 }, qu
   });
 }
 
-export function normalizeManualTopic(topic = '', context = '') {
+export function normalizeManualTopic(topic = '', context = '', quizConfig = {}, onProgress = null) {
   // Manual topics don't need summarization
+  if (onProgress) {
+    onProgress({ status: 'processing-manual-topic', message: 'Processing custom topic...' });
+  }
+  
   const text = cleanToPromptReady(context || topic);
   const chunks = chunkText(text);
 

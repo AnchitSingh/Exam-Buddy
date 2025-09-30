@@ -70,9 +70,23 @@ const useQuizState = (quizConfig = null, answerRef) => {
   // Initialize quiz when config changes
   useEffect(() => {
     if (quizConfig && !quiz) {
+      // NEW: Handle pre-generated quiz data
+      if (quizConfig.quizData) {
+        const newQuiz = quizConfig.quizData;
+        setQuiz(newQuiz);
+        setConfig({ ...quizConfig, ...newQuiz.config });
+        setTimeRemaining(newQuiz.timeLimit || quizConfig.totalTimer || 600);
+        setIsQuizActive(true);
+        quizIdRef.current = newQuiz.id;
+        setIsLoading(false); // Data is already here
+        toast.success('Quiz ready!');
+        return; // Done
+      }
+
       if (quizConfig.quizId) {
         loadExistingQuiz(quizConfig.quizId);
       } else if (quizConfig.questions || quizConfig.topic) {
+        // This path is still used for practice quizzes from bookmarks
         initializeQuiz(quizConfig);
       }
     }

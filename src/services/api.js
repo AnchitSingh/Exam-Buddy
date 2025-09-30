@@ -30,7 +30,7 @@ class ExamBuddyAPI {
 
   // Chrome AI Integration Functions
 
-  async generateQuiz(config) {
+  async generateQuiz(config, onProgress) {
     console.log('🚀 Generating quiz with Chrome AI...');
     this._logWithTimestamp('Quiz Generation Request', config);
     
@@ -68,9 +68,13 @@ class ExamBuddyAPI {
         });
 
         let jsonString = '';
+        let chunkCount = 0;
         for await (const chunk of stream) {
-            console.log(chunk);
             jsonString += chunk;
+            chunkCount++;
+            if (onProgress) {
+                onProgress({ status: 'streaming', receivedChunks: chunkCount });
+            }
         }
 
         // The prompt asks for JSON only, but let's be safe and extract it.

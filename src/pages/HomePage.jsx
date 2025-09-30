@@ -7,6 +7,7 @@ import { extractFromCurrentPage, extractFromPDFResult, normalizeManualTopic } fr
 import { extractTextFromPDF } from '../utils/pdfExtractor';
 import { SOURCE_TYPE } from '../utils/messages';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
+
 // Constants
 const RECOMMENDED_TOPICS = ['Advanced React Patterns', 'TypeScript Best Practices', 'System Design'];
 
@@ -172,6 +173,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [displayContent, setDisplayContent] = useState('continue');
 
+
     useEffect(() => {
         if (navigationData?.openQuizSetup) {
             setShowQuizSetup(true);
@@ -233,55 +235,9 @@ const HomePage = ({ onNavigate, navigationData }) => {
         return () => { mounted = false; };
     }, []);
 
-    const handleStartQuiz = async (config) => {
-        let extractedSource;
-
-        try {
-            switch (config.sourceType) {
-                case SOURCE_TYPE.PAGE:
-                    // If selectedTab is available, extract from that specific tab
-                    if (config.selectedTab) {
-                        extractedSource = await extractFromCurrentPage(config, () => {}); // Pass empty progress function for now
-                    } else {
-                        extractedSource = await extractFromCurrentPage(config, () => {}); // Active tab extraction
-                    }
-                    break;
-
-                case SOURCE_TYPE.PDF:
-                    if (config.pdfFile) {
-                        const { text, meta } = await extractTextFromPDF(config.pdfFile);
-                        extractedSource = await extractFromPDFResult({
-                            text,
-                            fileName: config.pdfFile.name,
-                            pageCount: meta.pageCount
-                        });
-                    }
-                    break;
-
-                case SOURCE_TYPE.URL:
-                    extractedSource = normalizeManualTopic(config.sourceValue, `Content from ${config.sourceValue}`);
-                    break;
-
-                case SOURCE_TYPE.MANUAL:
-                default:
-                    extractedSource = normalizeManualTopic(config.topic, config.context);
-                    break;
-            }
-
-            const finalQuizConfig = {
-                ...config,
-                extractedSource,
-                topic: config.topic || extractedSource.title,
-            };
-
-            setShowQuizSetup(false);
-            toast.success('Generating your quiz...');
-            onNavigate('quiz', { quizConfig: finalQuizConfig });
-
-        } catch (error) {
-            console.error('Failed to prepare quiz source:', error);
-            toast.error('Failed to prepare quiz source');
-        }
+    const handleStartQuiz = (config) => {
+        setShowQuizSetup(false);
+        onNavigate('quiz-loading', { config });
     };
 
     const handleContinueQuiz = (quizId) => {
@@ -455,10 +411,13 @@ const HomePage = ({ onNavigate, navigationData }) => {
 
                 {/* Quiz Setup Modal */}
                 <QuizSetupModal
-                    isOpen={showQuizSetup}
+                    isOpen={showQuizSetup} // Don't show if progress tracker is active
                     onClose={() => setShowQuizSetup(false)}
                     onStartQuiz={handleStartQuiz}
                 />
+                
+                {/* Progress Tracker - Shown during processing */}
+
             </div>
 
             {/* Extracted CSS */}

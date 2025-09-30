@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import QuizPage from './pages/QuizPage';
 import BookmarksPage from './pages/BookmarksPage';
 import PausedQuizzesPage from './pages/PausedQuizzesPage';
+import QuizLoadingPage from './pages/QuizLoadingPage';
 import QuizErrorBoundary from './pages/QuizErrorBoundary';
 import './index.css';
 
@@ -84,6 +85,10 @@ const App = () => {
       
       {currentPage === 'home' && (
         <HomePage onNavigate={navigateTo} navigationData={navigationData} />
+      )}
+
+      {currentPage === 'quiz-loading' && (
+        <QuizLoadingPage onNavigate={navigateTo} navigationData={navigationData} />
       )}
       
       {currentPage === 'quiz' && (
