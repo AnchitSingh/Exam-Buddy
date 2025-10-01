@@ -48,17 +48,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const [quizResults, setQuizResults] = useState(null);
   const [showAIProcessing, setShowAIProcessing] = useState(false);
   const [aiTask, setAITask] = useState('processing');
-  const [showHint, setShowHint] = useState(false);
+
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [textAnswer, setTextAnswer] = useState('');
   const [fillBlanks, setFillBlanks] = useState(['']);
   const [isPausingQuiz, setIsPausingQuiz] = useState(false);
   const [isStoppingQuiz, setIsStoppingQuiz] = useState(false);
 
-  // Reset hint visibility when question changes
-  React.useEffect(() => {
-    setShowHint(false);
-  }, [currentQuestion]);
+
 
   const questionRendererRef = useRef();
 
@@ -753,30 +750,10 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                     </svg>
                   </button>
-                  <button
-                    onClick={() => setShowHint(!showHint)}
-                    className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300"
-                  >
-                    <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                  </button>
                 </div>
               </div>
 
-              {/* Hint Box */}
-              {showHint && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/50 rounded-2xl animate-fade-in">
-                  <div className="flex items-start space-x-2">
-                    <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-sm text-blue-700">
-                      <span className="font-semibold">Hint:</span> {currentQuestion.hint || "Think carefully about the key concepts related to this topic..."}
-                    </p>
-                  </div>
-                </div>
-              )}
+
 
               {/* Question Content */}
               <div className="mb-8">
