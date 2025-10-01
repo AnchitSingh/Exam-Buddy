@@ -41,7 +41,13 @@ class ExamBuddyAPI {
         console.log('📊 AI Status:', aiStatus);
         
         if (!aiStatus.available) {
-          throw new Error(`Chrome AI unavailable: ${aiStatus.status}`);
+          console.log('⚠️ Chrome AI unavailable, falling back to mock data:', aiStatus);
+          // Fall back to mock data instead of throwing an error
+          const mockQuiz = this._mockGenerateQuiz(config);
+          return {
+            success: true,
+            data: mockQuiz
+          };
         }
 
         // Generate quiz using Chrome AI
@@ -469,7 +475,13 @@ class ExamBuddyAPI {
         // Check AI status
         const aiStatus = await chromeAI.available();
         if (!aiStatus.available) {
-          throw new Error(`Chrome AI unavailable: ${aiStatus.status}`);
+          console.log('⚠️ Chrome AI unavailable for study plan, falling back to mock data:', aiStatus);
+          const mockPlan = this._mockGenerateStudyPlan(performanceSummary);
+          return {
+            success: true,
+            data: mockPlan,
+            error: null
+          };
         }
 
         const startTime = performance.now();
@@ -783,7 +795,11 @@ class ExamBuddyAPI {
     console.log('🧠 Streaming overall feedback...');
     try {
       const aiStatus = await chromeAI.available();
-      if (!aiStatus.available) throw new Error('Chrome AI unavailable');
+      if (!aiStatus.available) {
+        console.log('⚠️ Chrome AI unavailable for feedback, using error stream:', aiStatus);
+        async function* errorStream() { yield "Sorry, I was unable to generate feedback at this time."; }
+        return errorStream();
+      }
       return await chromeAI.streamOverallFeedback({ quizMeta, stats });
     } catch (error) {
       console.error('❌ AI Streaming Feedback Error:', error);
@@ -796,7 +812,23 @@ class ExamBuddyAPI {
     console.log('💡 Getting quiz recommendations...');
     try {
       const aiStatus = await chromeAI.available();
-      if (!aiStatus.available) throw new Error('Chrome AI unavailable');
+      if (!aiStatus.available) {
+        console.log('⚠️ Chrome AI unavailable for recommendations, returning fallback:', aiStatus);
+        // Return a default recommendations structure when AI is unavailable
+        return { 
+          success: true, 
+          data: {
+            recommendations: [
+              { 
+                topic: "General Study", 
+                reason: "AI is unavailable, using general recommendations", 
+                suggested_count: 3, 
+                types: ["MCQ"] 
+              }
+            ]
+          } 
+        };
+      }
       const result = await chromeAI.getQuizRecommendationsJSON({ quizMeta, stats });
       return { success: true, data: result };
     } catch (error) {

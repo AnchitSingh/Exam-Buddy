@@ -13,9 +13,15 @@ export function buildQuizPrompt({ extractedSource, config }) {
     immediateFeedback = true
   } = config || {};
 
-  const sourceSnippet = chunks?.[0]?.text || text || '';
+  // Use the processed text instead of just the first chunk
+  // The text field contains the full processed content (could be original or summarized)
+  let expandedContent = text || '';
 
-  let expandedContent = sourceSnippet || '';
+  // If no text is available, fall back to first chunk as a last resort
+  if (!expandedContent && chunks?.[0]?.text) {
+    expandedContent = chunks[0].text;
+  }
+
   if (expandedContent.length < 50) {
     expandedContent = `Topic: ${expandedContent}. Generate questions about this topic using your knowledge.`;
   }

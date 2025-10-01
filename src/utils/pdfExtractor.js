@@ -1,24 +1,15 @@
 // src/utils/pdfExtractor.js
-// Client-side PDF text extraction via PDF.js; expects pdfjs-dist to be installed or available. 
+// Client-side PDF text extraction via PDF.js
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 
-let pdfjsLib;
+// This Vite-specific import gets the URL of the worker file after it's been
+// processed and copied to the dist folder. This is a robust way to handle workers.
+import workerSrc from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
-async function ensurePdfJs() {
-  if (pdfjsLib) return pdfjsLib;
-  try {
-    // Prefer local bundle if installed
-    pdfjsLib = await import('pdfjs-dist/build/pdf');
-    const worker = await import('pdfjs-dist/build/pdf.worker.mjs');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = worker;
-  } catch (e) {
-    // As a fallback, try CDN (optional: you can remove this to force local install)
-    throw new Error('PDF.js not available; install pdfjs-dist or configure worker.');
-  }
-  return pdfjsLib;
-}
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 export async function extractTextFromPDF(input) {
-  const lib = await ensurePdfJs();
+  const lib = pdfjsLib;
 
   // Support File/Blob/ArrayBuffer/URL
   let data;

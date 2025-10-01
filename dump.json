@@ -1,287 +1,374 @@
-Tue Sep 30 2025 22:22:21 GMT+0530 (India Standard Time)  ai_language_model.cc(249) Executing model with input context of 2809 tokens:
-<user><start_of_turn>user
-Act as a quiz generator for the following content. Generate educational questions that test understanding of key concepts.
-
-CONTENT:
-"Toggle the table of contents
-	Contents
-	move to sidebar
-	hide
- (Top)
- 1
- History
- 2
- Etymology
- 3
- Definitions and descriptions
- Toggle Definitions and descriptions subsection
- 3.1
- State variables and functions of state
- 3.2
- Reversible process
- 3.3
- Carnot cycle
- 3.4
- Classical thermodynamics
- 3.5
- Statistical mechanics
- 3.6
- Entropy of a system
- 3.7
- Equivalence of definitions
- 4
- Second law of thermodynamics
- 5
- Applications
- Toggle Applications subsection
- 5.1
- The fundamental thermodynamic relation
- 5.2
- Entropy in chemical thermodynamics
- 5.3
- World's technological capacity to store and communicate entropic information
- 5.4
- Entropy balance equation for open systems
- 6
- Entropy change formulas for simple processes
- Toggle Entropy change formulas for simple processes subsection
- 6.1
- Isothermal expansion or compression of an ideal gas
- 6.2
- Cooling and heating
- 6.3
- Phase transitions
- 7
- Approaches to understanding entropy
- Toggle Approaches to understanding entropy subsection
- 7.1
- Standard textbook definitions
- 7.2
- Order and disorder
- 7.3
- Energy dispersal
- 7.4
- Relating entropy to energy usefulness
- 7.5
- Entropy and adiabatic accessibility
- 7.6
- Entropy in quantum mechanics
- 7.7
- Information theory
- 7.8
- Measurement
- 8
- Interdisciplinary applications
- Toggle Interdisciplinary applications subsection
- 8.1
- Philosophy and theoretical physics
- 8.2
- Biology
- 8.3
- Cosmology
- 8.4
- Economics
- 9
- See also
- 10
- Notes
- 11
- References
- 12
- Further reading
- 13
- External links
- Entropy
-90 languages
- AfrikaansአማርኛالعربيةAsturianuAzərbaycancaবাংলা閩南語 / Bân-lâm-gíБеларускаяБеларуская (тарашкевіца)Bikol CentralБългарскиBoarischBosanskiBrezhonegCatalàЧӑвашлаČeštinaDanskالدارجةDeutschEestiΕλληνικάEspañolEsperantoEuskaraفارسیFrançaisGaeilgeGaelgGalego한국어Հայերենहिन्दीHrvatskiBahasa HulontaloBahasa IndonesiaInterlinguaItalianoעבריתಕನ್ನಡქართულიҚазақшаKreyòl ayisyenKurdîКыргызчаLatinaLatviešuLietuviųLombardMagyarМакедонскиമലയാളംМонголမြန်မာဘာသာNederlands日本語Norsk bokmålNorsk nynorskOccitanOromooOʻzbekcha / ўзбекчаਪੰਜਾਬੀپښتوPolskiPortuguêsRomânăРусскийSarduShqipSicilianuSimple EnglishSlovenčinaSlovenščinaکوردیСрпски / srpskiSrpskohrvatski / српскохрватскиSuomiSvenskaதமிழ்తెలుగుไทยTürkçeУкраїнськаاردوTiếng Việt文言吴语ייִדיש粵語中文
- Edit links
- ArticleTalk
-	English
- ReadEditView history
-	Tools
- Actions
- General
- What links hereRelated changesUpload filePermanent linkPage informationCite this pageGet shortened URLDownload QR code
- Expand allEdit interlanguage links
- Print/export
- Download as PDFPrintable version
- In other projects
- Wikimedia CommonsWikibooksWikiquoteWikidata item
- From Wikipedia, the free encyclopedia
- Property of a thermodynamic system
-.mw-parser-output .hatnote{font-style:italic}.mw-parser-output div.hatnote{padding-left:1.6em;margin-bottom:0.5em}.mw-parser-output .hatnote i{font-style:normal}.mw-parser-output .hatnote+link+.hatnote{margin-top:-0.5em}@media print{body.ns-0 .mw-parser-output .hatnote{display:none!important}}For other uses, see Entropy (disambiguation). For a more accessible and less technical introduction to this topic, see Introduction to entropy. Not to be confused with Enthalpy.
-.mw-parser-output .infobox-subbox{padding:0;border:none;margin:-3px;width:auto;min-width:100%;font-size:100%;clear:none;float:none;background-color:transparent}.mw-parser-output .infobox-3cols-child{margin:auto}.mw-parser-output .infobox .navbar{font-size:100%}@media screen{html.skin-theme-clientpref-night .mw-parser-output .infobox-full-data:not(.notheme)>div:not(.notheme)[style]{background:#1f1f23!important;color:#f8f9fa}}@media screen and (prefers-color-scheme:dark){html.skin-theme-clientpref-os .mw-parser-output .infobox-full-data:not(.notheme)>div:not(.notheme)[style]{background:#1f1f23!important;color:#f8f9fa}}@media(min-width:640px){body.skin--responsive .mw-parser-output .infobox-table{display:table!important}body.skin--responsive .mw-parser-output .infobox-table>caption{display:table-caption!important}body.skin--responsive .mw-parser-output .infobox-table>tbody{display:table-row-group}body.skin--responsive .mw-parser-output .infobox-table th,body.skin--responsive .mw-parser-output .infobox-table td{padding-left:inherit;padding-right:inherit}}EntropyCommon symbolsSSI unitjoules per kelvin (J⋅K−1)In SI base unitskg⋅m2⋅s−2⋅K−1
-.mw-parser-output .hlist dl,.mw-parser-output .hlist ol,.mw-parser-output .hlist ul{margin:0;padding:0}.mw-parser-output .hlist dd,.mw-parser-output .hlist dt,.mw-parser-output .hlist li{margin:0;display:inline}.mw-parser-output .hlist.inline,.mw-parser-output .hlist.inline dl,.mw-parser-output .hlist.inline ol,.mw-parser-output .hlist.inline ul,.mw-parser-output .hlist dl dl,.mw-parser-output .hlist dl ol,.mw-parser-output .hlist dl ul,.mw-parser-output .hlist ol dl,.mw-parser-output .hlist ol ol,.mw-parser-output .hlist ol ul,.mw-parser-output .hlist ul dl,.mw-parser-output .hlist ul ol,.mw-parser-output .hlist ul ul{display:inline}.mw-parser-output .hlist .mw-empty-li{display:none}.mw-parser-output .hlist dt::after{content:": "}.mw-parser-output .hlist dd::after,.mw-parser-output .hlist li::after{content:" · ";font-weight:bold}.mw-parser-output .hlist dd:last-child::after,.mw-parser-output .hlist dt:last-child::after,.mw-parser-output .hlist li:last-child::after{content:none}.mw-parser-output .hlist dd dd:first-child::before,.mw-parser-output .hlist dd dt:first-child::before,.mw-parser-output .hlist dd li:first-child::before,.mw-parser-output .hlist dt dd:first-child::before,.mw…"
-
-STRICT REQUIREMENTS:
-- Generate EXACTLY 5 questions with this distribution: 2 MCQ, 1 FillUp, 1 Subjective, 1 TrueFalse
-- Do NOT generate any other question types beyond: MCQ, FillUp, Subjective, TrueFalse
-- Difficulty for all questions: medium
-- Output ONLY valid JSON. No markdown, no code fences, no prose outside JSON.
-- Use the exact schema below. Do not add or rename properties.
-- Use IDs "q1"..."q5" in order.
-
-SCHEMA (one JSON object):
-{
-  "questions": [
-    {
-      "id": "q1",
-      "type": "MCQ|TrueFalse|Subjective|FillUp",
-      "question": "question text",
-      "options": [{"text": "option", "correct": true/false}],
-      "answer": "for non-MCQ types only",
-      "explanation": "brief reason or feedback",
-      "difficulty": "medium",
-      "topic": "thermodynamics"
-    }
-  ]
-}
-
-NOTES:
-- MCQ must have EXACTLY 4 options with exactly one correct=true.
-- TrueFalse must have EXACTLY these 2 options: [{"text":"True","correct":true/false}, {"text":"False","correct":true/false}] with exactly one correct=true.
-- Subjective must NOT include options; use "answer" as the expected answer.
-- FillUp must:
-  - Use type value EXACTLY "FillUp" (no synonyms like "Fill in Blank", "Fill-in-the-Blank", "FITB").
-  - Include EXACTLY one blank placeholder "_____" in "question".
-  - NOT include "options".
-  - Include a non-empty "answer" string (canonical fill).
-
-EXAMPLES (format only; content is illustrative):
-{
-  "id": "exF1",
-  "type": "FillUp",
-  "question": "The constancy of the speed of light is a postulate of _____.",
-  "answer": "special relativity",
-  "explanation": "Special relativity is built on the postulate that light speed in vacuum is constant.",
+App-BMvU0Pwi.js:786 === EXAM BUDDY INIT ===
+App-BMvU0Pwi.js:786 hasVisited: true
+App-BMvU0Pwi.js:786 Returning user - showing home
+App-BMvU0Pwi.js:786 Navigating from home to home with data
+App-BMvU0Pwi.js:467 Starting quiz with config: {sourceType: 'pdf', sourceValue: 'physics.pdf', topic: 'physics', context: '', questionCount: 5, …}context: ""difficulty: "medium"immediateFeedback: truepdfFile: File {name: 'physics.pdf', lastModified: 1757264252578, lastModifiedDate: Sun Sep 07 2025 22:27:32 GMT+0530 (India Standard Time), webkitRelativePath: '', size: 2223572, …}lastModified: 1757264252578lastModifiedDate: Sun Sep 07 2025 22:27:32 GMT+0530 (India Standard Time) {}name: "physics.pdf"size: 2223572type: "application/pdf"webkitRelativePath: ""[[Prototype]]: FilequestionCount: 5questionTypes: ['MCQ']selectedTab: nullsourceType: "pdf"sourceValue: "physics.pdf"timerEnabled: falsetopic: "physics"totalTimer: 0[[Prototype]]: Object
+App-BMvU0Pwi.js:786 Navigating from home to quiz-loading with data
+App-BMvU0Pwi.js:486 🎯 finalizeSource: Starting extraction process
+App-BMvU0Pwi.js:486 📊 Input text length: 9225 characters
+App-BMvU0Pwi.js:486 📊 Input word count: 1527 words
+App-BMvU0Pwi.js:482 🎯 chunkText: Starting chunking process
+App-BMvU0Pwi.js:482 🎯 chunkText: Input text length: 8702 characters
+App-BMvU0Pwi.js:482 🎯 chunkText: Parameters - maxChars: 12000 minChars: 4000 maxChunks: 2
+App-BMvU0Pwi.js:482 🎯 chunkText: Starting chunking loop
+App-BMvU0Pwi.js:484 🎯 chunkText: Created chunk 1, length: 8702 chars, needsSummarization: true
+App-BMvU0Pwi.js:484 🎯 chunkText: Reached end of text, breaking loop
+App-BMvU0Pwi.js:484 🎯 chunkText: Final chunks created: 1
+App-BMvU0Pwi.js:484   Chunk 1: 8702 chars, needsSummarization: true
+App-BMvU0Pwi.js:486 📊 Chunks created: 1
+App-BMvU0Pwi.js:486 Chunk 1: 8702 chars, needsSummarization: true
+App-BMvU0Pwi.js:484 🎯 shouldSummarize: Checking if summarization is needed
+App-BMvU0Pwi.js:484 🎯 shouldSummarize: Number of chunks: 1
+App-BMvU0Pwi.js:484 🎯 shouldSummarize: At least one chunk needs summarization: true
+App-BMvU0Pwi.js:486 🎯 Summarization needed: true
+App-BMvU0Pwi.js:486 🎯 Proceeding with summarization...
+sidepanel.html:1 No output language was specified in a Summarizer API request. An output language should be specified to ensure optimal output quality and properly attest to output safety. Please specify a supported output language code: [en, es, ja]
+App-BMvU0Pwi.js:486 🎯 Summarizer availability: {available: true, status: 'available', downloadNeeded: true, reason: null}available: truedownloadNeeded: truereason: nullstatus: "available"[[Prototype]]: Object
+App-BMvU0Pwi.js:486 🎯 Summarizer is available, proceeding with chunk processing
+App-BMvU0Pwi.js:486 🎯 Chunk processing progress: {current: 1, total: 1, chunkId: 'chunk_1', status: 'processing'}
+App-BMvU0Pwi.js:486 🎯 Chunk processing progress: {current: 1, total: 1, chunkId: 'chunk_1', status: 'completed', result: {…}}chunkId: "chunk_1"current: 1result: {id: 'chunk_1', originalLength: 8702, summaryLength: 216, summary: '* Which property of sound determines loudness?\n* W…\n* Which system can be affected by a solar storm?', tokenEstimate: 54, …}id: "chunk_1"originalLength: 8702processingTime: 1759313054909summary: "* Which property of sound determines loudness?\n* What force governs planetary motion?\n* What are solar wind and coronal loops?\n* What phenomena does diffraction cause?\n* Which system can be affected by a solar storm?"summaryLength: 216tokenEstimate: 54[[Prototype]]: Objectstatus: "completed"total: 1[[Prototype]]: Object
+App-BMvU0Pwi.js:486 🎯 Summary results received: 1 results
+App-BMvU0Pwi.js:486 🎯 Assembled summary: {wordCount: 37, textLength: 216, meta: {…}}meta: compressionRatio: 40.28703703703704errors: 0fallbacks: 0summaries: 1totalOriginalLength: 8702totalSummaryLength: 216[[Prototype]]: ObjecttextLength: 216wordCount: 37[[Prototype]]: Object
+App-BMvU0Pwi.js:486 🎯 Summarization result was too short, falling back to first chunk
+App-BMvU0Pwi.js:482 🎯 chunkText: Starting chunking process
+App-BMvU0Pwi.js:482 🎯 chunkText: Input text length: 8702 characters
+App-BMvU0Pwi.js:482 🎯 chunkText: Parameters - maxChars: 12000 minChars: 4000 maxChunks: 2
+App-BMvU0Pwi.js:482 🎯 chunkText: Starting chunking loop
+App-BMvU0Pwi.js:484 🎯 chunkText: Created chunk 1, length: 8702 chars, needsSummarization: true
+App-BMvU0Pwi.js:484 🎯 chunkText: Reached end of text, breaking loop
+App-BMvU0Pwi.js:484 🎯 chunkText: Final chunks created: 1
+App-BMvU0Pwi.js:484   Chunk 1: 8702 chars, needsSummarization: true
+App-BMvU0Pwi.js:486 🎯 Final text length after processing: 8702 characters
+App-BMvU0Pwi.js:486 🎯 Final word count after processing: 1527 words
+App-BMvU0Pwi.js:486 🎯 Final chunks count after processing: 1
+App-BMvU0Pwi.js:477 🚀 Generating quiz with Chrome AI...
+App-BMvU0Pwi.js:477 🤖 [ExamBuddy AI] Quiz Generation Request - 3:34:14 PM
+App-BMvU0Pwi.js:477 Data: {sourceType: 'pdf', sourceValue: 'physics.pdf', topic: 'physics', context: '', questionCount: 5, …}context: ""difficulty: "medium"extractedSource: chunks: Array(1)0: {id: 'chunk_1', text: 'Physics (Q-28) Q279) Which property of sound deter…3 Correct Ans: B Telegram Link Click Here to Join', start: 0, end: 8702, tokenEstimate: 2176, …}length: 1[[Prototype]]: Array(0)domain: ""excerpt: "Physics (Q-28) Q279) Which property of sound determines its loudness ? A) Wavelength B) Pitch C) Amplitude D) Frequency 06/08/2025 Shift-1 Correct Ans: C Q280) A conductor rod moving with a velocity v perpendicular to a uniform magnetic…"meta: {pageCount: 4, fileName: 'physics.pdf', processing: {…}}sourceType: "pdf"text: "Physics (Q-28) Q279) Which property of sound determines its loudness ? A) Wavelength B) Pitch C) Amplitude D) Frequency 06/08/2025 Shift-1 Correct Ans: C Q280) A conductor rod moving with a velocity v perpendicular to a uniform magnetic field B. If the length of the rod perpendicular to both v and B is L, the induced EMF across its ends is given by: A) BL²v B) BLv C) Bv/L D) B/vL 06/08/2025 Shift-1 Correct Ans: B Q281) Which force governs the motion of planets, stars, and galaxies ? A) Nuclear force B) Gravitational force C) Magnetic force D) Electromagnetic force 06/08/2025 Shift-1 Correct Ans: B Q282) What are the streams of charged particles ejected by the Sun into space called? A) Sunspots B) Solar wind C) Solar flares D) Coronal loops 06/08/2025 Shift-2 Correct Ans: B Q283) At what orientation does a rotating coil in a uniform magnetic field generate the maximum induced EMF ? A) When the coil's plane is at 45° to the magnetic field lines B) When the magnetic flux through the coil is maximum C) When the coil's plane is perpendicular (90°) to the magnetic field lines D) When the coil's plane is parallel to the magnetic field lines 06/08/2025 Shift-2 Correct Ans: D Q284) Which of the following phenomena occurs when a wave passes through a narrow slit ? A) Refraction B) Reflection C) Absorption D) Diffraction 06/08/2025 Shift-2 Correct Ans: D Q285) Match the column: Column A (Conductor Type) Column B (Mobile Charge Carriers) A. Metal 1. Positive and negative ions B. Ionised gas 2. Electrons and positively charged ions C. Electrolyte 3. Electrons A) A-3, B-2, C-1 B) A-2, B-3, C-1 C) A-1, B-2, C-3 D) A-3, B-1, C-2 06/08/2025 Shift-3 Correct Ans: A Q286) Two resistors named R1 and R2, are connected in parallel. If R1 < R2, what can be inferred about the current flowing through them, given the same potential difference across both? A) Current through R1 is less than through R2. B) Current through R1 is equal to current through R2. C) Current through R1 is greater than through R2. D) The current ratio depends on the supply voltage. 06/08/2025 Shift-3 Correct Ans: C Telegram Link Click Here to Join\nQ287) Which of the following systems can be affected by a solar storm? 1. GPS signal accuracy 2. Power transmission systems 3. Submarine communication cables 4. Pipeline infrastructure A) 2 and 3 only B) 1 and 2 only C) 3 and 4 only D) 1, 2, 3, and 4 all of these 06/08/2025 Shift-3 Correct Ans: D Q288) According to the Law of Periods, the square of a planet's time period is proportional to: A) The square of its distance from the sun B) The cube of the semi-major axis of its orbit C) The square root of its orbital radius D) The product of its mass and orbital speed 07/08/2025 Shift-1 Correct Ans: B Q289) Which of Rutherford's experimental observations led him to conclude that the positive charge of an atom is concentrated in a very small region? A) Electrons were found to orbit the nucleus in specific energy levels. B) A very small fraction of α-particles rebounded almost backwards. C) Most α-particles followed a straight path through the gold foil. D) A small fraction of α-particles were deflected by small angles. 07/08/2025 Shift-1 Correct Ans: B Q290) Consider the following statements: 1. A solar eclipse- The Moon casts a shadow on Earth when it comes between the Sun and Earth. 2. A lunar eclipse- During the new moon phase, the Moon passes through the Earth's shadow. Which of the statements given above is/are correct? A) Both 1 and 2 B) 1 only C) 2 only D) Neither 1 nor 2 07/08/2025 Shift-1 Correct Ans: B Q291) Consider the following statements: 1. Ramjets operate efficiently at hypersonic speeds. 2. Dual Mode Ramjets can work in both subsonic and supersonic modes. Which of the statements given above is/are correct? A) 2 only B) Neither 1 nor 2 C) Both 1 and 2 D) 1 only 07/08/2025 Shift-2 Correct Ans: A Q292) Why does a skilled cricketer move his hands backwards while catching a fast-moving ball? A) To apply a greater opposing force on the ball for a quick stop. B) To reduce the force by increasing the time over which momentum changes. C) To increase the speed of the ball during impact. D) To decrease the weight of the ball using gravity. 07/08/2025 Shift-2 Correct Ans: B Telegram Link Click Here to Join\nQ293) An electric kettle is rated 2.2 kW, 220 V. If the cost of electricity is ₹4 per unit (kWh), what is the cost of boiling water for 30 minutes? A) ₹1.1 B) ₹2.2 C) ₹8.8 D) ₹4.4 07/08/2025 Shift-2 Correct Ans: D Q294) When focusing on a tree while on an anti-clockwise merry-go-round, from which side does it appear and exit? A) Right to Left B) Always visible C) Never visible D) Left to Right 07/08/2025 Shift-2 Correct Ans: A Q295) Read the following statements carefully: Statement I: A pressure cooker operates by decreasing the pressure inside, which lowers the boiling point of water. Statement II: Food cooks faster in a pressure cooker because the higher pressure allows water to boil at a temperature above 100 °C. Statement III: The superheated steam within the cooker increases the rate of heat transfer to the food, leading to faster cooking. Which of the statements given above is/are correct? A) Only II and III are correct B) All I, II, and III are correct C) Only I and II are correct D) Only I and III are correct 07/08/2025 Shift-3 Correct Ans: A Q296) What evidence supports the Big Bang theory of universe origin? A) Sunspot cycles B) Redshift of galaxies C) Solar wind D) Volcanic eruptions on Earth 07/08/2025 Shift-3 Correct Ans: B Q297) Which of the following is the correct sequence in the life cycle of a star like the Sun? A) Protostar → White Dwarf → Red Giant → Main Sequence B) Nebula → Red Giant → Main Sequence → White Dwarf C) Main Sequence → Red Giant → White Dwarf D) Red Giant → Protostar → White Dwarf 07/08/2025 Shift-3 Correct Ans: C Q298) A conductor of length L and resistance R is cut into two equal halves. These two halves are then connected in parallel. Find the equivalent resistance of this parallel combination? A) R / 4 B) R C) R / 2 D) R / 8 07/08/2025 Shift-3 Correct Ans: A Q299) What is the boiling point of water at sea level ? A) 208.4°F B) 217.4°F C) 212°F D) 203°F 08/08/2025 Shift-1 Correct Ans: C Telegram Link Click Here to Join\nQ300) According to Bohr's model , what is the significance of an electron transition from a higher energy orbit to a lower energy orbit? A) The electron's angular momentum becomes quantized. B) The electron gains energy. C) A photon of energy equal to the energy difference between the orbits is absorbed. D) A photon of energy equal to the energy difference between the orbits is emitted. 08/08/2025 Shift-1 Correct Ans: D Q301) A heating element of a heater is made of a material with high resistivity and high melting point. Which of the following material properties is most crucial for its function as a heating element? A) High modulus of elasticity B) High thermal conductivity C) Low specific heat capacity D) High resistivity 08/08/2025 Shift-2 Correct Ans: D Q302) Which solar phenomenon is responsible for disturbances in Earth's magnetic field? A) Sunspots B) Solar flares C) Chromosphere heating D) Photospheric cooling 08/08/2025 Shift-2 Correct Ans: B Q303) Which of the following quantities remains conserved when an object moves under the gravitational pull of another object? A) Only linear momentum B) Potential energy and linear momentum C) Kinetic energy and linear momentum D) Angular momentum and mechanical energy 08/08/2025 Shift-2 Correct Ans: D Q304) Which type of galaxy has no regular shape and is rich in gas and dust? A) Elliptical Galaxy B) Lenticular Galaxies C) Irregular Galaxy D) Spiral Galaxy 08/08/2025 Shift-3 Correct Ans: C Q305) According to Lenz’s Law , what determines the direction of an induced current in a conductor? A) It continuously reduces the applied magnetic flux. B) It always enhances the existing magnetic field. C) It flows to oppose the variation in magnetic flux causing it. D) It is proportional to the strength of the magnetic field. 08/08/2025 Shift-3 Correct Ans: C Q306) Assertion (A): Sound waves travel faster in steel than in air at the same temperature. Reason (R): The particles in solids (like steel) are more closely packed and experience stronger intermolecular forces compared to particles in gases (like air), allowing vibrations to be transmitted more efficiently and rapidly. Choose the correct option: A) A is false but R is true. B) Both A and R are true and R is the correct explanation of A. C) Both A and R are true but R is not the correct explanation of A. D) A is true but R is false. 08/08/2025 Shift-3 Correct Ans: B Telegram Link Click Here to Join"title: "physics.pdf"url: ""wordCount: 1527[[Prototype]]: ObjectimmediateFeedback: truepdfFile: File {name: 'physics.pdf', lastModified: 1757264252578, lastModifiedDate: Sun Sep 07 2025 22:27:32 GMT+0530 (India Standard Time), webkitRelativePath: '', size: 2223572, …}questionCount: 5questionTypes: ['MCQ']selectedTab: nullsourceType: "pdf"sourceValue: "physics.pdf"timerEnabled: falsetopic: "physics"totalTimer: 0[[Prototype]]: Object
+App-BMvU0Pwi.js:477 JSON: {
+  "sourceType": "pdf",
+  "sourceValue": "physics.pdf",
+  "topic": "physics",
+  "context": "",
+  "questionCount": 5,
   "difficulty": "medium",
-  "topic": "thermodynamics"
-}
-
-BAD (do not output this):
-{
-  "id": "bad1",
-  "type": "Fill in Blank",
-  "question": "Special relativity states that the speed of light is constant for all observers.",
-  "options": []
-}
-GOOD (corrected form):
-{
-  "id": "exF2",
-  "type": "FillUp",
-  "question": "According to special relativity, time dilation increases with higher _____.",
-  "answer": "velocity",
-  "explanation": "Greater relative velocity increases time dilation.",
-  "difficulty": "medium",
-  "topic": "thermodynamics"
-}
-
-{
-  "id": "exM1",
-  "type": "MCQ",
-  "question": "Which structure follows FIFO?",
-  "options": [
-    {"text": "Queue", "correct": true},
-    {"text": "Stack", "correct": false},
-    {"text": "Tree", "correct": false},
-    {"text": "Graph", "correct": false}
+  "questionTypes": [
+    "MCQ"
   ],
-  "explanation": "A queue is first-in, first-out.",
-  "difficulty": "medium",
-  "topic": "thermodynamics"
-}
-
-{
-  "id": "exT1",
-  "type": "TrueFalse",
-  "question": "Bubble sort has average complexity O(n^2).",
-  "options": [
-    {"text": "True", "correct": true},
-    {"text": "False", "correct": false}
-  ],
-  "explanation": "Average is quadratic.",
-  "difficulty": "medium",
-  "topic": "thermodynamics"
-}
-
-{
-  "id": "exS1",
-  "type": "Subjective",
-  "question": "Explain spacetime curvature in 30–50 words.",
-  "answer": "Mass-energy curves spacetime; objects follow geodesics in this curved geometry, producing gravitational effects without invoking a force in the Newtonian sense.",
-  "explanation": "Must mention mass-energy, curvature, geodesics.",
-  "difficulty": "medium",
-  "topic": "thermodynamics"
-}
-
-Now return the final JSON for 2 MCQ, 1 FillUp, 1 Subjective, 1 TrueFalse about the content above.
-<end_of_turn>
-<start_of_turn>model
-<end><model>
-Tue Sep 30 2025 22:22:47 GMT+0530 (India Standard Time)  ai_language_model.cc(359) Model generates raw response with PromptApi:
-```json
-{
+  "immediateFeedback": true,
+  "totalTimer": 0,
+  "pdfFile": {},
+  "timerEnabled": false,
+  "selectedTab": null,
+  "extractedSource": {
+    "sourceType": "pdf",
+    "title": "physics.pdf",
+    "url": "",
+    "domain": "",
+    "excerpt": "Physics (Q-28) Q279) Which property of sound determines its loudness ? A) Wavelength B) Pitch C) Amplitude D) Frequency 06/08/2025 Shift-1 Correct Ans: C Q280) A conductor rod moving with a velocity v perpendicular to a uniform magnetic…",
+    "wordCount": 1527,
+    "chunks": [
+      {
+        "id": "chunk_1",
+        "text": "Physics (Q-28) Q279) Which property of sound determines its loudness ? A) Wavelength B) Pitch C) Amplitude D) Frequency 06/08/2025 Shift-1 Correct Ans: C Q280) A conductor rod moving with a velocity v perpendicular to a uniform magnetic field B. If the length of the rod perpendicular to both v and B is L, the induced EMF across its ends is given by: A) BL²v B) BLv C) Bv/L D) B/vL 06/08/2025 Shift-1 Correct Ans: B Q281) Which force governs the motion of planets, stars, and galaxies ? A) Nuclear force B) Gravitational force C) Magnetic force D) Electromagnetic force 06/08/2025 Shift-1 Correct Ans: B Q282) What are the streams of charged particles ejected by the Sun into space called? A) Sunspots B) Solar wind C) Solar flares D) Coronal loops 06/08/2025 Shift-2 Correct Ans: B Q283) At what orientation does a rotating coil in a uniform magnetic field generate the maximum induced EMF ? A) When the coil's plane is at 45° to the magnetic field lines B) When the magnetic flux through the coil is maximum C) When the coil's plane is perpendicular (90°) to the magnetic field lines D) When the coil's plane is parallel to the magnetic field lines 06/08/2025 Shift-2 Correct Ans: D Q284) Which of the following phenomena occurs when a wave passes through a narrow slit ? A) Refraction B) Reflection C) Absorption D) Diffraction 06/08/2025 Shift-2 Correct Ans: D Q285) Match the column: Column A (Conductor Type) Column B (Mobile Charge Carriers) A. Metal 1. Positive and negative ions B. Ionised gas 2. Electrons and positively charged ions C. Electrolyte 3. Electrons A) A-3, B-2, C-1 B) A-2, B-3, C-1 C) A-1, B-2, C-3 D) A-3, B-1, C-2 06/08/2025 Shift-3 Correct Ans: A Q286) Two resistors named R1 and R2, are connected in parallel. If R1 < R2, what can be inferred about the current flowing through them, given the same potential difference across both? A) Current through R1 is less than through R2. B) Current through R1 is equal to current through R2. C) Current through R1 is greater than through R2. D) The current ratio depends on the supply voltage. 06/08/2025 Shift-3 Correct Ans: C Telegram Link Click Here to Join\nQ287) Which of the following systems can be affected by a solar storm? 1. GPS signal accuracy 2. Power transmission systems 3. Submarine communication cables 4. Pipeline infrastructure A) 2 and 3 only B) 1 and 2 only C) 3 and 4 only D) 1, 2, 3, and 4 all of these 06/08/2025 Shift-3 Correct Ans: D Q288) According to the Law of Periods, the square of a planet's time period is proportional to: A) The square of its distance from the sun B) The cube of the semi-major axis of its orbit C) The square root of its orbital radius D) The product of its mass and orbital speed 07/08/2025 Shift-1 Correct Ans: B Q289) Which of Rutherford's experimental observations led him to conclude that the positive charge of an atom is concentrated in a very small region? A) Electrons were found to orbit the nucleus in specific energy levels. B) A very small fraction of α-particles rebounded almost backwards. C) Most α-particles followed a straight path through the gold foil. D) A small fraction of α-particles were deflected by small angles. 07/08/2025 Shift-1 Correct Ans: B Q290) Consider the following statements: 1. A solar eclipse- The Moon casts a shadow on Earth when it comes between the Sun and Earth. 2. A lunar eclipse- During the new moon phase, the Moon passes through the Earth's shadow. Which of the statements given above is/are correct? A) Both 1 and 2 B) 1 only C) 2 only D) Neither 1 nor 2 07/08/2025 Shift-1 Correct Ans: B Q291) Consider the following statements: 1. Ramjets operate efficiently at hypersonic speeds. 2. Dual Mode Ramjets can work in both subsonic and supersonic modes. Which of the statements given above is/are correct? A) 2 only B) Neither 1 nor 2 C) Both 1 and 2 D) 1 only 07/08/2025 Shift-2 Correct Ans: A Q292) Why does a skilled cricketer move his hands backwards while catching a fast-moving ball? A) To apply a greater opposing force on the ball for a quick stop. B) To reduce the force by increasing the time over which momentum changes. C) To increase the speed of the ball during impact. D) To decrease the weight of the ball using gravity. 07/08/2025 Shift-2 Correct Ans: B Telegram L
+App-BMvU0Pwi.js:477 📊 AI Status: {available: true, status: 'available', detail: null}
+App-BMvU0Pwi.js:438 Model download: 0%
+App-BMvU0Pwi.js:438 Model download: 100%
+App-BMvU0Pwi.js:477 🤖 [ExamBuddy AI] Quiz Generated (69748ms) - 3:35:24 PM
+App-BMvU0Pwi.js:477 Data: {questions: Array(5)}
+App-BMvU0Pwi.js:477 JSON: {
   "questions": [
     {
       "id": "q1",
       "type": "MCQ",
-      "question": "Which of the following is a fundamental concept in thermodynamics related to energy transfer?",
+      "question": "Which of the following is NOT a property of sound that determines its loudness?",
       "options": [
-        {"text": "Entropy", "correct": true},
-        {"text": "Temperature", "correct": false},
-        {"text": "Pressure", "correct": false},
-        {"text": "Volume", "correct": false}
+        {
+          "text": "Wavelength",
+          "correct": false
+        },
+        {
+          "text": "Pitch",
+          "correct": false
+        },
+        {
+          "text": "Amplitude",
+          "correct": true
+        },
+        {
+          "text": "Frequency",
+          "correct": false
+        }
       ],
-      "answer": "Entropy",
-      "explanation": "Entropy is a measure of the disorder or randomness of a system, a fundamental concept in thermodynamics.",
+      "answer": "Wavelength",
+      "explanation": "Loudness is related to the amplitude of the sound wave, while pitch is related to the frequency.",
       "difficulty": "medium",
-      "topic": "thermodynamics"
+      "topic": "Physics"
     },
     {
       "id": "q2",
       "type": "MCQ",
-      "question": "What does the Carnot cycle represent in thermodynamics?",
+      "question": "A conductor rod moving with a velocity v perpendicular to a uniform magnetic field B. If the length of the rod perpendicular to both v and B is L, the induced EMF across its ends is given by:",
       "options": [
-        {"text": "A process that converts heat directly into work.", "correct": false},
-        {"text": "A thermodynamic cycle with four reversible processes.", "correct": true},
-        {"text": "A process that converts work directly into heat.", "correct": false},
-        {"text": "A process that involves only isothermal and adiabatic steps.", "correct": false}
+        {
+          "text": "BL²v",
+          "correct": false
+        },
+        {
+          "text": "BLv",
+          "correct": false
+        },
+        {
+          "text": "Bv/L",
+          "correct": false
+        },
+        {
+          "text": "B/vL",
+          "correct": true
+        }
       ],
-      "answer": "A thermodynamic cycle with four reversible processes.",
-      "explanation": "The Carnot cycle is a theoretical thermodynamic cycle that represents the maximum possible efficiency of a heat engine.",
+      "answer": "B/vL",
+      "explanation": "The induced EMF is proportional to the magnetic flux (BLv), the length of the conductor (L), and the velocity (v).",
       "difficulty": "medium",
-      "topic": "thermodynamics"
+      "topic": "Physics"
     },
     {
       "id": "q3",
-      "type": "FillUp",
-      "question": "The process where a substance changes from a solid to a liquid is called _____.",
-      "answer": "melting",
-      "explanation": "Melting is the process of a solid changing into a liquid.",
+      "type": "MCQ",
+      "question": "Which force governs the motion of planets, stars, and galaxies?",
+      "options": [
+        {
+          "text": "Nuclear force",
+          "correct": false
+        },
+        {
+          "text": "Gravitational force",
+          "correct": true
+        },
+        {
+          "text": "Magnetic force",
+          "correct": false
+        },
+        {
+          "text": "Electromagnetic force",
+          "correct": false
+        }
+      ],
+      "answer": "Gravitational force",
+      "explanation": "Gravity is the fundamental force responsible for the attraction between objects with mass.",
       "difficulty": "medium",
-      "topic": "thermodynamics"
+      "topic": "Physics"
     },
     {
       "id": "q4",
-      "type": "TrueFalse",
-      "question": "The Second Law of Thermodynamics states that entropy in an isolated system always decreases.",
+      "type": "MCQ",
+      "question": "What are the streams of charged particles ejected by the Sun into space called?",
       "options": [
-        {"text": "True", "correct": false},
-        {"text": "False", "correct": true}
+        {
+          "text": "Sunspots",
+          "correct": false
+        },
+        {
+          "text": "Solar wind",
+          "correct": true
+        },
+        {
+          "text": "Solar flares",
+          "correct": false
+        },
+        {
+          "text": "Coronal loops",
+          "correct": false
+        }
       ],
-      "explanation": "The Second Law of Thermodynamics states that the entropy of an isolated system always increases or remains constant.",
+      "answer": "Solar wind",
+      "explanation": "Solar wind is a continuous stream of charged particles emitted by the Sun.",
       "difficulty": "medium",
-      "topic": "thermodynamics"
+      "topic": "Physics"
     },
     {
       "id": "q5",
-      "type": "Subjective",
-      "question": "Describe the concept of entropy in simple terms.",
-      "answer": "Entropy is a measure of disorder or randomness within a system. Higher entropy means more disorder.",
-      "explanation": "Entropy is a fundamental concept in thermodynamics that describes the degree of randomness or disorder in a system.",
+      "type": "MCQ",
+      "question": "At what orientation does a rotating coil in a uniform magnetic field generate the maximum induced EMF?",
+      "options": [
+        {
+          "text": "When the coil's plane is at 45° to the magnetic field lines",
+          "correct": false
+        },
+        {
+          "text": "When the magnetic flux through the coil is maximum",
+          "correct": false
+        },
+        {
+          "text": "When the coil's plane is perpendicular (90°) to the magnetic field lines",
+          "correct": false
+        },
+        {
+          "text": "When the coil's plane is parallel to the magnetic field lines",
+          "correct": true
+        }
+      ],
+      "answer": "When the coil's plane is perpendicular (90°) to the magnetic field lines",
+      "explanation": "The induced EMF is maximized when the magnetic flux through the coil is maximum, which occurs when the coil's plane is perpendicular to the magnetic field.",
       "difficulty": "medium",
-      "topic": "thermodynamics"
+      "topic": "Physics"
     }
   ]
 }
-```
+App-BMvU0Pwi.js:477 🤖 [ExamBuddy AI] Final Quiz Object - 3:35:24 PM
+App-BMvU0Pwi.js:477 Data: {id: '1759313124784_jzvi7hn8r', title: 'AI Generated Quiz - 10/1/2025', description: "Quiz generated using Chrome's built-in AI", questions: Array(5), totalQuestions: 5, …}
+App-BMvU0Pwi.js:477 JSON: {
+  "id": "1759313124784_jzvi7hn8r",
+  "title": "AI Generated Quiz - 10/1/2025",
+  "description": "Quiz generated using Chrome's built-in AI",
+  "questions": [
+    {
+      "id": "q0_1759313124783_lv68phnpq",
+      "type": "MCQ",
+      "question": "Which of the following is NOT a property of sound that determines its loudness?",
+      "options": [
+        {
+          "text": "Wavelength",
+          "isCorrect": true
+        },
+        {
+          "text": "Pitch",
+          "isCorrect": false
+        },
+        {
+          "text": "Amplitude",
+          "isCorrect": false
+        },
+        {
+          "text": "Frequency",
+          "isCorrect": false
+        }
+      ],
+      "explanation": "Loudness is related to the amplitude of the sound wave, while pitch is related to the frequency.",
+      "difficulty": "medium",
+      "topic": "Physics"
+    },
+    {
+      "id": "q1_1759313124784_99s63g8tt",
+      "type": "MCQ",
+      "question": "A conductor rod moving with a velocity v perpendicular to a uniform magnetic field B. If the length of the rod perpendicular to both v and B is L, the induced EMF across its ends is given by:",
+      "options": [
+        {
+          "text": "BL²v",
+          "isCorrect": false
+        },
+        {
+          "text": "BLv",
+          "isCorrect": false
+        },
+        {
+          "text": "Bv/L",
+          "isCorrect": false
+        },
+        {
+          "text": "B/vL",
+          "isCorrect": true
+        }
+      ],
+      "explanation": "The induced EMF is proportional to the magnetic flux (BLv), the length of the conductor (L), and the velocity (v).",
+      "difficulty": "medium",
+      "topic": "Physics"
+    },
+    {
+      "id": "q2_1759313124784_lku6zae7y",
+      "type": "MCQ",
+      "question": "Which force governs the motion of planets, stars, and galaxies?",
+      "options": [
+        {
+          "text": "Nuclear force",
+          "isCorrect": false
+        },
+        {
+          "text": "Gravitational force",
+          "isCorrect": true
+        },
+        {
+          "text": "Magnetic force",
+          "isCorrect": false
+        },
+        {
+          "text": "Electromagnetic force",
+          "isCorrect": false
+        }
+      ],
+      "explanation": "Gravity is the fundamental force responsible for the attraction between objects with mass.",
+      "difficulty": "medium",
+      "topic": "Physics"
+    },
+    {
+      "id": "q3_1759313124784_vo81caww4",
+      "type": "MCQ",
+      "question": "What are the streams of charged particles ejected by the Sun into space called?",
+      "options": [
+        {
+          "text": "Sunspots",
+          "isCorrect": false
+        },
+        {
+          "text": "Solar wind",
+          "isCorrect": true
+        },
+        {
+          "text": "Solar flares",
+          "isCorrect": false
+        },
+        {
+          "text": "Coronal loops",
+          "isCorrect": false
+        }
+      ],
+      "explanation": "Solar wind is a continuous stream of charged particles emitted by the Sun.",
+      "difficulty": "medium",
+      "topic": "Physics"
+    },
+    {
+      "id": "q4_1759313124784_ttfl02fru",
+      "type": "MCQ",
+      "question": "At what orientation does a rotating coil in a uniform magnetic field generate the maximum induced EMF?",
+      "options": [
+        {
+          "text": "When the coil's plane is at 45° to the magnetic field lines",
+          "isCorrect": false
+        },
+        {
+          "text": "When the magnetic flux through the coil is maximum",
+          "isCorrect": false
+        },
+        {
+          "text": "When the coil's plane is perpendicular (90°) to the magnetic field lines",
+          "isCorrect": true
+        },
+        {
+          "text": "When the coil's plane is parallel to the magnetic field lines",
+          "isCorrect": false
+        }
+      ],
+      "explanation": "The induced EMF is maximized when the magnetic flux through the coil is maximum, which occurs when the coil's plane is perpendicular to the magnetic field.",
+      "difficulty": "medium",
+      "topic": "Physics"
+    }
+  ],
+  "totalQuestions": 5,
+  "config": {
+    "showAnswers": true,
+    "allowRetake": true,
+    "difficulty": "medium",
+    "subject": "physics"
+  },
+  "createdAt": "2025-10-01T10:05:24.784Z",
+  "metadata": {
+    "source": "chrome-ai",
+    "model": "gemini-nano",
+    "generationTime": 69748,
+    "questionCount": 5
+  }
+}
+App-BMvU0Pwi.js:786 Navigating from quiz-loading to quiz with data
+App-BMvU0Pwi.js:573 Saving answer at index: 0 Answer: {questionId: 'q0_1759313124783_lv68phnpq', questionType: 'MCQ', selectedOption: 0, isCorrect: true, timeSpent: 30, …}
+App-BMvU0Pwi.js:573 Saving answer at index: 1 Answer: {questionId: 'q1_1759313124784_99s63g8tt', questionType: 'MCQ', selectedOption: 1, isCorrect: false, timeSpent: 30, …}
+App-BMvU0Pwi.js:573 Saving answer at index: 2 Answer: {questionId: 'q2_1759313124784_lku6zae7y', questionType: 'MCQ', selectedOption: 1, isCorrect: true, timeSpent: 30, …}
+App-BMvU0Pwi.js:573 Saving answer at index: 3 Answer: {questionId: 'q3_1759313124784_vo81caww4', questionType: 'MCQ', selectedOption: 1, isCorrect: true, timeSpent: 30, …}
