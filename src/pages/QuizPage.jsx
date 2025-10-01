@@ -49,7 +49,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
   const [showAIProcessing, setShowAIProcessing] = useState(false);
   const [aiTask, setAITask] = useState('processing');
 
-  const [showMobileNav, setShowMobileNav] = useState(false);
+  const [showMobileNav, setShowMobileNav] = useState(true);
   const [textAnswer, setTextAnswer] = useState('');
   const [fillBlanks, setFillBlanks] = useState(['']);
   const [isPausingQuiz, setIsPausingQuiz] = useState(false);
@@ -330,7 +330,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   } backdrop-blur-sm ${selectedAnswer !== null && config.immediateFeedback ? 'cursor-not-allowed opacity-50' : ''}`}
               >
                 <div className="flex items-center space-x-3">
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${selectedAnswer?.optionIndex === index
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${selectedAnswer?.optionIndex === index
                       ? 'border-amber-500 bg-amber-500'
                       : 'border-slate-300'
                     }`}>
@@ -340,7 +340,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                       </svg>
                     )}
                   </div>
-                  <span className={`text-base ${selectedAnswer?.optionIndex === index ? 'text-amber-700 font-medium' : 'text-slate-700'}`}>
+                  <span className={`text-base ${selectedAnswer?.optionIndex === index ? 'text-amber-700 font-medium' : 'text-slate-700'} flex-1 min-w-0`}>
                     {option.text}
                   </span>
                 </div>

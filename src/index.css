@@ -155,9 +155,11 @@ button:not(:disabled):active {
 
 input {
   outline: none;
+  font-size: 1rem;
 }
 textarea {
   outline: none;
+  font-size: 1rem;
 }
 
 @keyframes shimmer {

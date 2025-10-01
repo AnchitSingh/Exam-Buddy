@@ -37,16 +37,20 @@ const QuestionDetailModal = ({ isOpen, onClose, question, onDelete, onPractice }
           <div className="p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
             {/* Tags */}
             <div className="flex flex-wrap gap-2 mb-4">
-              <Badge variant={question.subject === 'Physics' ? 'info' : question.subject === 'Math' ? 'success' : 'purple'}>
-                {question.subject}
-              </Badge>
-              <Badge variant={
-                question.difficulty === 'Easy' ? 'success' : 
-                question.difficulty === 'Medium' ? 'warning' : 
-                'danger'
-              }>
-                {question.difficulty}
-              </Badge>
+              {question.subject && (
+                <Badge variant={question.subject === 'Physics' ? 'info' : question.subject === 'Math' ? 'success' : 'purple'}>
+                  {question.subject}
+                </Badge>
+              )}
+              {question.difficulty && (
+                <Badge variant={
+                  question.difficulty === 'Easy' ? 'success' : 
+                  question.difficulty === 'Medium' ? 'warning' : 
+                  'danger'
+                }>
+                  {question.difficulty}
+                </Badge>
+              )}
               {question.type && (
                 <Badge variant="default">{question.type}</Badge>
               )}
@@ -77,7 +81,7 @@ const QuestionDetailModal = ({ isOpen, onClose, question, onDelete, onPractice }
             <div className="pt-4 border-t border-slate-200">
               <div className="flex items-center justify-between text-sm text-slate-500">
                 <div className="flex items-center space-x-4">
-                  <span>📅 Bookmarked: {new Date(question.bookmarkedAt).toLocaleDateString()}</span>
+                  <span>📅 Bookmarked: {question.bookmarkedAt ? new Date(question.bookmarkedAt).toLocaleDateString() : 'Date unknown'}</span>
                   <span>📝 Source: {question.source}</span>
                 </div>
               </div>
@@ -430,22 +434,26 @@ const BookmarksPage = ({ onNavigate }) => {
                             {bookmark.question}
                           </p>
                           <p className="text-xs text-slate-500 mt-1">
-                            {new Date(bookmark.bookmarkedAt).toLocaleDateString()} • {bookmark.source}
+                            {bookmark.bookmarkedAt ? new Date(bookmark.bookmarkedAt).toLocaleDateString() : 'Date unknown'} • {bookmark.source}
                           </p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant={bookmark.subject === 'Physics' ? 'info' : bookmark.subject === 'Math' ? 'success' : 'purple'}>
-                            {bookmark.subject}
-                          </Badge>
-                          <Badge variant={
-                            bookmark.difficulty === 'Easy' ? 'success' : 
-                            bookmark.difficulty === 'Medium' ? 'warning' : 
-                            'danger'
-                          }>
-                            {bookmark.difficulty}
-                          </Badge>
+                          {bookmark.subject && (
+                            <Badge variant={bookmark.subject === 'Physics' ? 'info' : bookmark.subject === 'Math' ? 'success' : 'purple'}>
+                              {bookmark.subject}
+                            </Badge>
+                          )}
+                          {bookmark.difficulty && (
+                            <Badge variant={
+                              bookmark.difficulty === 'Easy' ? 'success' : 
+                              bookmark.difficulty === 'Medium' ? 'warning' : 
+                              'danger'
+                            }>
+                              {bookmark.difficulty}
+                            </Badge>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
