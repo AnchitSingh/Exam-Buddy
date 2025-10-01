@@ -649,7 +649,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 										</div>
 									) : (
 										<div className="p-4 rounded-xl bg-green-50/60 backdrop-blur-sm border border-green-200/50 text-green-800">
-											<strong>Correct Answer:</strong> {currentQuestion.explanation}
+											<strong>Correct Answer:</strong> {currentQuestion.answer}
 										</div>
 									)}
 								</div>
@@ -686,10 +686,10 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 							)}
 
 							{/* Explanation */}
-							{currentQuestion.explanation && !currentAnswer?.unanswered && (
+							{currentQuestion.answer && !currentAnswer?.unanswered && (
 								<div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-									<p className="text-sm font-semibold text-blue-800 mb-1">Explanation</p>
-									<p className="text-sm text-blue-700 break-words">{currentQuestion.explanation}</p>
+									<p className="text-sm font-semibold text-blue-800 mb-1">Answer</p>
+									<p className="text-sm text-blue-700 break-words">{currentQuestion.answer}</p>
 								</div>
 							)}
 						</div>
