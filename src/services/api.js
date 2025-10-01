@@ -9,14 +9,49 @@ import storage from '../utils/storage';
 class ExamBuddyAPI {
   constructor() {
     this.isProduction = true; // ENABLED: Use Chrome AI instead of mock data
-    
-    // In-memory storage for quiz sessions (replace with proper state management later)
-    this.activeQuizzes = new Map(storage.get('activeQuizzes', []));
-    this.quizProgress = new Map(storage.get('quizProgress', []));
-    this.evaluationHistory = new Map(storage.get('evaluationHistory', []));
-    this.studyAnalytics = new Map(storage.get('studyAnalytics', []));
-    this.bookmarks = new Map(storage.get('bookmarks', []));
-    this.pausedQuizzes = new Map(storage.get('pausedQuizzes', []));
+    this._isDataLoaded = false;
+
+    // Initialize with empty maps
+    this.activeQuizzes = new Map();
+    this.quizProgress = new Map();
+    this.evaluationHistory = new Map();
+    this.studyAnalytics = new Map();
+    this.bookmarks = new Map();
+    this.pausedQuizzes = new Map();
+  }
+
+  async _loadData() {
+    if (this._isDataLoaded) return;
+
+    try {
+        const [
+            activeQuizzes,
+            quizProgress,
+            evaluationHistory,
+            studyAnalytics,
+            bookmarks,
+            pausedQuizzes
+        ] = await Promise.all([
+            storage.get('activeQuizzes', []),
+            storage.get('quizProgress', []),
+            storage.get('evaluationHistory', []),
+            storage.get('studyAnalytics', []),
+            storage.get('bookmarks', []),
+            storage.get('pausedQuizzes', [])
+        ]);
+
+        this.activeQuizzes = new Map(activeQuizzes);
+        this.quizProgress = new Map(quizProgress);
+        this.evaluationHistory = new Map(evaluationHistory);
+        this.studyAnalytics = new Map(studyAnalytics);
+        this.bookmarks = new Map(bookmarks);
+        this.pausedQuizzes = new Map(pausedQuizzes);
+
+        this._isDataLoaded = true;
+        console.log('✅ Persistent data loaded into API state.');
+    } catch (error) {
+        console.error('🚨 Failed to load persistent data:', error);
+    }
   }
 
   // Debugging helper
@@ -32,6 +67,7 @@ class ExamBuddyAPI {
   // Chrome AI Integration Functions
 
   async generateQuiz(config, onProgress) {
+    await this._loadData();
     console.log('🚀 Generating quiz with Chrome AI...');
     this._logWithTimestamp('Quiz Generation Request', config);
     
@@ -198,7 +234,7 @@ class ExamBuddyAPI {
 
         // Store in memory
         this.activeQuizzes.set(quiz.id, quiz);
-        storage.set('activeQuizzes', Array.from(this.activeQuizzes.entries()));
+        await storage.set('activeQuizzes', Array.from(this.activeQuizzes.entries()));
         
         this._logWithTimestamp('Final Quiz Object', quiz);
         
@@ -230,6 +266,7 @@ class ExamBuddyAPI {
   }
 
   async getActiveQuiz(quizId) {
+    await this._loadData();
     console.log('🔍 Fetching active quiz:', quizId);
     
     if (this.isProduction) {
@@ -255,6 +292,7 @@ class ExamBuddyAPI {
   }
 
   async saveQuizProgress(quizId, progress) {
+    await this._loadData();
     console.log('💾 Saving quiz progress:', quizId);
     this._logWithTimestamp('Progress Data', progress);
     
@@ -264,7 +302,11 @@ class ExamBuddyAPI {
           ...progress,
           lastUpdated: new Date().toISOString()
         });
-        storage.set('pausedQuizzes', Array.from(this.pausedQuizzes.entries()));
+        await storage.set('pausedQuizzes', Array.from(this.pausedQuizzes.entries()));
+
+        // IMPORTANT: Remove from activeQuizzes since it's now paused
+        this.activeQuizzes.delete(quizId);
+        await storage.set('activeQuizzes', Array.from(this.activeQuizzes.entries()));
         
         return {
           success: true,
@@ -288,6 +330,7 @@ class ExamBuddyAPI {
   }
 
   async submitAnswer(quizId, questionId, answer) {
+    await this._loadData();
     console.log('✏️ Submitting answer:', { quizId, questionId, answer });
     this._logWithTimestamp('Answer Submission', { quizId, questionId, answer });
     
@@ -521,6 +564,7 @@ class ExamBuddyAPI {
         
         // Store for analytics
         this.studyAnalytics.set(studyPlan.id, studyPlan);
+        await storage.set('studyAnalytics', Array.from(this.studyAnalytics.entries()));
         
         return {
           success: true,
@@ -548,6 +592,7 @@ class ExamBuddyAPI {
   }
 
   async completeQuiz(quizId, answers, quiz) {
+    await this._loadData();
     console.log('✅ Completing quiz:', quizId, answers, quiz);
     
     try {
@@ -572,11 +617,11 @@ class ExamBuddyAPI {
         ...results,
         completed: true
       });
-      storage.set('quizProgress', Array.from(this.quizProgress.entries()));
+      await storage.set('quizProgress', Array.from(this.quizProgress.entries()));
 
       // Remove from active quizzes
       this.activeQuizzes.delete(quizId);
-      storage.set('activeQuizzes', Array.from(this.activeQuizzes.entries()));
+      await storage.set('activeQuizzes', Array.from(this.activeQuizzes.entries()));
       
       return {
         success: true,
@@ -593,6 +638,7 @@ class ExamBuddyAPI {
   }
 
   async addBookmark(questionId, bookmarkData) {
+    await this._loadData();
     console.log('📎 Adding bookmark:', questionId, bookmarkData);
     
     try {
@@ -604,7 +650,7 @@ class ExamBuddyAPI {
       };
       
       this.bookmarks.set(questionId, bookmark);
-      storage.set('bookmarks', Array.from(this.bookmarks.entries()));
+      await storage.set('bookmarks', Array.from(this.bookmarks.entries()));
       
       return {
         success: true,
@@ -621,11 +667,12 @@ class ExamBuddyAPI {
   }
 
   async removeBookmark(questionId) {
+    await this._loadData();
     console.log('🗑️ Removing bookmark:', questionId);
     
     try {
       const removed = this.bookmarks.delete(questionId);
-      storage.set('bookmarks', Array.from(this.bookmarks.entries()));
+      await storage.set('bookmarks', Array.from(this.bookmarks.entries()));
       
       return {
         success: true,
@@ -642,11 +689,12 @@ class ExamBuddyAPI {
   }
 
   async removePausedQuiz(quizId) {
+    await this._loadData();
     console.log('🔄 Removing paused quiz:', quizId);
     
     try {
       const removed = this.pausedQuizzes.delete(quizId);
-      storage.set('pausedQuizzes', Array.from(this.pausedQuizzes.entries()));
+      await storage.set('pausedQuizzes', Array.from(this.pausedQuizzes.entries()));
       
       return {
         success: true,
@@ -703,7 +751,8 @@ class ExamBuddyAPI {
   }
 
   // Debug methods
-  getDebugInfo() {
+  async getDebugInfo() {
+    await this._loadData();
     return {
       success: true,
       data: {
@@ -719,20 +768,23 @@ class ExamBuddyAPI {
     };
   }
 
-  clearDebugData() {
+  async clearDebugData() {
     this.activeQuizzes.clear();
     this.quizProgress.clear();
     this.evaluationHistory.clear();
     this.studyAnalytics.clear();
     this.bookmarks.clear();
     this.pausedQuizzes.clear();
+    this._isDataLoaded = true; // It's "loaded" because it's empty
 
-    storage.remove('activeQuizzes');
-    storage.remove('quizProgress');
-    storage.remove('evaluationHistory');
-    storage.remove('studyAnalytics');
-    storage.remove('bookmarks');
-    storage.remove('pausedQuizzes');
+    await Promise.all([
+        storage.remove('activeQuizzes'),
+        storage.remove('quizProgress'),
+        storage.remove('evaluationHistory'),
+        storage.remove('studyAnalytics'),
+        storage.remove('bookmarks'),
+        storage.remove('pausedQuizzes')
+    ]);
 
     console.log('🧹 Debug data cleared');
     
@@ -867,8 +919,8 @@ class ExamBuddyAPI {
     }
   }
 
-  // Dummy methods as requested
-  getUserProfile() {
+  async getUserProfile() {
+    await this._loadData();
     return {
       success: true,
       data: {
@@ -880,14 +932,16 @@ class ExamBuddyAPI {
     };
   }
 
-  getPausedQuizzes() {
+  async getPausedQuizzes() {
+    await this._loadData();
     return {
       success: true,
       data: Array.from(this.pausedQuizzes.values())
     };
   }
 
-  getBookmarks() {
+  async getBookmarks() {
+    await this._loadData();
     return {
       success: true,
       data: Array.from(this.bookmarks.values())
