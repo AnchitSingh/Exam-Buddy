@@ -100,7 +100,30 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
                 setCurrentStep(1);
                 switch (config.sourceType) {
                     case SOURCE_TYPE.PAGE:
-                        extractedSource = await extractFromCurrentPage(config);
+                        // Check if the selected tab is a PDF
+                        if (config.selectedTab && config.selectedTab.url && config.selectedTab.url.toLowerCase().endsWith('.pdf')) {
+                            // Create a progress callback for this extraction
+                            const progressCallback = (progress) => {
+                                setStreamMessage(progress.message || '');
+                            };
+                            
+                            try {
+                                console.log('Extracting PDF from tab URL:', config.selectedTab.url);
+                                const { text, meta } = await extractTextFromPDF(config.selectedTab.url);
+                                extractedSource = await extractFromPDFResult({
+                                    text,
+                                    fileName: config.selectedTab.url.split('/').pop() || 'PDF Document',
+                                    pageCount: meta.pageCount
+                                }, config, progressCallback);
+                                console.log('PDF extraction from tab completed successfully');
+                            } catch (error) {
+                                console.error('Failed to extract PDF from tab URL:', error);
+                                // If PDF extraction fails, fall back to normal page extraction
+                                extractedSource = await extractFromCurrentPage(config);
+                            }
+                        } else {
+                            extractedSource = await extractFromCurrentPage(config);
+                        }
                         break;
                     case SOURCE_TYPE.PDF:
                         if (config.pdfFile) {
@@ -113,7 +136,31 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
                         }
                         break;
                     case SOURCE_TYPE.URL:
-                        extractedSource = normalizeManualTopic(config.sourceValue, `Content from ${config.sourceValue}`);
+                        // Check if the URL is a PDF file
+                        if (config.sourceValue && config.sourceValue.toLowerCase().endsWith('.pdf')) {
+                            // Create a progress callback for this extraction
+                            const progressCallback = (progress) => {
+                                setStreamMessage(progress.message || '');
+                            };
+                            
+                            // Treat it as a PDF URL and extract content
+                            try {
+                                console.log('Extracting PDF from URL:', config.sourceValue);
+                                const { text, meta } = await extractTextFromPDF(config.sourceValue);
+                                extractedSource = await extractFromPDFResult({
+                                    text,
+                                    fileName: config.sourceValue.split('/').pop() || 'PDF Document',
+                                    pageCount: meta.pageCount
+                                }, config, progressCallback);
+                                console.log('PDF extraction from URL completed successfully');
+                            } catch (error) {
+                                console.error('Failed to extract PDF from URL:', error);
+                                // If PDF extraction fails, fall back to treating it as a regular URL
+                                extractedSource = normalizeManualTopic(config.sourceValue, `Content from ${config.sourceValue}`);
+                            }
+                        } else {
+                            extractedSource = normalizeManualTopic(config.sourceValue, `Content from ${config.sourceValue}`);
+                        }
                         break;
                     case SOURCE_TYPE.MANUAL:
                     default:
