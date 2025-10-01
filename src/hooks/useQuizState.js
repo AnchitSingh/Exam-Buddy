@@ -13,7 +13,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState([]);
-  const [timeRemaining, setTimeRemaining] = useState(config.timerEnabled ? (config.totalTimer || 600) : 0);
+  const [timeRemaining, setTimeRemaining] = useState(quizConfig?.timerEnabled ? (quizConfig.totalTimer || 600) : 0);
   const [isQuizActive, setIsQuizActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,8 +74,9 @@ const useQuizState = (quizConfig = null, answerRef) => {
       if (quizConfig.quizData) {
         const newQuiz = quizConfig.quizData;
         setQuiz(newQuiz);
-        setConfig({ ...quizConfig, ...newQuiz.config });
-        setTimeRemaining(newQuiz.timeLimit || quizConfig.totalTimer || 600);
+        // Merge the original config with the new quiz config to preserve user settings
+        setConfig(prevConfig => ({ ...prevConfig, ...newQuiz.config }));
+        setTimeRemaining(newQuiz.timeLimit || newQuiz.config?.totalTimer || 600);
         setIsQuizActive(true);
         quizIdRef.current = newQuiz.id;
         setIsLoading(false); // Data is already here
@@ -152,7 +153,8 @@ const useQuizState = (quizConfig = null, answerRef) => {
             title: config.title || 'Practice Quiz',
             subject: config.subject || 'Mixed',
             totalQuestions: config.questions.length,
-            config: { ...config, immediateFeedback: true, timerEnabled: false },
+            // Preserve original config settings instead of overriding
+            config: { ...config },
             questions: config.questions,
             createdAt: new Date().toISOString(),
             timeLimit: null,
@@ -166,8 +168,9 @@ const useQuizState = (quizConfig = null, answerRef) => {
       if (isMountedRef.current && response.success) {
         const newQuiz = response.data;
         setQuiz(newQuiz);
-        setConfig({ ...config, ...newQuiz.config });
-        setTimeRemaining(newQuiz.timeLimit || config.totalTimer || 600);
+        // Merge the original config with the new quiz config to preserve user settings
+        setConfig(prevConfig => ({ ...prevConfig, ...newQuiz.config }));
+        setTimeRemaining(newQuiz.timeLimit || newQuiz.config?.totalTimer || quizConfig?.totalTimer || 600);
         setIsQuizActive(true);
         quizIdRef.current = newQuiz.id;
         toast.success('Quiz started successfully');
@@ -202,10 +205,11 @@ const useQuizState = (quizConfig = null, answerRef) => {
           questions: savedState.questions,
           totalQuestions: savedState.totalQuestions,
         });
-        setConfig(savedState.config);
+        // Merge the saved config with quizConfig to preserve original settings
+        setConfig(prevConfig => ({ ...prevConfig, ...savedState.config }));
         setCurrentQuestionIndex(savedState.currentQuestionIndex);
         setUserAnswers(savedState.userAnswers);
-        setTimeRemaining(savedState.timeRemaining);
+        setTimeRemaining(savedState.timeRemaining || savedState.config?.totalTimer || 600);
         setBookmarkedQuestions(new Set(savedState.bookmarkedQuestions));
         setDraftAnswers(savedState.draftAnswers || {});
         

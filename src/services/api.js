@@ -165,18 +165,26 @@ class ExamBuddyAPI {
           return newQuestion;
         });
 
+        // Create the quiz object with the original config settings preserved
         const quiz = {
           id: generateId(),
           title: config.title || `AI Generated Quiz - ${new Date().toLocaleDateString()}`,
           description: config.description || 'Quiz generated using Chrome\'s built-in AI',
           questions: transformedQuestions,
           totalQuestions: transformedQuestions.length,
+          // Preserve original UI configuration settings from the user's setup
           config: {
-            timeLimit: config.timeLimit,
+            immediateFeedback: config.immediateFeedback,
+            timerEnabled: config.timerEnabled,
+            totalTimer: config.totalTimer,
+            timeLimit: config.timeLimit, // Also preserve timeLimit for consistency
+            questionTimer: config.questionTimer,
             showAnswers: config.showAnswers !== false,
             allowRetake: config.allowRetake !== false,
             difficulty: config.difficulty || 'medium',
-            subject: config.subject || config.topic || 'General'
+            subject: config.subject || config.topic || 'General',
+            questionCount: config.questionCount || 5,
+            questionTypes: config.questionTypes || ['MCQ']
           },
           createdAt: new Date().toISOString(),
           metadata: {
