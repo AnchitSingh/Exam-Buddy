@@ -24,9 +24,8 @@ const questionCounts = [3, 5, 10, 15, 20];
 
 const sourceOptions = [
   { value: SOURCE_TYPE.MANUAL, label: 'Custom Topic', icon: '✏️', description: 'Create quiz from any topic' },
-  { value: SOURCE_TYPE.PAGE, label: 'Choose Tab', icon: '📋', description: 'Select from open browser tabs' },
-  { value: SOURCE_TYPE.URL, label: 'From URL', icon: '🔗', description: 'Enter a webpage URL' },
   { value: SOURCE_TYPE.PDF, label: 'From PDF', icon: '📎', description: 'Upload a PDF file' },
+  { value: SOURCE_TYPE.PAGE, label: 'Choose Tab', icon: '📋', description: 'Select from open browser tabs' },
 ];
 
 const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
@@ -142,9 +141,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
         newErrors.topic = 'Please enter a topic for your quiz';
       }
       
-      if (config.sourceType === SOURCE_TYPE.URL && !config.sourceValue.trim()) {
-        newErrors.sourceValue = 'Please enter a valid URL';
-      }
+
       
       if (config.sourceType === SOURCE_TYPE.PDF && !pdfFile) {
         newErrors.sourceValue = 'Please select a PDF file';
@@ -233,29 +230,6 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
 
   const renderSourceSpecificInput = () => {
     switch (config.sourceType) {
-      case SOURCE_TYPE.URL:
-        return (
-          <div className="mt-4">
-            <label htmlFor="quiz-url" className="block text-sm font-medium text-slate-700 mb-2">
-              Webpage URL <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="quiz-url"
-              type="url"
-              value={config.sourceValue}
-              onChange={(e) => handleInputChange('sourceValue', e.target.value)}
-              placeholder="https://example.com"
-              className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all ${
-                errors.sourceValue ? 'border-red-300 bg-red-50' : 'border-slate-200'
-              }`}
-              aria-invalid={errors.sourceValue ? 'true' : 'false'}
-            />
-            {errors.sourceValue && (
-              <p className="text-red-500 text-xs mt-1">{errors.sourceValue}</p>
-            )}
-          </div>
-        );
-        
       case SOURCE_TYPE.PDF:
         return (
           <div className="mt-4">
@@ -343,30 +317,57 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
       {/* Source Selection */}
       <div>
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Choose your quiz source</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {sourceOptions.map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => handleSourceTypeChange(opt.value)}
-              className={`relative flex flex-col items-start p-4 rounded-lg border-2 transition-all text-left ${
-                config.sourceType === opt.value
-                  ? 'border-amber-400 bg-amber-50'
-                  : 'border-slate-200 hover:border-slate-300 bg-white'
-              }`}
-              aria-pressed={config.sourceType === opt.value}
-            >
-              <div className="flex items-center gap-3 mb-1">
-                <span className="text-xl" aria-hidden="true">{opt.icon}</span>
-                <span className="font-medium text-slate-900">{opt.label}</span>
-              </div>
-              <span className="text-xs text-slate-500">{opt.description}</span>
-              {config.sourceType === opt.value && (
-                <svg className="absolute top-3 right-3 w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              )}
-            </button>
-          ))}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {sourceOptions.slice(0, 2).map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => handleSourceTypeChange(opt.value)}
+                className={`relative flex flex-col items-start p-4 rounded-lg border-2 transition-all text-left ${
+                  config.sourceType === opt.value
+                    ? 'border-amber-400 bg-amber-50'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+                aria-pressed={config.sourceType === opt.value}
+              >
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-xl" aria-hidden="true">{opt.icon}</span>
+                  <span className="font-medium text-slate-900">{opt.label}</span>
+                </div>
+                <span className="text-xs text-slate-500">{opt.description}</span>
+                {config.sourceType === opt.value && (
+                  <svg className="absolute top-3 right-3 w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-center">
+            {sourceOptions.slice(2).map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => handleSourceTypeChange(opt.value)}
+                className={`relative flex flex-col items-start p-4 rounded-lg border-2 transition-all text-left ${
+                  config.sourceType === opt.value
+                    ? 'border-amber-400 bg-amber-50'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+                aria-pressed={config.sourceType === opt.value}
+              >
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-xl" aria-hidden="true">{opt.icon}</span>
+                  <span className="font-medium text-slate-900">{opt.label}</span>
+                </div>
+                <span className="text-xs text-slate-500">{opt.description}</span>
+                {config.sourceType === opt.value && (
+                  <svg className="absolute top-3 right-3 w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
