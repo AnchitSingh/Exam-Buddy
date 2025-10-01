@@ -208,9 +208,9 @@ const useQuizState = (quizConfig = null, answerRef) => {
         // Merge the saved config with quizConfig to preserve original settings
         setConfig(prevConfig => ({ ...prevConfig, ...savedState.config }));
         setCurrentQuestionIndex(savedState.currentQuestionIndex);
-        setUserAnswers(savedState.userAnswers);
+        setUserAnswers(savedState.userAnswers || []);
         setTimeRemaining(savedState.timeRemaining || savedState.config?.totalTimer || 600);
-        setBookmarkedQuestions(new Set(savedState.bookmarkedQuestions));
+        setBookmarkedQuestions(new Set(savedState.bookmarkedQuestions || []));
         setDraftAnswers(savedState.draftAnswers || {});
         
         setIsPaused(false);

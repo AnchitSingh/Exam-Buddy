@@ -1,6 +1,7 @@
 // src/api.js
 import chromeAI from '../utils/chromeAI';
 import { generateId } from '../utils/helpers';
+import storage from '../utils/storage';
 
 // This will be the single point where backend integration happens
 // Frontend components will ONLY call these functions, never access data directly
@@ -10,12 +11,12 @@ class ExamBuddyAPI {
     this.isProduction = true; // ENABLED: Use Chrome AI instead of mock data
     
     // In-memory storage for quiz sessions (replace with proper state management later)
-    this.activeQuizzes = new Map();
-    this.quizProgress = new Map();
-    this.evaluationHistory = new Map();
-    this.studyAnalytics = new Map();
-    this.bookmarks = new Map();
-    this.pausedQuizzes = new Map();
+    this.activeQuizzes = new Map(storage.get('activeQuizzes', []));
+    this.quizProgress = new Map(storage.get('quizProgress', []));
+    this.evaluationHistory = new Map(storage.get('evaluationHistory', []));
+    this.studyAnalytics = new Map(storage.get('studyAnalytics', []));
+    this.bookmarks = new Map(storage.get('bookmarks', []));
+    this.pausedQuizzes = new Map(storage.get('pausedQuizzes', []));
   }
 
   // Debugging helper
@@ -197,6 +198,7 @@ class ExamBuddyAPI {
 
         // Store in memory
         this.activeQuizzes.set(quiz.id, quiz);
+        storage.set('activeQuizzes', Array.from(this.activeQuizzes.entries()));
         
         this._logWithTimestamp('Final Quiz Object', quiz);
         
@@ -231,7 +233,10 @@ class ExamBuddyAPI {
     console.log('🔍 Fetching active quiz:', quizId);
     
     if (this.isProduction) {
-      const quiz = this.activeQuizzes.get(quizId);
+      let quiz = this.activeQuizzes.get(quizId);
+      if (!quiz) {
+        quiz = this.pausedQuizzes.get(quizId);
+      }
       this._logWithTimestamp('Retrieved Quiz', quiz);
       
       return {
@@ -255,10 +260,11 @@ class ExamBuddyAPI {
     
     if (this.isProduction) {
       try {
-        this.quizProgress.set(quizId, {
+        this.pausedQuizzes.set(quizId, {
           ...progress,
           lastUpdated: new Date().toISOString()
         });
+        storage.set('pausedQuizzes', Array.from(this.pausedQuizzes.entries()));
         
         return {
           success: true,
@@ -566,6 +572,11 @@ class ExamBuddyAPI {
         ...results,
         completed: true
       });
+      storage.set('quizProgress', Array.from(this.quizProgress.entries()));
+
+      // Remove from active quizzes
+      this.activeQuizzes.delete(quizId);
+      storage.set('activeQuizzes', Array.from(this.activeQuizzes.entries()));
       
       return {
         success: true,
@@ -593,6 +604,7 @@ class ExamBuddyAPI {
       };
       
       this.bookmarks.set(questionId, bookmark);
+      storage.set('bookmarks', Array.from(this.bookmarks.entries()));
       
       return {
         success: true,
@@ -613,6 +625,7 @@ class ExamBuddyAPI {
     
     try {
       const removed = this.bookmarks.delete(questionId);
+      storage.set('bookmarks', Array.from(this.bookmarks.entries()));
       
       return {
         success: true,
@@ -633,6 +646,7 @@ class ExamBuddyAPI {
     
     try {
       const removed = this.pausedQuizzes.delete(quizId);
+      storage.set('pausedQuizzes', Array.from(this.pausedQuizzes.entries()));
       
       return {
         success: true,
@@ -712,6 +726,14 @@ class ExamBuddyAPI {
     this.studyAnalytics.clear();
     this.bookmarks.clear();
     this.pausedQuizzes.clear();
+
+    storage.remove('activeQuizzes');
+    storage.remove('quizProgress');
+    storage.remove('evaluationHistory');
+    storage.remove('studyAnalytics');
+    storage.remove('bookmarks');
+    storage.remove('pausedQuizzes');
+
     console.log('🧹 Debug data cleared');
     
     return {
