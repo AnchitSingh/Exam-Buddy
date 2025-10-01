@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Tooltip Component
 const Tooltip = ({ children, content }) => {
@@ -26,12 +26,45 @@ const Tooltip = ({ children, content }) => {
 // Expanding Nav Item Component
 const ExpandingNavItem = ({ item, isActive, onClick }) => {
     const [isHovered, setIsHovered] = useState(false);
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
     
+    // Detect touch devices
+    useEffect(() => {
+        setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    }, []);
+    
+    const handleMouseEnter = () => {
+        if (!isTouchDevice) {
+            setIsHovered(true);
+        }
+    };
+    
+    const handleMouseLeave = () => {
+        if (!isTouchDevice) {
+            setIsHovered(false);
+        }
+    };
+    
+    const handleTouchStart = (e) => {
+        e.preventDefault();
+        setIsHovered(!isHovered); // Toggle on touch
+    };
+    
+    const handleClick = (e) => {
+        // Prevent click if we just toggled via touch
+        onClick();
+        if (isTouchDevice) {
+            // For mobile, keep expanded briefly after click
+            setTimeout(() => setIsHovered(false), 1000);
+        }
+    };
+
     return (
         <button
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            onClick={onClick}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onTouchStart={handleTouchStart}
+            onClick={handleClick}
             className={`
                 relative flex items-center justify-start
                 h-10 rounded-full
@@ -185,10 +218,32 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                                     />
                                 );
                             })}
+                            
+                            {/* Profile Icon for Medium screens - Fixed width to match expanding pills */}
+                            <button
+                                className={`relative flex items-center justify-start h-10 rounded-full transition-all duration-300 ease-out w-10 px-0 text-slate-600 ${userName ? 'bg-slate-50 hover:bg-slate-100' : ''}`}
+                                style={{
+                                    minWidth: '40px',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                                aria-label={userName ? `Profile: ${userName}` : 'Profile'}
+                            >
+                                <div className="flex items-center justify-center w-10 flex-shrink-0">
+                                    {userName ? (
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-700 uppercase">
+                                            {userName.charAt(0)}
+                                        </div>
+                                    ) : (
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                            {getIcon('user')}
+                                        </div>
+                                    )}
+                                </div>
+                            </button>
                         </nav>
 
-                        {/* User Profile Icon (md and up) */}
-                        <div className="hidden md:flex items-center pl-3 pr-1">
+                        {/* User Profile Icon (lg and up) */}
+                        <div className="hidden lg:flex items-center pl-3 pr-1">
                             <button
                                 className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
                                 aria-label={userName ? `Profile: ${userName}` : 'Profile'}
@@ -203,43 +258,42 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             </button>
                         </div>
 
-                        {/* Mobile View Navigation - Icons in a row with tooltips */}
+                        {/* Mobile View Navigation - Expanding Pills */}
                         <div className="md:hidden flex items-center space-x-1 border-l border-gray-200 ml-2 pl-2">
-                            {/* Navigation Icons for Mobile */}
+                            {/* Navigation Items for Mobile with Expanding Pills */}
                             {navigationItems.map((item) => {
                                 const isActive = currentPage === item.id;
                                 return (
-                                    <Tooltip key={item.id} content={item.label}>
-                                        <button
-                                            onClick={item.action}
-                                            aria-label={item.label}
-                                            className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
-                                                isActive
-                                                    ? 'bg-white text-amber-700 shadow-sm'
-                                                    : 'text-slate-600 hover:bg-slate-50'
-                                            }`}
-                                        >
-                                            {getIcon(item.icon, isActive)}
-                                        </button>
-                                    </Tooltip>
+                                    <ExpandingNavItem
+                                        key={item.id}
+                                        item={item}
+                                        isActive={isActive}
+                                        onClick={item.action}
+                                    />
                                 );
                             })}
                             
-                            {/* Profile Icon for Mobile with tooltip */}
-                            <Tooltip content={userName ? `Profile: ${userName}` : 'Profile'}>
-                                <button
-                                    className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors ml-2"
-                                    aria-label={userName ? `Profile: ${userName}` : 'Profile'}
-                                >
+                            {/* Profile Icon for Mobile - Fixed width to match expanding pills */}
+                            <button
+                                className={`relative flex items-center justify-start h-10 rounded-full transition-all duration-300 ease-out w-10 px-0 text-slate-600 ${userName ? 'bg-slate-50 hover:bg-slate-100' : ''}`}
+                                style={{
+                                    minWidth: '40px',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                                aria-label={userName ? `Profile: ${userName}` : 'Profile'}
+                            >
+                                <div className="flex items-center justify-center w-10 flex-shrink-0">
                                     {userName ? (
-                                        <span className="font-semibold text-gray-700 uppercase">
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-700 uppercase">
                                             {userName.charAt(0)}
-                                        </span>
+                                        </div>
                                     ) : (
-                                        getIcon('user')
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                            {getIcon('user')}
+                                        </div>
                                     )}
-                                </button>
-                            </Tooltip>
+                                </div>
+                            </button>
                         </div>
                         
                         {/* Hidden mobile menu button to maintain functionality if needed */}
