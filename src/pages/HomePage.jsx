@@ -414,6 +414,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
                     isOpen={showQuizSetup} // Don't show if progress tracker is active
                     onClose={() => setShowQuizSetup(false)}
                     onStartQuiz={handleStartQuiz}
+                    selectionText={navigationData?.selectionText}
                 />
                 
                 {/* Progress Tracker - Shown during processing */}

@@ -36,6 +36,13 @@ const App = () => {
     setHasInitialized(true);
   }, [hasInitialized]);
 
+  React.useEffect(() => {
+    // Signal to the background script that the side panel is ready
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      chrome.runtime.sendMessage({ type: 'SIDEPANEL_READY' });
+    }
+  }, []);
+
   const navigateTo = (page, data = null) => {
     console.log('Navigating from', currentPage, 'to', page, data ? 'with data' : '');
     
@@ -48,6 +55,23 @@ const App = () => {
     setNavigationData(data);
     setCurrentPage(page);
   };
+
+  React.useEffect(() => {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+      const messageListener = (message, sender, sendResponse) => {
+        if (message.type === 'START_QUIZ_FROM_SELECTION') {
+          console.log('Received START_QUIZ_FROM_SELECTION with text:', message.text);
+          navigateTo('home', { openQuizSetup: true, selectionText: message.text });
+        }
+      };
+      
+      chrome.runtime.onMessage.addListener(messageListener);
+      
+      return () => {
+        chrome.runtime.onMessage.removeListener(messageListener);
+      };
+    }
+  }, [navigateTo]);
 
   const resetApp = () => {
     localStorage.removeItem('exambuddy_visited');

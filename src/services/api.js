@@ -120,32 +120,25 @@ class ExamBuddyAPI {
             }
         }
 
-        // The prompt asks for JSON only, but let's be safe and extract it.
-        const firstBrace = jsonString.indexOf('{');
-        if (firstBrace === -1) {
-          throw new Error('No JSON object found in the stream');
-        }
-        
-        // Find the matching closing brace
-        let depth = 0;
-        let lastBraceIndex = -1;
-        for (let i = firstBrace; i < jsonString.length; i++) {
-            if (jsonString[i] === '{') {
-                depth++;
-            } else if (jsonString[i] === '}') {
-                depth--;
-                if (depth === 0) {
-                    lastBraceIndex = i;
-                    break;
-                }
+        function extractJson(str) {
+            const match = str.match(/```json\n([\s\S]*?)\n```/);
+            if (match && match[1]) {
+                return match[1];
             }
+            
+            const firstBrace = str.indexOf('{');
+            const lastBrace = str.lastIndexOf('}');
+            if (firstBrace === -1 || lastBrace === -1) {
+                return null;
+            }
+            return str.substring(firstBrace, lastBrace + 1);
         }
 
-        if (lastBraceIndex === -1) {
-          throw new Error('Could not find the end of the JSON object');
+        const jsonBlock = extractJson(jsonString);
+        if (!jsonBlock) {
+            throw new Error('Could not extract a valid JSON block from the AI response.');
         }
 
-        const jsonBlock = jsonString.substring(firstBrace, lastBraceIndex + 1);
         const aiResult = JSON.parse(jsonBlock);
         
         const endTime = performance.now();

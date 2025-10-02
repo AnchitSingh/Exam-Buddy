@@ -26,9 +26,10 @@ const sourceOptions = [
   { value: SOURCE_TYPE.MANUAL, label: 'Custom Topic', icon: '✏️', description: 'Create quiz from any topic' },
   { value: SOURCE_TYPE.PDF, label: 'From PDF', icon: '📎', description: 'Upload a PDF file' },
   { value: SOURCE_TYPE.PAGE, label: 'Choose Tab', icon: '📋', description: 'Select from open browser tabs' },
+  { value: SOURCE_TYPE.SELECTION, label: 'From Selection', icon: '✍️', description: 'Use selected text from a page' },
 ];
 
-const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
+const QuizSetupModal = ({ isOpen, onClose, onStartQuiz, selectionText }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState({});
@@ -50,6 +51,19 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
     immediateFeedback: true,
     totalTimer: 0,
   });
+
+  useEffect(() => {
+    if (isOpen && selectionText) {
+      // Pre-fill form when opened with selected text
+      setConfig(prev => ({
+        ...prev,
+        sourceType: SOURCE_TYPE.SELECTION,
+        context: selectionText,
+        topic: selectionText.substring(0, 50) + '...',
+        sourceValue: selectionText
+      }));
+    }
+  }, [isOpen, selectionText]);
 
   // Focus management
   useEffect(() => {
@@ -269,6 +283,20 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
           </div>
         );
         
+      case SOURCE_TYPE.SELECTION:
+        return (
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Selected Text
+            </label>
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 max-h-24 overflow-y-auto">
+              <p className="text-sm text-slate-600 italic">
+                {config.sourceValue}
+              </p>
+            </div>
+          </div>
+        );
+
       case SOURCE_TYPE.PAGE:
         return (
           <div className="mt-4 space-y-3">
@@ -317,9 +345,8 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
       {/* Source Selection */}
       <div>
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Choose your quiz source</h3>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            {sourceOptions.slice(0, 2).map(opt => (
+        <div className="grid grid-cols-2 gap-3">
+            {sourceOptions.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => handleSourceTypeChange(opt.value)}
@@ -343,32 +370,6 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz }) => {
               </button>
             ))}
           </div>
-          <div className="flex justify-center">
-            {sourceOptions.slice(2).map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => handleSourceTypeChange(opt.value)}
-                className={`relative flex flex-col items-start p-4 rounded-lg border-2 transition-all text-left ${
-                  config.sourceType === opt.value
-                    ? 'border-amber-400 bg-amber-50'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-                aria-pressed={config.sourceType === opt.value}
-              >
-                <div className="flex items-center gap-3 mb-1">
-                  <span className="text-xl" aria-hidden="true">{opt.icon}</span>
-                  <span className="font-medium text-slate-900">{opt.label}</span>
-                </div>
-                <span className="text-xs text-slate-500">{opt.description}</span>
-                {config.sourceType === opt.value && (
-                  <svg className="absolute top-3 right-3 w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Source-specific input (URL or PDF) */}
