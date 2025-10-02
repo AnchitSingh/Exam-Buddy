@@ -107,6 +107,36 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz, selectionText }) => {
     if (sourceType !== SOURCE_TYPE.PAGE) {
       setSelectedTab(null);
     }
+
+    if (sourceType === SOURCE_TYPE.SELECTION) {
+      fetchSelectionFromPage();
+    }
+  };
+
+  const fetchSelectionFromPage = async () => {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length === 0) {
+        toast.error('No active tab found.');
+        return;
+      }
+      const response = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_SELECTION' });
+      if (response && response.text) {
+        setConfig(prev => ({
+          ...prev,
+          sourceType: SOURCE_TYPE.SELECTION,
+          context: response.text,
+          topic: response.text.substring(0, 50) + '...',
+          sourceValue: response.text
+        }));
+        toast.success('Selected text loaded!');
+      } else {
+        toast.error('No text selected on the page.');
+      }
+    } catch (error) {
+      console.error('Could not get selected text:', error);
+      toast.error('Could not get selected text. Try reloading the page.');
+    }
   };
 
   const handleSelectTab = (tab) => {
@@ -291,7 +321,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz, selectionText }) => {
             </label>
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 max-h-24 overflow-y-auto">
               <p className="text-sm text-slate-600 italic">
-                {config.sourceValue}
+                {config.context}
               </p>
             </div>
           </div>

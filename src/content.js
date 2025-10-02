@@ -17,6 +17,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     let isResponseAsync = false;
 
     switch (message.type) {
+        case 'GET_SELECTION':
+            sendResponse({ text: window.getSelection().toString() });
+            break;
+
         case MSG.PING_CONTENT:
             sendResponse({ success: true, message: 'pong' });
             break;
