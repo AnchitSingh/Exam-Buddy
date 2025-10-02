@@ -1,12 +1,19 @@
 let pendingSelectionText = null;
+let pendingStoryText = null;
 
 chrome.runtime.onInstalled.addListener(() => {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
     
-    // Create context menu
+    // Create context menus
     chrome.contextMenus.create({
       id: "start-quiz-from-selection",
       title: "Start Quiz with Exam Buddy",
+      contexts: ["selection"]
+    });
+
+    chrome.contextMenus.create({
+      id: "start-story-from-selection",
+      title: "Explain using Exam Buddy",
       contexts: ["selection"]
     });
   });
@@ -14,16 +21,12 @@ chrome.runtime.onInstalled.addListener(() => {
   // Listener for the context menu
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === "start-quiz-from-selection" && info.selectionText) {
-      // Store the selection text for the handshake, in case the panel is not yet open.
       pendingSelectionText = info.selectionText;
-      
-      // Try sending the message immediately, in case the panel is already open and listening.
-      chrome.runtime.sendMessage({
-        type: 'START_QUIZ_FROM_SELECTION',
-        text: info.selectionText
-      });
-      
-      // Open the side panel. If it's already open, this does nothing.
+      chrome.runtime.sendMessage({ type: 'START_QUIZ_FROM_SELECTION', text: info.selectionText });
+      await chrome.sidePanel.open({ windowId: tab.windowId });
+    } else if (info.menuItemId === "start-story-from-selection" && info.selectionText) {
+      pendingStoryText = info.selectionText;
+      chrome.runtime.sendMessage({ type: 'START_STORY_FROM_SELECTION', text: info.selectionText });
       await chrome.sidePanel.open({ windowId: tab.windowId });
     }
   });
@@ -36,11 +39,11 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'SIDEPANEL_READY') {
       if (pendingSelectionText) {
-        chrome.runtime.sendMessage({
-          type: 'START_QUIZ_FROM_SELECTION',
-          text: pendingSelectionText
-        });
+        chrome.runtime.sendMessage({ type: 'START_QUIZ_FROM_SELECTION', text: pendingSelectionText });
         pendingSelectionText = null; // Clear after sending
+      } else if (pendingStoryText) {
+        chrome.runtime.sendMessage({ type: 'START_STORY_FROM_SELECTION', text: pendingStoryText });
+        pendingStoryText = null; // Clear after sending
       }
     } else if (message.type === 'EXTRACT_CONTENT') {
       // Handle content extraction

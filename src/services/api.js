@@ -258,6 +258,27 @@ class ExamBuddyAPI {
     };
   }
 
+  async generateStory(config) {
+    await this._loadData();
+    console.log('📚 Generating story with Chrome AI...');
+    this._logWithTimestamp('Story Generation Request', config);
+
+    if (this.isProduction) {
+      const aiStatus = await chromeAI.available();
+      if (!aiStatus.available) {
+        return { success: false, error: 'Chrome AI is not available.' };
+      }
+
+      try {
+        const stream = await chromeAI.streamStory(config);
+        return { success: true, data: stream };
+      } catch (error) {
+        console.error('❌ Chrome AI Story Generation Error:', error);
+        return { success: false, error: error.message };
+      }
+    }
+  }
+
   async getActiveQuiz(quizId) {
     await this._loadData();
     console.log('🔍 Fetching active quiz:', quizId);
@@ -948,6 +969,7 @@ const examBuddyAPI = new ExamBuddyAPI();
 // Export individual methods for cleaner imports
 export const {
   generateQuiz,
+  generateStory,
   getActiveQuiz,
   saveQuizProgress,
   submitAnswer,

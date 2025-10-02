@@ -6,6 +6,8 @@ import QuizPage from './pages/QuizPage';
 import BookmarksPage from './pages/BookmarksPage';
 import PausedQuizzesPage from './pages/PausedQuizzesPage';
 import QuizLoadingPage from './pages/QuizLoadingPage';
+import StoryLoadingPage from './pages/StoryLoadingPage';
+import StoryPage from './pages/StoryPage';
 import QuizErrorBoundary from './pages/QuizErrorBoundary';
 import './index.css';
 
@@ -62,6 +64,9 @@ const App = () => {
         if (message.type === 'START_QUIZ_FROM_SELECTION') {
           console.log('Received START_QUIZ_FROM_SELECTION with text:', message.text);
           navigateTo('home', { openQuizSetup: true, selectionText: message.text });
+        } else if (message.type === 'START_STORY_FROM_SELECTION') {
+          console.log('Received START_STORY_FROM_SELECTION with text:', message.text);
+          navigateTo('home', { openStorySetup: true, selectionText: message.text });
         }
       };
       
@@ -115,6 +120,14 @@ const App = () => {
 
       {currentPage === 'quiz-loading' && (
         <QuizLoadingPage onNavigate={navigateTo} navigationData={navigationData} />
+      )}
+
+      {currentPage === 'story-loading' && (
+        <StoryLoadingPage onNavigate={navigateTo} navigationData={navigationData} />
+      )}
+
+      {currentPage === 'story' && (
+        <StoryPage onNavigate={navigateTo} storyContent={navigationData?.storyContent} />
       )}
       
       {currentPage === 'quiz' && (

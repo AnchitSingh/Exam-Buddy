@@ -177,6 +177,121 @@ Now return the final JSON for ${distributionText} about the content above.
 
 
 
+// Story prompt for Gemma 3n that outputs rich Markdown
+// If the runtime already applies a chat template, pass only the inner user content.
+// Otherwise, keep the <start_of_turn> markers below.
+
+export function buildStoryPrompt({ extractedSource, config }) {
+  const { text = '', title = '' } = extractedSource || {};
+  const {
+    storyStyle = 'Simple Words',
+    topic = (title || 'the selected topic'),
+  } = config || {};
+
+  const safeSource = trimAndCap(String(text || ''), 8000);
+
+  // Normalize style to a compact guide small models can follow
+  const norm = (s) => String(s || '').toLowerCase().trim();
+  const styleKey = norm(storyStyle);
+
+  const STYLE_GUIDES = {
+    'simple words': [
+      'Use everyday words and short sentences.',
+      'Explain any jargon the first time it appears.',
+      'Prefer concrete examples and analogies.',
+      'Friendly, clear tone; avoid rhetorical questions.',
+    ].join(' '),
+
+    'grandpa': [
+      'Warm, conversational tone like a grandparent telling a story.',
+      'Use gentle anecdotes and cozy imagery.',
+      'Keep it kind and steady; explain terms as you go.',
+      'End each section with a calm takeaway line.',
+    ].join(' '),
+
+    'deep dive': [
+      'Structured, step-by-step explanation with precise terms.',
+      'Define key concepts, then build causal links.',
+      'Use 1–2 compact examples; keep math informal unless essential.',
+      'Cohesive paragraphs; minimal fluff, maximum clarity.',
+    ].join(' '),
+
+    'eli5': [
+      'Very short sentences and super simple words.',
+      'Use playful comparisons and everyday objects.',
+      'No jargon; if needed, explain with a toy example.',
+      'Cheerful tone; keep paragraphs tiny.',
+    ].join(' '),
+  };
+
+  const guide = STYLE_GUIDES[styleKey] || STYLE_GUIDES['simple words'];
+
+  // Fixed Markdown layout the model must follow
+  const MD_LAYOUT = `
+# {{title}}
+
+> {{hook}}
+
+## Overview
+{{overview}}
+
+## Story
+{{story_paragraphs}}
+
+## Key ideas
+- {{idea1}}
+- {{idea2}}
+- {{idea3}}
+- {{idea4?}}
+
+## Real‑world analogy
+{{analogy}}
+
+## Recap
+- {{recap1}}
+- {{recap2}}
+- {{recap3}}
+`.trim();
+
+  return `<start_of_turn>user
+Act as a storyteller‑teacher. Write an engaging explanation as rich Markdown. Do NOT ask questions and do NOT generate a quiz.
+
+TOPIC:
+"${topic}"
+
+STYLE:
+"${storyStyle}"
+
+STYLE_GUIDE:
+${guide}
+
+SOURCE_CONTENT (context only — prioritize facts and useful ideas; ignore irrelevant parts):
+"${safeSource}"
+
+OUTPUT REQUIREMENTS:
+- Return Markdown ONLY using this exact section order and headings:
+  1) "# Title"
+  2) blockquote hook (one sentence)
+  3) "## Overview"
+  4) "## Story"
+  5) "## Key ideas" (3–4 bullets)
+  6) "## Real‑world analogy"
+  7) "## Recap" (3 bullets)
+- Keep sentences tight; avoid long walls of text.
+- Use minimal emphasis (italics or bold) sparingly; no tables or code blocks unless absolutely necessary.
+- No questions, no lists outside "Key ideas" and "Recap".
+- Length target: 600–900 words.
+
+MARKDOWN_LAYOUT_TEMPLATE (follow the structure, fill the placeholders naturally; do not show placeholders):
+${MD_LAYOUT}
+
+Begin the Markdown now.
+<end_of_turn>
+<start_of_turn>model
+`;
+}
+
+
 export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
   const questionText =
     question?.text ||

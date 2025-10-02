@@ -1,4 +1,4 @@
-import { buildQuizPrompt, buildEvaluatePrompt, buildRecommendPrompt, buildOverallStreamingPrompt, buildRecommendationsPrompt } from './prompts';
+import { buildQuizPrompt, buildStoryPrompt, buildEvaluatePrompt, buildRecommendPrompt, buildOverallStreamingPrompt, buildRecommendationsPrompt } from './prompts';
 import { validateQuiz, validateEvaluation, validateRecommendations } from './schema';
 
 let session = null;
@@ -211,6 +211,11 @@ export async function streamQuiz({ extractedSource, config }) {
   return await promptStreaming(prompt);
 }
 
+export async function streamStory({ extractedSource, config }) {
+  const prompt = buildStoryPrompt({ extractedSource, config });
+  return await promptStreaming(prompt);
+}
+
 export async function evaluateSubjectiveJSON({ question, canonical, userAnswer }) {
   const prompt = buildEvaluatePrompt({ question, canonical, userAnswer });
   const schema = {
@@ -311,6 +316,7 @@ export default {
   available,
   generateQuizJSON,
   streamQuiz,
+  streamStory,
   evaluateSubjectiveJSON,
   recommendPlanJSON,
   promptStreaming,

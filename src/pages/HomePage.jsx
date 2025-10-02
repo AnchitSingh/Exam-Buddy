@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import QuizSetupModal from '../components/quiz/QuizSetupModal';
+import StorySetupModal from '../components/story/StorySetupModal';
 import GlobalHeader from '../components/ui/GlobalHeader';
 import examBuddyAPI from '../services/api';
 import { extractFromCurrentPage, extractFromPDFResult, normalizeManualTopic } from '../utils/contentExtractor';
@@ -167,6 +168,7 @@ const EmptyState = ({ icon, title, message }) => (
 // Main Component
 const HomePage = ({ onNavigate, navigationData }) => {
     const [showQuizSetup, setShowQuizSetup] = useState(false);
+    const [showStorySetup, setShowStorySetup] = useState(false);
     const [userProfile, setUserProfile] = useState(null);
     const [pausedQuizzes, setPausedQuizzes] = useState([]);
     const [bookmarks, setBookmarks] = useState([]);
@@ -177,6 +179,9 @@ const HomePage = ({ onNavigate, navigationData }) => {
     useEffect(() => {
         if (navigationData?.openQuizSetup) {
             setShowQuizSetup(true);
+        }
+        if (navigationData?.openStorySetup) {
+            setShowStorySetup(true);
         }
     }, [navigationData]);
 
@@ -238,6 +243,11 @@ const HomePage = ({ onNavigate, navigationData }) => {
     const handleStartQuiz = (config) => {
         setShowQuizSetup(false);
         onNavigate('quiz-loading', { config });
+    };
+
+    const handleStartStory = (config) => {
+        setShowStorySetup(false);
+        onNavigate('story-loading', { config });
     };
 
     const handleContinueQuiz = (quizId) => {
@@ -325,7 +335,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
                         {/* Subtle Recommendation */}
                         <div className="text-center animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
                             <button
-                                onClick={() => setShowQuizSetup(true)}
+                                onClick={() => setShowStorySetup(true)}
                                 className="text-amber-600 hover:text-amber-700 font-medium transition-colors duration-300 inline-flex items-center group"
                             >
                                 <span>Learn using Stories</span>
@@ -414,6 +424,13 @@ const HomePage = ({ onNavigate, navigationData }) => {
                     isOpen={showQuizSetup} // Don't show if progress tracker is active
                     onClose={() => setShowQuizSetup(false)}
                     onStartQuiz={handleStartQuiz}
+                    selectionText={navigationData?.selectionText}
+                />
+
+                <StorySetupModal
+                    isOpen={showStorySetup}
+                    onClose={() => setShowStorySetup(false)}
+                    onStartStory={handleStartStory}
                     selectionText={navigationData?.selectionText}
                 />
                 
