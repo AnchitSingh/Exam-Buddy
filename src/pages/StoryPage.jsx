@@ -97,7 +97,7 @@ const StoryPage = ({ storyContent, initialConfig, isStreaming, onNavigate }) => 
 
           {/* Story Content - Direct Display */}
           <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-white/40 shadow-lg p-6 sm:p-8">
-            <div className="prose prose-slate prose-lg max-w-none">
+            <div className="prose prose-slate max-w-none story-content">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -112,16 +112,16 @@ const StoryPage = ({ storyContent, initialConfig, isStreaming, onNavigate }) => 
                     <h3 className="text-xl font-semibold text-slate-800 mt-5 mb-2 first:mt-0" {...props} />
                   ),
                   p: ({ node, ...props }) => (
-                    <p className="text-slate-700 leading-relaxed mb-4 last:mb-0" {...props} />
+                    <p className="text-base text-slate-700 leading-relaxed mb-4 last:mb-0" {...props} />
                   ),
                   ul: ({ node, ...props }) => (
-                    <ul className="list-disc list-inside space-y-2 text-slate-700 my-4" {...props} />
+                    <ul className="list-disc list-inside space-y-2 text-base text-slate-700 my-4" {...props} />
                   ),
                   ol: ({ node, ...props }) => (
-                    <ol className="list-decimal list-inside space-y-2 text-slate-700 my-4" {...props} />
+                    <ol className="list-decimal list-inside space-y-2 text-base text-slate-700 my-4" {...props} />
                   ),
                   li: ({ node, ...props }) => (
-                    <li className="text-slate-700 leading-relaxed" {...props} />
+                    <li className="text-base text-slate-700 leading-relaxed" {...props} />
                   ),
                   blockquote: ({ node, ...props }) => (
                     <blockquote className="border-l-4 border-amber-400 pl-4 py-2 my-4 italic text-slate-600 bg-amber-50/50 rounded-r-lg" {...props} />
@@ -269,7 +269,28 @@ const StoryPage = ({ storyContent, initialConfig, isStreaming, onNavigate }) => 
           </div>
         </div>
       </div>
-    </div>
+    <style>{`
+      .story-content p,
+      .story-content li {
+        font-size: 1rem !important;
+      }
+      
+      .story-content ul,
+      .story-content ol {
+        font-size: 1rem !important;
+      }
+      
+      .story-content blockquote {
+        font-size: 1rem !important;
+      }
+      
+      .story-content h4,
+      .story-content h5,
+      .story-content h6 {
+        font-size: 1rem !important;
+      }
+    `}</style>
+  </div>
   );
 };
 
