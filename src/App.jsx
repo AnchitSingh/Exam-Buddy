@@ -18,6 +18,7 @@ const App = () => {
   });
   
   const [navigationData, setNavigationData] = useState(null); // Store navigation data
+  const [storyContent, setStoryContent] = useState(null); // Store streaming story content
   const [hasInitialized, setHasInitialized] = useState(false);
 
   React.useEffect(() => {
@@ -53,6 +54,14 @@ const App = () => {
       console.log('Marked user as visited');
     }
     
+    // Handle story streaming updates without changing pages
+    if (currentPage === 'story' && page === 'story' && data?.storyContent) {
+      // Update story content without changing page if navigating to same page with new content
+      setStoryContent(data.storyContent);
+      setNavigationData(prev => ({...prev, ...data}));
+      return;
+    }
+
     // Store navigation data
     setNavigationData(data);
     setCurrentPage(page);
@@ -127,7 +136,12 @@ const App = () => {
       )}
 
       {currentPage === 'story' && (
-        <StoryPage onNavigate={navigateTo} storyContent={navigationData?.storyContent} />
+        <StoryPage 
+          onNavigate={navigateTo} 
+          storyContent={storyContent || navigationData?.storyContent} 
+          initialConfig={navigationData?.storyConfig}
+          isStreaming={navigationData?.isStreaming}
+        />
       )}
       
       {currentPage === 'quiz' && (

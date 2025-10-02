@@ -5,12 +5,21 @@ import GlobalHeader from '../components/ui/GlobalHeader';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
 import Button from '../components/ui/Button';
 
-const StoryPage = ({ storyContent, onNavigate }) => {
-  const { title, content, style } = storyContent || {};
+const StoryPage = ({ storyContent, initialConfig, isStreaming, onNavigate }) => {
+  const [currentStoryContent, setCurrentStoryContent] = useState(storyContent || { title: initialConfig?.topic, content: '', style: initialConfig?.storyStyle });
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef(null);
   const contentEndRef = useRef(null);
+
+  // Update content when storyContent prop changes
+  useEffect(() => {
+    if (storyContent) {
+      setCurrentStoryContent(storyContent);
+    }
+  }, [storyContent]);
+
+  const { title, content, style } = currentStoryContent;
 
   useEffect(() => {
     // Auto-resize textarea
@@ -19,6 +28,13 @@ const StoryPage = ({ storyContent, onNavigate }) => {
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
     }
   }, [followUpQuestion]);
+
+  // Scroll to bottom when content updates during streaming
+  useEffect(() => {
+    if (isStreaming && contentEndRef.current) {
+      contentEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [content, isStreaming]);
 
   const handleSendFollowUp = async () => {
     if (!followUpQuestion.trim() || isSubmitting) return;
@@ -41,12 +57,13 @@ const StoryPage = ({ storyContent, onNavigate }) => {
     }
   };
 
-  if (!storyContent) {
+  if (!currentStoryContent.content && isStreaming) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-amber-50/30">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading story...</p>
+          <p className="text-slate-600">Generating your story in real-time...</p>
+          <p className="text-slate-500 text-sm mt-2">Sit back and watch as we craft your personalized explanation!</p>
         </div>
       </div>
     );

@@ -98,14 +98,14 @@ const StoryLoadingPage = ({ onNavigate, navigationData }) => {
 
                 // Step 2: Extracting
                 setCurrentStep(1);
+                const progressCallback = (progress) => {
+                    setStreamMessage(progress.message || '');
+                };
+                
                 switch (config.sourceType) {
                     case SOURCE_TYPE.PAGE:
                         // Check if the selected tab is a PDF
                         if (config.selectedTab && config.selectedTab.url && config.selectedTab.url.toLowerCase().endsWith('.pdf')) {
-                            const progressCallback = (progress) => {
-                                setStreamMessage(progress.message || '');
-                            };
-                            
                             try {
                                 console.log('Extracting PDF from tab URL:', config.selectedTab.url);
                                 const { text, meta } = await extractTextFromPDF(config.selectedTab.url);
@@ -117,17 +117,14 @@ const StoryLoadingPage = ({ onNavigate, navigationData }) => {
                                 console.log('PDF extraction from tab completed successfully');
                             } catch (error) {
                                 console.error('Failed to extract PDF from tab URL:', error);
-                                extractedSource = await extractFromCurrentPage(config);
+                                extractedSource = await extractFromCurrentPage(config, progressCallback);
                             }
                         } else {
-                            extractedSource = await extractFromCurrentPage(config);
+                            extractedSource = await extractFromCurrentPage(config, progressCallback);
                         }
                         break;
                     case SOURCE_TYPE.PDF:
                         if (config.pdfFile) {
-                            const progressCallback = (progress) => {
-                                setStreamMessage(progress.message || '');
-                            };
                             const { text, meta } = await extractTextFromPDF(config.pdfFile);
                             extractedSource = await extractFromPDFResult({
                                 text,
@@ -139,8 +136,16 @@ const StoryLoadingPage = ({ onNavigate, navigationData }) => {
                     case SOURCE_TYPE.SELECTION:
                     case SOURCE_TYPE.MANUAL:
                     default:
-                        extractedSource = normalizeManualTopic(config.topic, config.context);
+                        extractedSource = normalizeManualTopic(config.topic, config.context, config, progressCallback);
                         break;
+                }
+                
+                // Update stream message to show extraction statistics
+                if (extractedSource) {
+                    const chunkCount = extractedSource.chunks ? extractedSource.chunks.length : 0;
+                    const wordCount = extractedSource.text ? extractedSource.text.split(/\s+/).length : 0;
+                    const charCount = extractedSource.text ? extractedSource.text.length : 0;
+                    setStreamMessage(`(${chunkCount} chunks, ${wordCount} words, ${charCount} chars)`);
                 }
 
                 if (!extractedSource || !extractedSource.text) {
@@ -162,22 +167,44 @@ const StoryLoadingPage = ({ onNavigate, navigationData }) => {
                     throw new Error(response.error || "Failed to generate story.");
                 }
 
+                // Stream content in real-time, transitioning to StoryPage only after first chunk
                 let storyContent = '';
                 let chunkCount = 0;
+                let isFirstChunk = true;
                 for await (const chunk of response.data) {
                     storyContent += chunk;
                     chunkCount++;
                     setStreamMessage(`(Received ${chunkCount} story segments...)`);
+                    
+                    if (isFirstChunk) {
+                        // Navigate to StoryPage with first chunk of content
+                        onNavigate('story', { 
+                            storyConfig: finalStoryConfig,
+                            storyContent: { 
+                                title: finalStoryConfig.topic, 
+                                content: storyContent, 
+                                style: finalStoryConfig.storyStyle 
+                            },
+                            isStreaming: true
+                        });
+                        isFirstChunk = false;
+                    } else {
+                        // Update content in real-time after first chunk
+                        onNavigate('story', { 
+                            storyConfig: finalStoryConfig,
+                            storyContent: { 
+                                title: finalStoryConfig.topic, 
+                                content: storyContent, 
+                                style: finalStoryConfig.storyStyle 
+                            },
+                            isStreaming: true
+                        });
+                    }
                 }
 
-                // Navigate with the final story data
-                onNavigate('story', { 
-                    storyContent: { 
-                        title: finalStoryConfig.topic, 
-                        content: storyContent, 
-                        style: finalStoryConfig.storyStyle 
-                    } 
-                });
+                // After all content is streamed, delay slightly before indicating completion
+                // This ensures all content updates are processed
+                await new Promise(resolve => setTimeout(resolve, 100));
 
             } catch (error) {
                 console.error('Failed to prepare story:', error);
