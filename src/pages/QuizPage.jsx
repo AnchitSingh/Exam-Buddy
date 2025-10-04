@@ -737,6 +737,20 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                   <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-slate-900 leading-relaxed">
                     {currentQuestion.question}
                   </h2>
+                  
+                  {/* Tags Display - Show if tags exist */}
+                  {currentQuestion.tags && currentQuestion.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {currentQuestion.tags.map((tag, index) => (
+                        <span 
+                          key={index} 
+                          className="px-2.5 py-1 text-xs font-medium bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 rounded-full border border-blue-200/50"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center space-x-1 ml-4">
                   <button

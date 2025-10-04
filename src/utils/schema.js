@@ -25,6 +25,8 @@ export function validateQuiz(obj) {
     // Optional fields
     if (q.difficulty && !isString(q.difficulty)) return false;
     if (q.subject && !isString(q.subject)) return false;
+    if (q.tags && !isArray(q.tags)) return false;
+    if (q.tags && q.tags.some(tag => !isString(tag))) return false;
   }
   
   return true;

@@ -821,7 +821,8 @@ class ExamBuddyAPI {
         correctAnswer: 'Education',
         explanation: 'Based on the content analysis, the primary purpose appears to be educational.',
         difficulty: config.difficulty || 'medium',
-        subject: config.subject || config.topic || 'General'
+        subject: config.subject || config.topic || 'General',
+        tags: ['purpose', 'content-analysis']
       },
       {
         id: 'q2',
@@ -831,7 +832,8 @@ class ExamBuddyAPI {
         correctAnswer: 'True',
         explanation: 'The content includes technical details and terminology.',
         difficulty: config.difficulty || 'medium',
-        subject: config.subject || config.topic || 'General'
+        subject: config.subject || config.topic || 'General',
+        tags: ['technical-content', 'information']
       }
     ];
 
