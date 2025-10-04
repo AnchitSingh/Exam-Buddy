@@ -1010,6 +1010,20 @@ class ExamBuddyAPI {
       Subjective: { count: 0, correct: 0 }
     };
     
+    // Normalize question type to match expected values
+    const normalizeQuestionType = (type) => {
+      if (!type) return null;
+      
+      const cleanType = String(type).toLowerCase().replace(/[\s/_-]/g, '');
+      
+      if (cleanType.includes('mcq') || cleanType === 'mcq') return 'MCQ';
+      if (cleanType.includes('truefalse') || cleanType.includes('true') || cleanType.includes('false')) return 'TrueFalse';
+      if (cleanType.includes('fillup') || cleanType.includes('fillinblank') || cleanType.includes('fillblank') || cleanType.includes('fitb')) return 'FillUp';
+      if (cleanType.includes('subjective') || cleanType.includes('shortanswer') || cleanType.includes('short')) return 'Subjective';
+      
+      return 'MCQ'; // Default fallback
+    };
+    
     // Process all quiz answers to gather type-specific statistics
     for (const quiz of completedQuizzes) {
       if (!quiz.answers) continue;
@@ -1017,11 +1031,11 @@ class ExamBuddyAPI {
       for (const answer of quiz.answers) {
         if (!answer || !answer.questionType) continue;
         
-        const type = answer.questionType;
-        if (typeData.hasOwnProperty(type)) {
-          typeData[type].count += 1;
+        const normalizedType = normalizeQuestionType(answer.questionType);
+        if (normalizedType && typeData.hasOwnProperty(normalizedType)) {
+          typeData[normalizedType].count += 1;
           if (answer.isCorrect) {
-            typeData[type].correct += 1;
+            typeData[normalizedType].correct += 1;
           }
         }
       }
