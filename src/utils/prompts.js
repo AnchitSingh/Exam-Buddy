@@ -10,25 +10,21 @@ export function buildQuizPrompt({ extractedSource, config }) {
     questionCount = 5,
     difficulty = 'medium',
     questionTypes = ['MCQ'],
+    allowedTags = [],              // NEW: optional whitelist of tags
     immediateFeedback = true
   } = config || {};
 
-  // Use the processed text instead of just the first chunk
-  // The text field contains the full processed content (could be original or summarized)
+  // Use processed text (summarized or original)
   let expandedContent = text || '';
-
-  // If no text is available, fall back to first chunk as a last resort
   if (!expandedContent && chunks?.[0]?.text) {
     expandedContent = chunks[0].text;
   }
-
   if (expandedContent.length < 50) {
     expandedContent = `Topic: ${expandedContent}. Generate questions about this topic using your knowledge.`;
   }
-
   const safeSource = trimAndCap(expandedContent, 5500);
 
-  // Normalize allowed types to a strict set
+  // Normalize types to a strict set Gemma follows reliably
   const normalize = (t) => {
     const s = String(t || '').toLowerCase().replace(/[\s/_-]+/g, '');
     if (s === 'mcq' || s === 'multiplechoice') return 'MCQ';
@@ -37,7 +33,6 @@ export function buildQuizPrompt({ extractedSource, config }) {
     if (s === 'fillup' || s === 'fillintheblank' || s === 'fillintheblankss' || s === 'fillups' || s === 'fitb' || s === 'fillinblank') return 'FillUp';
     return 'MCQ';
   };
-
   const dedup = (arr) => Array.from(new Set(arr));
   const types = dedup((questionTypes || []).map(normalize));
   const finalTypes = types.length ? types : ['MCQ'];
@@ -51,7 +46,7 @@ export function buildQuizPrompt({ extractedSource, config }) {
   }));
   const distributionText = typeDistribution.map(x => `${x.count} ${x.type}`).join(', ');
 
-  // Few-shot examples (only for requested types)
+  // Few-shot examples (only for requested types), now with tags
   const exFillGood = `{
   "id": "exF1",
   "type": "FillUp",
@@ -59,7 +54,8 @@ export function buildQuizPrompt({ extractedSource, config }) {
   "answer": "special relativity",
   "explanation": "Special relativity is built on the postulate that light speed in vacuum is constant.",
   "difficulty": "${difficulty}",
-  "topic": "${title || 'General'}"
+  "topic": "${title || 'General'}",
+  "tags": ["relativity","speed-of-light"]
 }`;
 
   const exFillBadThenFixed = `BAD (do not output this):
@@ -77,7 +73,8 @@ GOOD (corrected form):
   "answer": "velocity",
   "explanation": "Greater relative velocity increases time dilation.",
   "difficulty": "${difficulty}",
-  "topic": "${title || 'General'}"
+  "topic": "${title || 'General'}",
+  "tags": ["relativity","time-dilation"]
 }`;
 
   const exMCQ = `{
@@ -92,7 +89,8 @@ GOOD (corrected form):
   ],
   "explanation": "A queue is first-in, first-out.",
   "difficulty": "${difficulty}",
-  "topic": "${title || 'General'}"
+  "topic": "${title || 'General'}",
+  "tags": ["data-structures","queue"]
 }`;
 
   const exTF = `{
@@ -105,17 +103,19 @@ GOOD (corrected form):
   ],
   "explanation": "Average is quadratic.",
   "difficulty": "${difficulty}",
-  "topic": "${title || 'General'}"
+  "topic": "${title || 'General'}",
+  "tags": ["algorithms","sorting","time-complexity"]
 }`;
 
   const exSubj = `{
   "id": "exS1",
   "type": "Subjective",
-  "question": "Explain spacetime curvature in 30–50 words.",
+  "question": "Explain spacetime curvature in 30-50 words.",
   "answer": "Mass-energy curves spacetime; objects follow geodesics in this curved geometry, producing gravitational effects without invoking a force in the Newtonian sense.",
   "explanation": "Must mention mass-energy, curvature, geodesics.",
   "difficulty": "${difficulty}",
-  "topic": "${title || 'General'}"
+  "topic": "${title || 'General'}",
+  "tags": ["relativity","spacetime","geodesics"]
 }`;
 
   const examples = []
@@ -124,6 +124,10 @@ GOOD (corrected form):
     .concat(finalTypes.includes('TrueFalse') ? [exTF] : [])
     .concat(finalTypes.includes('Subjective') ? [exSubj] : [])
     .join('\n\n');
+
+  const allowedTagText = (allowedTags && allowedTags.length)
+    ? `ALLOWED_TAGS (choose only from these; lowercase kebab-case): ${allowedTags.map(t => `"${String(t).toLowerCase().trim().replace(/\s+/g,'-')}"`).join(', ')}`
+    : `ALLOWED_TAGS: []  // empty means infer 1-3 tags per question from CONTENT headings and key terms`;
 
   return `<start_of_turn>user
 Act as a quiz generator for the following content. Generate educational questions that test understanding of key concepts.
@@ -138,6 +142,9 @@ STRICT REQUIREMENTS:
 - Output ONLY valid JSON. No markdown, no code fences, no prose outside JSON.
 - Use the exact schema below. Do not add or rename properties.
 - Use IDs "q1"..."q${questionCount}" in order.
+- Tagging policy: include "tags": an array of 1-3 short, lowercase, kebab-case tags per question; no duplicates across the same question.
+
+${allowedTagText}
 
 SCHEMA (one JSON object):
 {
@@ -150,9 +157,13 @@ SCHEMA (one JSON object):
       "answer": "for non-MCQ types only",
       "explanation": "brief reason or feedback",
       "difficulty": "${difficulty}",
-      "topic": "${title || 'General'}"
+      "topic": "${title || 'General'}",
+      "tags": ["tag-1","tag-2"]
     }
-  ]
+  ],
+  "metadata": {
+    "tagSet": ["all-unique-tags-used-in-questions"]
+  }
 }
 
 NOTES:
@@ -164,6 +175,11 @@ NOTES:
   - Include EXACTLY one blank placeholder "_____" in "question".
   - NOT include "options".
   - Include a non-empty "answer" string (canonical fill).
+- Tags:
+  - 1-3 tags per question.
+  - Lowercase kebab-case (e.g., "first-law", "entropy", "phase-change").
+  - If ALLOWED_TAGS is non-empty, use only from that list; otherwise infer from CONTENT.
+  - Populate metadata.tagSet with all unique tags used.
 
 EXAMPLES (format only; content is illustrative):
 ${examples}
@@ -212,7 +228,7 @@ export function buildStoryPrompt({ extractedSource, config }) {
     'deep dive': [
       'Structured, step-by-step explanation with precise terms.',
       'Define key concepts, then build causal links.',
-      'Use 1–2 compact examples; keep math informal unless essential.',
+      'Use 1-2 compact examples; keep math informal unless essential.',
       'Cohesive paragraphs; minimal fluff, maximum clarity.',
     ].join(' '),
 
@@ -274,13 +290,13 @@ OUTPUT REQUIREMENTS:
   2) blockquote hook (one sentence)
   3) "## Overview"
   4) "## Story"
-  5) "## Key ideas" (3–4 bullets)
+  5) "## Key ideas" (3-4 bullets)
   6) "## Real‑world analogy"
   7) "## Recap" (3 bullets)
 - Keep sentences tight; avoid long walls of text.
 - Use minimal emphasis (italics or bold) sparingly; no tables or code blocks unless absolutely necessary.
 - No questions, no lists outside "Key ideas" and "Recap".
-- Length target: 600–900 words.
+- Length target: 600-900 words.
 
 MARKDOWN_LAYOUT_TEMPLATE (follow the structure, fill the placeholders naturally; do not show placeholders):
 ${MD_LAYOUT}
@@ -321,10 +337,10 @@ export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
   - Partial credit allowed if some key ideas are present.
   - If the student answer is blank/irrelevant, set isCorrect=false and score=0.0.
   - Scoring bands:
-    - 0.90–1.00: fully correct and complete
-    - 0.70–0.85: mostly correct; minor gaps
-    - 0.40–0.65: partially correct; key gaps
-    - 0.10–0.35: minimal understanding
+    - 0.90-1.00: fully correct and complete
+    - 0.70-0.85: mostly correct; minor gaps
+    - 0.40-0.65: partially correct; key gaps
+    - 0.10-0.35: minimal understanding
     - 0.00: incorrect/off-topic/blank
   
   OUTPUT:
@@ -334,9 +350,9 @@ export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
     "score": number,           // 0.0 to 1.0 inclusive, at most two decimals
     "feedback": {
       "message": "string",     // brief, <= 160 chars
-      "explanation": "string"  // 1–3 sentences, concise
+      "explanation": "string"  // 1-3 sentences, concise
     },
-    "explanation": "string"    // 1–2 sentences: why correct/incorrect
+    "explanation": "string"    // 1-2 sentences: why correct/incorrect
   }
   - Do NOT add fields. Do NOT rename fields. Do NOT include examples in the output.
   
@@ -414,7 +430,7 @@ Subject: ${subject}
 Title: ${title}
 Difficulty: ${difficulty}
 
-Write 5–7 short paragraphs or bullet-style lines covering:
+Write 5-7 short paragraphs or bullet-style lines covering:
 - Overall score and performance profile.
 - 3 strengths (what went well).
 - 3 weaknesses (what to improve).
