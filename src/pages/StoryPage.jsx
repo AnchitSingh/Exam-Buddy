@@ -7,9 +7,6 @@ import Button from '../components/ui/Button';
 
 const StoryPage = ({ storyContent, initialConfig, isStreaming, onNavigate }) => {
   const [currentStoryContent, setCurrentStoryContent] = useState(storyContent || { title: initialConfig?.topic, content: '', style: initialConfig?.storyStyle });
-  const [followUpQuestion, setFollowUpQuestion] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const textareaRef = useRef(null);
   const contentEndRef = useRef(null);
 
   // Update content when storyContent prop changes
@@ -21,41 +18,12 @@ const StoryPage = ({ storyContent, initialConfig, isStreaming, onNavigate }) => 
 
   const { title, content, style } = currentStoryContent;
 
-  useEffect(() => {
-    // Auto-resize textarea
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-    }
-  }, [followUpQuestion]);
-
   // Scroll to bottom when content updates during streaming
   useEffect(() => {
     if (isStreaming && contentEndRef.current) {
       contentEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [content, isStreaming]);
-
-  const handleSendFollowUp = async () => {
-    if (!followUpQuestion.trim() || isSubmitting) return;
-    
-    setIsSubmitting(true);
-    // TODO: Implement follow-up API call
-    console.log('Sending follow-up:', followUpQuestion);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setFollowUpQuestion('');
-      setIsSubmitting(false);
-    }, 1000);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendFollowUp();
-    }
-  };
 
   if (!currentStoryContent.content && isStreaming) {
     return (
@@ -172,103 +140,6 @@ const StoryPage = ({ storyContent, initialConfig, isStreaming, onNavigate }) => 
           <div ref={contentEndRef} />
         </div>
       </main>
-
-      {/* Floating Island Input Area */}
-      <div className="fixed bottom-0 left-0 right-0 pointer-events-none">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
-          <div className="pointer-events-auto bg-white/50 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/40 p-5 sm:p-6 transition-all duration-300 hover:shadow-amber-200/50"
-               style={{
-                 boxShadow: '0 20px 60px -15px rgba(0, 0, 0, 0.15), 0 10px 25px -10px rgba(251, 191, 36, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.6)',
-               }}>
-            
-            {/* Quick Suggestions */}
-            <div className="mb-4 flex flex-wrap gap-2">
-              <button
-                onClick={() => setFollowUpQuestion('Can you explain this in simpler terms?')}
-                className="group px-4 py-2 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-amber-700 text-xs font-medium rounded-full border border-amber-200/50 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
-              >
-                <span className="flex items-center gap-1.5">
-                  <span className="group-hover:scale-110 transition-transform">✨</span>
-                  Simplify this
-                </span>
-              </button>
-              <button
-                onClick={() => setFollowUpQuestion('Can you give me more details?')}
-                className="group px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 text-xs font-medium rounded-full border border-blue-200/50 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
-              >
-                <span className="flex items-center gap-1.5">
-                  <span className="group-hover:scale-110 transition-transform">🔍</span>
-                  More details
-                </span>
-              </button>
-              <button
-                onClick={() => setFollowUpQuestion('Can you give me an example?')}
-                className="group px-4 py-2 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-700 text-xs font-medium rounded-full border border-purple-200/50 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
-              >
-                <span className="flex items-center gap-1.5">
-                  <span className="group-hover:scale-110 transition-transform">💡</span>
-                  Give example
-                </span>
-              </button>
-            </div>
-
-            {/* Input Container */}
-            <div className="flex gap-3 items-end">
-              <div className="flex-1 relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-400/20 to-orange-400/20 rounded-2xl blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"></div>
-                <textarea
-                  ref={textareaRef}
-                  value={followUpQuestion}
-                  onChange={(e) => setFollowUpQuestion(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask a follow-up question..."
-                  className="relative w-full px-5 py-4 pr-16 bg-white/90 border-2 border-slate-200 rounded-2xl resize-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100/50 focus:bg-white transition-all duration-200 max-h-32 overflow-y-auto placeholder:text-slate-400 shadow-inner"
-                  rows={1}
-                  style={{ minHeight: '56px' }}
-                />
-                <div className="absolute right-4 bottom-4 flex items-center gap-2">
-                  <div className="hidden sm:flex items-center gap-1 px-2 py-1 bg-slate-100/80 rounded-lg backdrop-blur-sm">
-                    <kbd className="text-[10px] font-semibold text-slate-500 font-mono">↵</kbd>
-                  </div>
-                </div>
-              </div>
-              
-              <Button
-                onClick={handleSendFollowUp}
-                disabled={!followUpQuestion.trim() || isSubmitting}
-                loading={isSubmitting}
-                className="relative bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-4 h-[56px] rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:shadow-lg group"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-400 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity"></div>
-                {isSubmitting ? (
-                  <svg className="relative w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <svg className="relative w-[22px] h-[22px] transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" color="#ffffff" fill="none">
-                    <path d="M21.0477 3.05293C18.8697 0.707363 2.48648 6.4532 2.50001 8.551C2.51535 10.9299 8.89809 11.6617 10.6672 12.1581C11.7311 12.4565 12.016 12.7625 12.2613 13.8781C13.3723 18.9305 13.9301 21.4435 15.2014 21.4996C17.2278 21.5892 23.1733 5.342 21.0477 3.05293Z" stroke="#ffffff" strokeWidth="1.5"></path>
-                    <path d="M11.5 12.5L15 9" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                  </svg>
-                )}
-              </Button>
-            </div>
-
-            {/* Helper Text */}
-            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>
-                Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded font-mono text-[10px] text-slate-600 border border-slate-200">Enter</kbd> to send
-                <span className="hidden sm:inline">
-                  , <kbd className="px-1.5 py-0.5 bg-slate-100 rounded font-mono text-[10px] text-slate-600 border border-slate-200">Shift + Enter</kbd> for new line
-                </span>
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
     <style>{`
       .story-content p,
       .story-content li {
