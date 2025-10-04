@@ -130,6 +130,13 @@ const getIcon = (iconName, isActive = false) => {
                     <path d="M9.5 9L9.5 15M14.5 9V15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
                 </svg>
             );
+        case 'stats':
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" color="#000000" fill="none">
+                    <path d="M3 3V19H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"></path>
+                    <path d="M7 15L7 11L10 8L13 11L17 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
+                </svg>
+            );
         case 'plus':
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" color="#000000" fill="none">
@@ -163,6 +170,7 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
         { id: 'home', label: 'Home', icon: 'home', action: () => onNavigate('home') },
         { id: 'bookmarks', label: 'Bookmarks', icon: 'bookmark', action: () => onNavigate('bookmarks') },
         { id: 'paused', label: 'Paused', icon: 'pause', action: () => onNavigate('paused') },
+        { id: 'stats', label: 'Stats', icon: 'stats', action: () => onNavigate('stats') },
         { id: 'quiz', label: 'New Quiz', icon: 'plus', action: () => onNavigate('home', { openQuizSetup: true }) },
     ];
 

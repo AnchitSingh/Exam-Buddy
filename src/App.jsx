@@ -8,6 +8,7 @@ import PausedQuizzesPage from './pages/PausedQuizzesPage';
 import QuizLoadingPage from './pages/QuizLoadingPage';
 import StoryLoadingPage from './pages/StoryLoadingPage';
 import StoryPage from './pages/StoryPage';
+import GlobalStatsPage from './pages/GlobalStatsPage';
 import QuizErrorBoundary from './pages/QuizErrorBoundary';
 import './index.css';
 
@@ -159,6 +160,10 @@ const App = () => {
       
       {currentPage === 'paused' && (
         <PausedQuizzesPage onNavigate={navigateTo} />
+      )}
+      
+      {currentPage === 'stats' && (
+        <GlobalStatsPage onNavigate={navigateTo} />
       )}
     </>
   );

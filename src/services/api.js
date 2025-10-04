@@ -18,6 +18,7 @@ class ExamBuddyAPI {
     this.studyAnalytics = new Map();
     this.bookmarks = new Map();
     this.pausedQuizzes = new Map();
+    this.topicAttempts = new Map(); // Track topic performance
   }
 
   async _loadData() {
@@ -30,14 +31,16 @@ class ExamBuddyAPI {
             evaluationHistory,
             studyAnalytics,
             bookmarks,
-            pausedQuizzes
+            pausedQuizzes,
+            topicAttempts
         ] = await Promise.all([
             storage.get('activeQuizzes', []),
             storage.get('quizProgress', []),
             storage.get('evaluationHistory', []),
             storage.get('studyAnalytics', []),
             storage.get('bookmarks', []),
-            storage.get('pausedQuizzes', [])
+            storage.get('pausedQuizzes', []),
+            storage.get('topicAttempts', [])
         ]);
 
         this.activeQuizzes = new Map(activeQuizzes);
@@ -46,6 +49,7 @@ class ExamBuddyAPI {
         this.studyAnalytics = new Map(studyAnalytics);
         this.bookmarks = new Map(bookmarks);
         this.pausedQuizzes = new Map(pausedQuizzes);
+        this.topicAttempts = new Map(topicAttempts);
 
         this._isDataLoaded = true;
         console.log('✅ Persistent data loaded into API state.');
@@ -615,16 +619,19 @@ class ExamBuddyAPI {
         quizId,
         totalQuestions: quiz?.questions?.length || 0,
         answeredQuestions: answers?.length || 0,
-        score: answers?.filter(a => a.isCorrect).length || 0,
-        totalScore: answers?.reduce((sum, a) => sum + (a.score || (a.isCorrect ? 1 : 0)), 0) || 0,
+        score: answers?.filter(a => a && a.isCorrect).length || 0,
+        totalScore: answers?.reduce((sum, a) => sum + (a?.score || (a?.isCorrect ? 1 : 0)), 0) || 0,
         timeSpent: 0,
         completedAt: new Date().toISOString(),
         answers: answers || []
       };
       
       results.percentage = quiz?.questions?.length > 0 
-        ? Math.round((results.correctAnswers / quiz.questions.length) * 100)
+        ? Math.round((results.score / quiz.questions.length) * 100)
         : 0;
+        
+      // Track topic performance from answers and associated questions
+      await this._trackTopicPerformance(answers, quiz);
         
       // Store results
       this.quizProgress.set(quizId, {
@@ -678,6 +685,397 @@ class ExamBuddyAPI {
         data: null
       };
     }
+  }
+
+  // Track topic performance for each question attempt
+  async _trackTopicPerformance(answers, quiz) {
+    if (!answers || !quiz || !quiz.questions) return;
+
+    try {
+      for (let i = 0; i < answers.length; i++) {
+        const answer = answers[i];
+        const question = quiz.questions[i];
+        
+        if (!answer || !question) continue;
+
+        // Check if question has tags (from the updated prompt system)
+        const tags = question.tags || [];
+        
+        for (const tag of tags) {
+          const topicKey = tag.toLowerCase().trim();
+          if (!topicKey) continue;
+
+          // Get existing topic data or create new
+          let topicData = this.topicAttempts.get(topicKey) || {
+            attempts: 0,
+            correct: 0,
+            totalScore: 0,
+            accuracyHistory: [],
+            difficultyHistory: [],
+            timestamps: []
+          };
+
+          // Update topic statistics
+          topicData.attempts += 1;
+          if (answer.isCorrect) {
+            topicData.correct += 1;
+          }
+          topicData.totalScore += answer.score || (answer.isCorrect ? 1 : 0);
+          
+          // Track accuracy history with timestamp
+          const accuracy = (topicData.correct / topicData.attempts) * 100;
+          topicData.accuracyHistory.push({
+            accuracy,
+            date: new Date().toISOString(),
+            isCorrect: answer.isCorrect
+          });
+          
+          // Track difficulty if available
+          if (question.difficulty) {
+            topicData.difficultyHistory.push({
+              difficulty: question.difficulty,
+              isCorrect: answer.isCorrect,
+              date: new Date().toISOString()
+            });
+          }
+          
+          topicData.timestamps.push(new Date().toISOString());
+
+          // Keep only last 20 attempts to prevent unlimited growth
+          if (topicData.accuracyHistory.length > 20) {
+            topicData.accuracyHistory = topicData.accuracyHistory.slice(-20);
+          }
+          if (topicData.difficultyHistory.length > 20) {
+            topicData.difficultyHistory = topicData.difficultyHistory.slice(-20);
+          }
+          if (topicData.timestamps.length > 20) {
+            topicData.timestamps = topicData.timestamps.slice(-20);
+          }
+
+          // Update in map
+          this.topicAttempts.set(topicKey, topicData);
+        }
+      }
+
+      // Save updated topic attempts
+      await storage.set('topicAttempts', Array.from(this.topicAttempts.entries()));
+    } catch (error) {
+      console.error('Error tracking topic performance:', error);
+    }
+  }
+
+  // Calculate weighted topic score considering difficulty and recency
+  _calculateTopicWeightedScore(topicData) {
+    if (!topicData || topicData.attempts === 0) return 0;
+
+    let totalWeightedScore = 0;
+    let totalWeight = 0;
+
+    // Calculate weighted score based on accuracy history
+    for (let i = 0; i < topicData.accuracyHistory.length; i++) {
+      const attempt = topicData.accuracyHistory[i];
+      const date = new Date(attempt.date);
+      const daysSince = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
+      
+      // Base weight
+      let weight = 1;
+      
+      // Difficulty factor (if available in difficultyHistory)
+      if (topicData.difficultyHistory[i]) {
+        switch(topicData.difficultyHistory[i].difficulty) {
+          case 'hard': weight *= 1.5; break;
+          case 'medium': weight *= 1.2; break;
+          default: weight *= 1.0; break;
+        }
+      }
+      
+      // Recency factor (more recent attempts have higher weight)
+      const recencyFactor = Math.max(0.5, 1.0 - (daysSince * 0.02)); // Slight decay
+      weight *= recencyFactor;
+      
+      const attemptScore = attempt.isCorrect ? 1 : 0;
+      totalWeightedScore += attemptScore * weight;
+      totalWeight += weight;
+    }
+
+    return totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
+  }
+
+  // Calculate topic trend (improving, declining, stable)
+  _calculateTopicTrend(topicData) {
+    if (!topicData || topicData.accuracyHistory.length < 2) {
+      return 'stable';
+    }
+
+    // Get the last 5 attempts (or all if less than 5)
+    const recentAttempts = topicData.accuracyHistory.slice(-5);
+    
+    if (recentAttempts.length < 2) return 'stable';
+    
+    // Calculate trend based on last few attempts
+    const recentAccuracies = recentAttempts.map(attempt => attempt.isCorrect ? 1 : 0);
+    const firstHalf = recentAccuracies.slice(0, Math.ceil(recentAccuracies.length/2));
+    const secondHalf = recentAccuracies.slice(Math.ceil(recentAccuracies.length/2));
+    
+    const avgFirst = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+    const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+    
+    if (avgSecond > avgFirst + 0.1) return 'improving';
+    if (avgSecond < avgFirst - 0.1) return 'declining';
+    return 'stable';
+  }
+
+  // Get global statistics for the GlobalStatsPage
+  async getGlobalStats(timeRange = 'all') {
+    await this._loadData();
+    
+    try {
+      // Get all completed quizzes
+      const completedQuizzes = Array.from(this.quizProgress.values()).filter(quiz => quiz.completed);
+      
+      // Filter by time range if specified
+      let filteredQuizzes = completedQuizzes;
+      if (timeRange !== 'all') {
+        const now = new Date();
+        let cutoffDate;
+        
+        if (timeRange === '7d') {
+          cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        } else if (timeRange === '30d') {
+          cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        }
+        
+        if (cutoffDate) {
+          filteredQuizzes = completedQuizzes.filter(quiz => 
+            new Date(quiz.completedAt) >= cutoffDate
+          );
+        }
+      }
+      
+      // Calculate overall statistics
+      let totalQuizzes = 0;
+      let totalQuestions = 0;
+      let totalCorrect = 0;
+      let totalTime = 0;
+      
+      for (const quiz of filteredQuizzes) {
+        totalQuizzes++;
+        totalQuestions += quiz.answers.length;
+        totalCorrect += quiz.answers.filter(a => a && a.isCorrect).length;
+      }
+      
+      // Calculate streaks
+      const streakInfo = await this._getStreakInfo(timeRange);
+      
+      // Calculate question type breakdown
+      const questionTypesBreakdown = await this._getQuestionTypeBreakdown(timeRange);
+      
+      // Get topic performance
+      const topicPerformance = await this._getTopicPerformance(timeRange);
+      
+      const overallAccuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
+      
+      const stats = {
+        totalQuizzes,
+        totalQuestions,
+        overallAccuracy,
+        activeStreak: streakInfo.activeStreak,
+        longestStreak: streakInfo.longestStreak,
+        questionTypesBreakdown,
+        topicPerformance,
+        lastActive: streakInfo.lastActive,
+        totalTimeSpent: totalTime // Placeholder for now
+      };
+      
+      return {
+        success: true,
+        data: stats,
+        error: null
+      };
+    } catch (error) {
+      console.error('Error getting global stats:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+  }
+
+  async _getStreakInfo(timeRange) {
+    // Get all completed quizzes sorted by date
+    const completedQuizzes = Array.from(this.quizProgress.values())
+      .filter(quiz => quiz.completed)
+      .sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt));
+    
+    if (completedQuizzes.length === 0) {
+      return {
+        activeStreak: 0,
+        longestStreak: 0,
+        lastActive: null
+      };
+    }
+    
+    // Calculate streaks based on quiz completion dates
+    let currentStreak = 1;
+    let maxStreak = 1;
+    let lastDate = new Date(completedQuizzes[0].completedAt);
+    lastDate.setHours(0, 0, 0, 0); // Normalize to start of day
+    
+    for (let i = 1; i < completedQuizzes.length; i++) {
+      const quizDate = new Date(completedQuizzes[i].completedAt);
+      quizDate.setHours(0, 0, 0, 0); // Normalize to start of day
+      
+      const diffDays = Math.floor((quizDate - lastDate) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        // Consecutive day
+        currentStreak++;
+      } else if (diffDays > 1) {
+        // Gap in streak
+        maxStreak = Math.max(maxStreak, currentStreak);
+        currentStreak = 1;
+      }
+      // If diffDays === 0, same day, streak continues
+      
+      lastDate = quizDate;
+    }
+    
+    maxStreak = Math.max(maxStreak, currentStreak);
+    
+    // Calculate current streak by looking at recent activity
+    let activeStreak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get most recent completed quiz
+    const recentQuiz = completedQuizzes[completedQuizzes.length - 1];
+    const lastQuizDate = new Date(recentQuiz.completedAt);
+    lastQuizDate.setHours(0, 0, 0, 0);
+    
+    // Check if user was active today or yesterday
+    const daysSinceLast = Math.floor((today - lastQuizDate) / (1000 * 60 * 60 * 24));
+    
+    if (daysSinceLast <= 1) {
+      // If active today or yesterday, calculate actual active streak
+      let tempStreak = 0;
+      let checkDate = new Date(today);
+      
+      // If today has no activity, start with yesterday
+      if (daysSinceLast === 1) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+      
+      // Count backwards consecutive days with activity
+      for (let i = completedQuizzes.length - 1; i >= 0; i--) {
+        const quizDate = new Date(completedQuizzes[i].completedAt);
+        quizDate.setHours(0, 0, 0, 0);
+        
+        if (quizDate.getTime() === checkDate.getTime()) {
+          tempStreak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else if (quizDate.getTime() < checkDate.getTime()) {
+          // Check if it was the previous day (if not, streak breaks)
+          const prevDay = new Date(checkDate);
+          prevDay.setDate(prevDay.getDate() - 1);
+          
+          if (quizDate.getTime() === prevDay.getTime()) {
+            tempStreak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+          } else {
+            break; // Streak broken
+          }
+        }
+      }
+      
+      activeStreak = tempStreak;
+    }
+    
+    return {
+      activeStreak,
+      longestStreak: maxStreak,
+      lastActive: completedQuizzes[completedQuizzes.length - 1].completedAt
+    };
+  }
+
+  async _getQuestionTypeBreakdown(timeRange) {
+    // Get all completed quizzes
+    const completedQuizzes = Array.from(this.quizProgress.values()).filter(quiz => quiz.completed);
+    
+    // Create a map to store type-specific data
+    const typeData = {
+      MCQ: { count: 0, correct: 0 },
+      TrueFalse: { count: 0, correct: 0 },
+      FillUp: { count: 0, correct: 0 },
+      Subjective: { count: 0, correct: 0 }
+    };
+    
+    // Process all quiz answers to gather type-specific statistics
+    for (const quiz of completedQuizzes) {
+      if (!quiz.answers) continue;
+      
+      for (const answer of quiz.answers) {
+        if (!answer || !answer.questionType) continue;
+        
+        const type = answer.questionType;
+        if (typeData.hasOwnProperty(type)) {
+          typeData[type].count += 1;
+          if (answer.isCorrect) {
+            typeData[type].correct += 1;
+          }
+        }
+      }
+    }
+    
+    // Calculate accuracies
+    const result = {};
+    for (const [type, data] of Object.entries(typeData)) {
+      result[type] = {
+        count: data.count,
+        accuracy: data.count > 0 ? (data.correct / data.count) * 100 : 0
+      };
+    }
+    
+    return result;
+  }
+
+  async _getTopicPerformance(timeRange) {
+    const topics = Array.from(this.topicAttempts.entries());
+    
+    const result = {
+      strong: [],
+      moderate: [],
+      weak: []
+    };
+    
+    for (const [topicName, topicData] of topics) {
+      const weightedScore = this._calculateTopicWeightedScore(topicData);
+      const trend = this._calculateTopicTrend(topicData);
+      const accuracy = (topicData.correct / topicData.attempts) * 100;
+      
+      const topicInfo = {
+        name: topicName,
+        accuracy: accuracy,
+        attempts: topicData.attempts,
+        trend: trend
+      };
+      
+      // Categorize based on weighted score (0-1 scale)
+      if (weightedScore >= 0.7) {
+        result.strong.push(topicInfo);
+      } else if (weightedScore >= 0.4) {
+        result.moderate.push(topicInfo);
+      } else {
+        result.weak.push(topicInfo);
+      }
+    }
+    
+    // Sort by accuracy (descending)
+    result.strong.sort((a, b) => b.accuracy - a.accuracy);
+    result.moderate.sort((a, b) => b.accuracy - a.accuracy);
+    result.weak.sort((a, b) => b.accuracy - a.accuracy);
+    
+    return result;
   }
 
   async removeBookmark(questionId) {
@@ -989,7 +1387,8 @@ export const {
   getPausedQuizzes,
   getBookmarks,
   streamQuizFeedback,
-  getQuizRecommendations
+  getQuizRecommendations,
+  getGlobalStats
 } = examBuddyAPI;
 
 export default examBuddyAPI;
