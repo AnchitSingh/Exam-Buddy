@@ -9,8 +9,8 @@ import { extractTextFromPDF } from '../utils/pdfExtractor';
 import { SOURCE_TYPE } from '../utils/messages';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
 
-// Constants
-const RECOMMENDED_TOPICS = ['Advanced React Patterns', 'TypeScript Best Practices', 'System Design'];
+// Empty default topics that will be populated from stats
+const DEFAULT_TOPICS = [];
 
 const SCROLL_CARDS = [
     { id: 1, title: 'Bookmarks', image: 'assets/i6.png', bgColor: 'rgb(233 190 160 / 23%)', scale: 1 },
@@ -173,6 +173,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
     const [pausedQuizzes, setPausedQuizzes] = useState([]);
     const [bookmarks, setBookmarks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [recommendedTopics, setRecommendedTopics] = useState(DEFAULT_TOPICS);
     const [displayContent, setDisplayContent] = useState('continue');
 
 
@@ -183,6 +184,13 @@ const HomePage = ({ onNavigate, navigationData }) => {
         if (navigationData?.openStorySetup) {
             setShowStorySetup(true);
         }
+        // Handle recommended topic from navigation data
+        if (navigationData?.recommendedTopic) {
+            // Set timeout to allow modal to open first, then update its state
+            setTimeout(() => {
+                setShowQuizSetup(true);
+            }, 100);
+        }
     }, [navigationData]);
 
     useEffect(() => {
@@ -191,10 +199,11 @@ const HomePage = ({ onNavigate, navigationData }) => {
         const loadUserData = async () => {
             try {
                 setIsLoading(true);
-                const [profileResponse, pausedResponse, bookmarksResponse] = await Promise.all([
+                const [profileResponse, pausedResponse, bookmarksResponse, statsResponse] = await Promise.all([
                     examBuddyAPI.getUserProfile(),
                     examBuddyAPI.getPausedQuizzes(),
-                    examBuddyAPI.getBookmarks()
+                    examBuddyAPI.getBookmarks(),
+                    examBuddyAPI.getGlobalStats('all') // Get user stats for recommendations
                 ]);
 
                 if (!mounted) return;
@@ -202,6 +211,33 @@ const HomePage = ({ onNavigate, navigationData }) => {
                 if (profileResponse.success) setUserProfile(profileResponse.data);
                 if (pausedResponse.success) setPausedQuizzes(pausedResponse.data);
                 if (bookmarksResponse.success) setBookmarks(bookmarksResponse.data);
+
+                // Determine recommended topics based on stats
+                if (statsResponse.success && statsResponse.data) {
+                    const { topicPerformance } = statsResponse.data;
+                    
+                    // Determine order of recommendations: weak -> moderate -> strong
+                    let topicsToRecommend = [];
+                    
+                    // First, add weak topics
+                    if (topicPerformance.weak && topicPerformance.weak.length > 0) {
+                        topicsToRecommend = [...topicPerformance.weak];
+                    }
+                    // If no weak topics, add moderate topics
+                    else if (topicPerformance.moderate && topicPerformance.moderate.length > 0) {
+                        topicsToRecommend = [...topicPerformance.moderate];
+                    }
+                    // If neither weak nor moderate, add strong topics
+                    else if (topicPerformance.strong && topicPerformance.strong.length > 0) {
+                        topicsToRecommend = [...topicPerformance.strong];
+                    }
+                    
+                    // Limit to top 3 topics
+                    setRecommendedTopics(topicsToRecommend.slice(0, 3).map(topic => topic.name));
+                } else {
+                    // Fallback to default topics if stats not available
+                    setRecommendedTopics(DEFAULT_TOPICS);
+                }
 
             } catch (err) {
                 console.error('Error loading user data:', err);
@@ -230,6 +266,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
                         { id: 'b1', title: 'React Hooks Guide', savedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
                         { id: 'b2', title: 'State Management Patterns', savedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) }
                     ]);
+                    setRecommendedTopics(DEFAULT_TOPICS);
                 }
             } finally {
                 if (mounted) setIsLoading(false);
@@ -308,7 +345,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
                         {/* Main CTA Button */}
                         <div className="flex justify-center mb-12 animate-fade-in-up">
                             <button
-                                onClick={() => setShowQuizSetup(true)}
+                                onClick={() => onNavigate('home', { openQuizSetup: true })}
                                 className="
                                 group relative inline-flex items-center justify-center
                                 w-full max-w-xs sp:max-w-sm md:max-w-md
@@ -348,24 +385,33 @@ const HomePage = ({ onNavigate, navigationData }) => {
 
                     {/* Recommended Topics */}
                     <div className="text-center animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-                            {/* <p className="text-sm text-slate-400 mb-3">Recommended for you</p> */}
                             <div className="flex flex-wrap justify-center gap-3">
-                                {RECOMMENDED_TOPICS.map((topic, index) => (
-                                    <button
-                                        key={topic}
-                                        onClick={() => setShowQuizSetup(true)}
-                                        className="group px-4 py-2 rounded-lg hover:border-amber-200 transition-all duration-300 hover:shadow-md animate-fade-in-up"
-                                        style={{ animationDelay: `${0.5 + index * 0.1}s` }}
-                                        aria-label={`Start quiz about ${topic}`}
-                                    >
-                                        <span className="text-sm font-medium hover:text-amber-800 transition-colors inline-flex items-center gap-1" style={{ color: '#808080ba' }}>
-                                            {topic}
-                                            <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                            </svg>
-                                        </span>
-                                    </button>
-                                ))}
+                                {recommendedTopics.length > 0 ? (
+                                    recommendedTopics.map((topic, index) => (
+                                        <button
+                                            key={topic}
+                                            onClick={() => {
+                                                // Open quiz setup modal with the recommended topic pre-filled
+                                                onNavigate('home', { openQuizSetup: true, recommendedTopic: topic });
+                                            }}
+                                            className="group px-4 py-2 rounded-lg hover:border-amber-200 transition-all duration-300 hover:shadow-md animate-fade-in-up"
+                                            style={{ animationDelay: `${0.5 + index * 0.1}s` }}
+                                            aria-label={`Start quiz about ${topic}`}
+                                        >
+                                            <span className="text-sm font-medium hover:text-amber-800 transition-colors inline-flex items-center gap-1" style={{ color: '#808080ba' }}>
+                                                {topic}
+                                                <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </span>
+                                        </button>
+                                    ))
+                                ) : (
+                                    // Display message if no recommended topics are available
+                                    <p className="text-slate-500 text-sm italic">
+                                        Complete a quiz to get personalized topic recommendations!
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -425,6 +471,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
                     onClose={() => setShowQuizSetup(false)}
                     onStartQuiz={handleStartQuiz}
                     selectionText={navigationData?.selectionText}
+                    recommendedTopic={navigationData?.recommendedTopic}
                 />
 
                 <StorySetupModal

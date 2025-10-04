@@ -29,7 +29,7 @@ const sourceOptions = [
   { value: SOURCE_TYPE.SELECTION, label: 'From Selection', icon: '✍️', description: 'Use selected text from a page' },
 ];
 
-const QuizSetupModal = ({ isOpen, onClose, onStartQuiz, selectionText }) => {
+const QuizSetupModal = ({ isOpen, onClose, onStartQuiz, selectionText, recommendedTopic }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState({});
@@ -63,7 +63,17 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz, selectionText }) => {
         sourceValue: selectionText
       }));
     }
-  }, [isOpen, selectionText]);
+    // Pre-fill with recommended topic if provided
+    else if (isOpen && recommendedTopic) {
+      setConfig(prev => ({
+        ...prev,
+        sourceType: SOURCE_TYPE.MANUAL, // Use manual source for recommended topics
+        topic: recommendedTopic,
+        context: `Practice questions for ${recommendedTopic}`,
+        sourceValue: recommendedTopic
+      }));
+    }
+  }, [isOpen, selectionText, recommendedTopic]);
 
   // Focus management
   useEffect(() => {
