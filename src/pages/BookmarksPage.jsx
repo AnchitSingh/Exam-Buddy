@@ -5,20 +5,80 @@ import Badge from '../components/ui/Badge';
 import examBuddyAPI from '../services/api';
 import GlobalHeader from '../components/ui/GlobalHeader';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
-import CustomDropdown from '../components/ui/CustomDropdown'; // <-- IMPORT THE NEW COMPONENT
+import CustomDropdown from '../components/ui/CustomDropdown';
 
-// Modal Component for Question Details (This component remains unchanged)
+// Confirmation Modal Component
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Delete", confirmVariant = "danger" }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Modal Content */}
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full animate-modal-enter">
+          {/* Icon */}
+          <div className="flex justify-center pt-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="px-6 py-4 text-center">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">{title}</h3>
+            <p className="text-slate-600">{message}</p>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="px-6 pb-6 flex gap-3 justify-center">
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <button
+              onClick={onConfirm}
+              className={`
+                px-4 py-2 rounded-lg font-medium transition-colors
+                ${confirmVariant === 'danger' 
+                  ? 'bg-red-600 text-white hover:bg-red-700' 
+                  : 'bg-amber-600 text-white hover:bg-amber-700'
+                }
+              `}
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Modal Component for Question Details (Updated)
 const QuestionDetailModal = ({ isOpen, onClose, question, onDelete, onPractice }) => {
   if (!isOpen || !question) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
+      
+      {/* Modal Content */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden animate-modal-enter">
+          {/* Header */}
           <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-slate-800">Question Details</h3>
             <button
@@ -30,7 +90,10 @@ const QuestionDetailModal = ({ isOpen, onClose, question, onDelete, onPractice }
               </svg>
             </button>
           </div>
+
+          {/* Content */}
           <div className="p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
+            {/* Tags */}
             <div className="flex flex-wrap gap-2 mb-4">
               {question.subject && (
                 <Badge variant={question.subject === 'Physics' ? 'info' : question.subject === 'Math' ? 'success' : 'purple'}>
@@ -50,10 +113,14 @@ const QuestionDetailModal = ({ isOpen, onClose, question, onDelete, onPractice }
                 <Badge variant="default">{question.type}</Badge>
               )}
             </div>
+
+            {/* Question */}
             <div className="mb-6">
               <h4 className="text-base font-semibold text-slate-800 mb-2">Question:</h4>
               <p className="text-slate-700 leading-relaxed">{question.question}</p>
             </div>
+
+            {/* Options */}
             <div className="mb-6">
               <h4 className="text-base font-semibold text-slate-800 mb-3">Options:</h4>
               <div className="space-y-2">
@@ -67,13 +134,23 @@ const QuestionDetailModal = ({ isOpen, onClose, question, onDelete, onPractice }
                 ))}
               </div>
             </div>
-            <div className="pt-4 border-t border-slate-200">
-              <div className="flex items-center justify-between text-sm text-slate-500">
-                  <span>📅 Bookmarked: {question.bookmarkedAt ? new Date(question.bookmarkedAt).toLocaleDateString() : 'Date unknown'}</span>
-                  <span>📝 Source: {question.source}</span>
+
+            {/* Topic Tags (Replaced metadata section) */}
+            {question.tags && question.tags.length > 0 && (
+              <div className="pt-4 border-t border-slate-200">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Topics:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {question.tags.map((tag, index) => (
+                    <Badge key={index} variant="default">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
+
+          {/* Footer Actions */}
           <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-between">
             <button
               onClick={() => onDelete(question.questionId)}
@@ -96,7 +173,6 @@ const QuestionDetailModal = ({ isOpen, onClose, question, onDelete, onPractice }
   );
 };
 
-
 const BookmarksPage = ({ onNavigate }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [selectedBookmarks, setSelectedBookmarks] = useState(new Set());
@@ -110,8 +186,16 @@ const BookmarksPage = ({ onNavigate }) => {
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // New states for confirmation modal
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState({
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
-  const filterMenuRef = useRef(null); // <-- REF FOR THE FILTER MENU
+  const filterMenuRef = useRef(null);
 
   useEffect(() => {
     const loadBookmarks = async () => {
@@ -125,21 +209,20 @@ const BookmarksPage = ({ onNavigate }) => {
     loadBookmarks();
   }, []);
 
-  // <-- NEW USEEFFECT FOR CLOSING FILTER MENU ON OUTSIDE CLICK -->
+  // Close filter menu on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
-        if (filterMenuRef.current && !filterMenuRef.current.contains(event.target)) {
-            setFilterMenuOpen(false);
-        }
+      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target)) {
+        setFilterMenuOpen(false);
+      }
     };
     if (filterMenuOpen) {
-        document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [filterMenuOpen]);
-
 
   const filterOptions = useMemo(() => ({
     topics: ['All', ...new Set(bookmarks.flatMap(b => b.tags || []))],
@@ -161,7 +244,6 @@ const BookmarksPage = ({ onNavigate }) => {
     });
   }, [bookmarks, searchQuery, filters]);
 
-  // --- All handler functions (handleSelectAll, handleDeleteBookmark, etc.) remain unchanged ---
   const handleSelectAll = () => {
     if (selectedBookmarks.size === filteredBookmarks.length) {
       setSelectedBookmarks(new Set());
@@ -185,38 +267,61 @@ const BookmarksPage = ({ onNavigate }) => {
     setIsModalOpen(true);
   };
 
+  // Updated delete handlers with confirmation modal
   const handleDeleteBookmark = async (questionId) => {
-    try {
-      const response = await examBuddyAPI.removeBookmark(questionId);
-      if (response.success) {
-        setBookmarks(prev => prev.filter(b => b.questionId !== questionId));
-        setIsModalOpen(false);
-        toast.success('Bookmark removed successfully');
-      } else {
-        toast.error('Failed to remove bookmark');
+    // Find the bookmark to get its question text for the modal
+    const bookmark = bookmarks.find(b => b.questionId === questionId);
+    const questionPreview = bookmark ? 
+      (bookmark.question.length > 60 ? bookmark.question.substring(0, 60) + '...' : bookmark.question) 
+      : 'this bookmark';
+
+    setConfirmModalConfig({
+      title: 'Delete Bookmark',
+      message: `Are you sure you want to delete this bookmark? "${questionPreview}"`,
+      onConfirm: async () => {
+        try {
+          const response = await examBuddyAPI.removeBookmark(questionId);
+          if (response.success) {
+            setBookmarks(prev => prev.filter(b => b.questionId !== questionId));
+            setIsModalOpen(false);
+            toast.success('Bookmark removed successfully');
+          } else {
+            toast.error('Failed to remove bookmark');
+          }
+        } catch (error) {
+          toast.error('Error removing bookmark');
+        } finally {
+          setConfirmModalOpen(false);
+        }
       }
-    } catch (error) {
-      toast.error('Error removing bookmark');
-    }
+    });
+    setConfirmModalOpen(true);
   };
 
   const handleBulkDelete = async () => {
     if (selectedBookmarks.size === 0) return;
     
-    const confirmDelete = window.confirm(`Delete ${selectedBookmarks.size} selected bookmark(s)?`);
-    if (!confirmDelete) return;
-
-    try {
-      await Promise.all(
-        Array.from(selectedBookmarks).map(id => examBuddyAPI.removeBookmark(id))
-      );
-      
-      setBookmarks(prev => prev.filter(b => !selectedBookmarks.has(b.questionId)));
-      setSelectedBookmarks(new Set());
-      toast.success(`${selectedBookmarks.size} bookmark(s) removed`);
-    } catch (error) {
-      toast.error('Error removing bookmarks');
-    }
+    setConfirmModalConfig({
+      title: 'Delete Multiple Bookmarks',
+      message: `Are you sure you want to delete ${selectedBookmarks.size} selected bookmark${selectedBookmarks.size > 1 ? 's' : ''}? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await Promise.all(
+            Array.from(selectedBookmarks).map(id => examBuddyAPI.removeBookmark(id))
+          );
+          
+          const deletedCount = selectedBookmarks.size;
+          setBookmarks(prev => prev.filter(b => !selectedBookmarks.has(b.questionId)));
+          setSelectedBookmarks(new Set());
+          toast.success(`${deletedCount} bookmark${deletedCount > 1 ? 's' : ''} removed`);
+        } catch (error) {
+          toast.error('Error removing bookmarks');
+        } finally {
+          setConfirmModalOpen(false);
+        }
+      }
+    });
+    setConfirmModalOpen(true);
   };
 
   const practiceQuestion = (bookmark) => {
@@ -255,7 +360,6 @@ const BookmarksPage = ({ onNavigate }) => {
       },
     });
   };
-
 
   return (
     <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen">
@@ -296,7 +400,6 @@ const BookmarksPage = ({ onNavigate }) => {
                     Filter
                   </button>
 
-                  {/* ===== UPDATED FILTER DROPDOWN SECTION ===== */}
                   {filterMenuOpen && (
                     <div ref={filterMenuRef} className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 z-20 animate-modal-enter">
                       <div className="p-4 space-y-4">
@@ -329,7 +432,6 @@ const BookmarksPage = ({ onNavigate }) => {
                       </div>
                     </div>
                   )}
-                   {/* ===== END OF UPDATED SECTION ===== */}
                 </div>
 
                 {selectedBookmarks.size > 0 && (
@@ -349,7 +451,6 @@ const BookmarksPage = ({ onNavigate }) => {
             </div>
           </div>
           
-          {/* --- Table and other content remain unchanged --- */}
           {isLoading ? (
             <div className="flex items-center justify-center py-24">
               <div className="text-center">
@@ -360,7 +461,7 @@ const BookmarksPage = ({ onNavigate }) => {
           ) : filteredBookmarks.length === 0 ? (
             <div className="text-center py-24">
               <div className="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                 <svg className="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                 </svg>
               </div>
@@ -413,21 +514,54 @@ const BookmarksPage = ({ onNavigate }) => {
                           className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
                         />
                       </td>
-                      <td className="px-6 py-4"><div className="max-w-lg"><p className="text-slate-800 font-medium line-clamp-2">{bookmark.question}</p></div></td>
+                      <td className="px-6 py-4">
+                        <div className="max-w-lg">
+                          <p className="text-slate-800 font-medium line-clamp-2">{bookmark.question}</p>
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-2">
-                          {bookmark.subject && (<Badge variant={bookmark.subject === 'Physics' ? 'info' : bookmark.subject === 'Math' ? 'success' : 'purple'}>{bookmark.subject}</Badge>)}
-                          {bookmark.difficulty && (<Badge variant={bookmark.difficulty === 'Easy' ? 'success' : bookmark.difficulty === 'Medium' ? 'warning' : 'danger'}>{bookmark.difficulty}</Badge>)}
-                          {bookmark.tags && bookmark.tags.length > 0 && bookmark.tags.map((tag, index) => (<Badge key={index} variant="default">{tag}</Badge>))}
+                          {bookmark.subject && (
+                            <Badge variant={bookmark.subject === 'Physics' ? 'info' : bookmark.subject === 'Math' ? 'success' : 'purple'}>
+                              {bookmark.subject}
+                            </Badge>
+                          )}
+                          {bookmark.difficulty && (
+                            <Badge variant={
+                              bookmark.difficulty === 'Easy' ? 'success' : 
+                              bookmark.difficulty === 'Medium' ? 'warning' : 
+                              'danger'
+                            }>
+                              {bookmark.difficulty}
+                            </Badge>
+                          )}
+                          {bookmark.tags && bookmark.tags.length > 0 && bookmark.tags.map((tag, index) => (
+                            <Badge key={index} variant="default">
+                              {tag}
+                            </Badge>
+                          ))}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => handleViewQuestion(bookmark)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" title="View details">
-                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          <button
+                            onClick={() => handleViewQuestion(bookmark)}
+                            className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            title="View details"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
                           </button>
-                          <button onClick={() => handleDeleteBookmark(bookmark.questionId)} className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete bookmark">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          <button
+                            onClick={() => handleDeleteBookmark(bookmark.questionId)}
+                            className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete bookmark"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -440,6 +574,7 @@ const BookmarksPage = ({ onNavigate }) => {
         </div>
       </main>
 
+      {/* Question Detail Modal */}
       <QuestionDetailModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -448,10 +583,37 @@ const BookmarksPage = ({ onNavigate }) => {
         onPractice={practiceQuestion}
       />
 
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        onConfirm={confirmModalConfig.onConfirm}
+        title={confirmModalConfig.title}
+        message={confirmModalConfig.message}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
+
       <style>{`
-        @keyframes modal-enter { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
-        .animate-modal-enter { animation: modal-enter 0.2s ease-out; }
-        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        @keyframes modal-enter {
+          0% {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .animate-modal-enter {
+          animation: modal-enter 0.2s ease-out;
+        }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
       `}</style>
     </div>
   );
