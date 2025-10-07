@@ -117,7 +117,7 @@ const BookmarksPage = ({ onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [filters, setFilters] = useState({
-    subject: 'All',
+    topic: 'All',
     difficulty: 'All',
     type: 'All'
   });
@@ -139,7 +139,7 @@ const BookmarksPage = ({ onNavigate }) => {
 
   // Extract unique values for filters
   const filterOptions = useMemo(() => ({
-    subjects: ['All', ...new Set(bookmarks.map(b => b.subject))],
+    topics: ['All', ...new Set(bookmarks.flatMap(b => b.tags || []))],
     difficulties: ['All', ...new Set(bookmarks.map(b => b.difficulty))],
     types: ['All', ...new Set(bookmarks.map(b => b.type || 'MCQ'))]
   }), [bookmarks]);
@@ -149,13 +149,13 @@ const BookmarksPage = ({ onNavigate }) => {
     return bookmarks.filter(bookmark => {
       const matchesSearch = searchQuery === '' || 
         bookmark.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bookmark.subject.toLowerCase().includes(searchQuery.toLowerCase());
+        (bookmark.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      const matchesSubject = filters.subject === 'All' || bookmark.subject === filters.subject;
+      const matchesTopic = filters.topic === 'All' || (bookmark.tags || []).includes(filters.topic);
       const matchesDifficulty = filters.difficulty === 'All' || bookmark.difficulty === filters.difficulty;
       const matchesType = filters.type === 'All' || (bookmark.type || 'MCQ') === filters.type;
       
-      return matchesSearch && matchesSubject && matchesDifficulty && matchesType;
+      return matchesSearch && matchesTopic && matchesDifficulty && matchesType;
     });
   }, [bookmarks, searchQuery, filters]);
 
@@ -304,14 +304,14 @@ const BookmarksPage = ({ onNavigate }) => {
                     <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 z-20">
                       <div className="p-4 space-y-4">
                         <div>
-                          <label className="text-sm font-medium text-slate-700 mb-1 block">Subject</label>
+                          <label className="text-sm font-medium text-slate-700 mb-1 block">Topic</label>
                           <select 
-                            value={filters.subject}
-                            onChange={(e) => setFilters({...filters, subject: e.target.value})}
+                            value={filters.topic}
+                            onChange={(e) => setFilters({...filters, topic: e.target.value})}
                             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                           >
-                            {filterOptions.subjects.map(subject => (
-                              <option key={subject} value={subject}>{subject}</option>
+                            {filterOptions.topics.map(topic => (
+                              <option key={topic} value={topic}>{topic}</option>
                             ))}
                           </select>
                         </div>
@@ -374,16 +374,16 @@ const BookmarksPage = ({ onNavigate }) => {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-slate-800 mb-2">
-                {searchQuery || filters.subject !== 'All' || filters.difficulty !== 'All' 
+                {searchQuery || filters.topic !== 'All' || filters.difficulty !== 'All' 
                   ? 'No matching bookmarks found' 
                   : 'No Bookmarked Questions'}
               </h3>
               <p className="text-slate-600 mb-6">
-                {searchQuery || filters.subject !== 'All' || filters.difficulty !== 'All'
+                {searchQuery || filters.topic !== 'All' || filters.difficulty !== 'All'
                   ? 'Try adjusting your search or filters'
                   : 'Questions you bookmark during quizzes will appear here'}
               </p>
-              {!searchQuery && filters.subject === 'All' && filters.difficulty === 'All' && (
+              {!searchQuery && filters.topic === 'All' && filters.difficulty === 'All' && (
                 <Button onClick={() => onNavigate('home', { openQuizSetup: true })}>
                   Start a Quiz
                 </Button>
