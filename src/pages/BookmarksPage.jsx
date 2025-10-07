@@ -433,9 +433,6 @@ const BookmarksPage = ({ onNavigate }) => {
                           <p className="text-slate-800 font-medium line-clamp-2">
                             {bookmark.question}
                           </p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {bookmark.bookmarkedAt ? new Date(bookmark.bookmarkedAt).toLocaleDateString() : 'Date unknown'} • {bookmark.source}
-                          </p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
