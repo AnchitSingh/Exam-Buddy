@@ -374,7 +374,7 @@ const BookmarksPage = ({ onNavigate }) => {
 
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-cols-2 gap-2 items-center justify-between">
               <div className="relative flex-1 max-w-md">
                 <input
                   type="text"
@@ -392,16 +392,16 @@ const BookmarksPage = ({ onNavigate }) => {
                 <div className="relative">
                   <button
                     onClick={() => setFilterMenuOpen(!filterMenuOpen)}
-                    className="px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
+                    className="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1 min-w-[36px]"
                   >
                     <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
-                    Filter
+                    <span className="hidden sm:inline text-sm">Filter</span>
                   </button>
 
                   {filterMenuOpen && (
-                    <div ref={filterMenuRef} className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 z-20 animate-modal-enter">
+                    <div ref={filterMenuRef} className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 z-20 animate-modal-enter max-h-[70vh] overflow-y-auto left-auto max-w-[calc(100vw-2rem)]">
                       <div className="p-4 space-y-4">
                         <CustomDropdown
                           label="Topic"
@@ -483,44 +483,36 @@ const BookmarksPage = ({ onNavigate }) => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left">
+              {/* Card layout for mobile */}
+              <div className="block md:hidden">
+                {/* Mobile header with select all checkbox */}
+                <div className="flex items-center px-4 py-3 bg-slate-50 border-b border-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={selectedBookmarks.size === filteredBookmarks.length && filteredBookmarks.length > 0}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-amber-600 border-slate-300 rounded"
+                  />
+                  <span className="ml-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Bookmarks</span>
+                </div>
+                
+                {filteredBookmarks.map((bookmark, index) => (
+                  <div 
+                    key={bookmark.questionId}
+                    className="bg-white border border-slate-200 rounded-lg p-4 mb-3 hover:bg-slate-50/50 transition-colors"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
+                    <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
-                        checked={selectedBookmarks.size === filteredBookmarks.length && filteredBookmarks.length > 0}
-                        onChange={handleSelectAll}
-                        className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
+                        checked={selectedBookmarks.has(bookmark.questionId)}
+                        onChange={() => handleSelectBookmark(bookmark.questionId)}
+                        className="w-4 h-4 text-amber-600 border-slate-300 rounded mt-1"
                       />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Question</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Tags</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {filteredBookmarks.map((bookmark, index) => (
-                    <tr 
-                      key={bookmark.questionId} 
-                      className="hover:bg-slate-50/50 transition-colors"
-                      style={{ animationDelay: `${index * 0.05}s` }}
-                    >
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedBookmarks.has(bookmark.questionId)}
-                          onChange={() => handleSelectBookmark(bookmark.questionId)}
-                          className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="max-w-lg">
-                          <p className="text-slate-800 font-medium line-clamp-2">{bookmark.question}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-slate-800 font-medium mb-2 line-clamp-2">{bookmark.question}</p>
+                        
+                        <div className="flex flex-wrap gap-2 mb-3">
                           {bookmark.subject && (
                             <Badge variant={bookmark.subject === 'Physics' ? 'info' : bookmark.subject === 'Math' ? 'success' : 'purple'}>
                               {bookmark.subject}
@@ -535,15 +527,14 @@ const BookmarksPage = ({ onNavigate }) => {
                               {bookmark.difficulty}
                             </Badge>
                           )}
-                          {bookmark.tags && bookmark.tags.length > 0 && bookmark.tags.map((tag, index) => (
-                            <Badge key={index} variant="default">
+                          {bookmark.tags && bookmark.tags.length > 0 && bookmark.tags.map((tag, idx) => (
+                            <Badge key={idx} variant="default">
                               {tag}
                             </Badge>
                           ))}
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center gap-2">
+                        
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleViewQuestion(bookmark)}
                             className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
@@ -564,11 +555,99 @@ const BookmarksPage = ({ onNavigate }) => {
                             </svg>
                           </button>
                         </div>
-                      </td>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Table layout for desktop */}
+              <div className="hidden md:block">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="w-12 px-6 py-3 text-left">
+                        <input
+                          type="checkbox"
+                          checked={selectedBookmarks.size === filteredBookmarks.length && filteredBookmarks.length > 0}
+                          onChange={handleSelectAll}
+                          className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
+                        />
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Question</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Tags</th>
+                      <th className="w-32 px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {filteredBookmarks.map((bookmark, index) => (
+                      <tr 
+                        key={bookmark.questionId} 
+                        className="hover:bg-slate-50/50 transition-colors"
+                        style={{ animationDelay: `${index * 0.05}s` }}
+                      >
+                        <td className="w-12 px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedBookmarks.has(bookmark.questionId)}
+                            onChange={() => handleSelectBookmark(bookmark.questionId)}
+                            className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-slate-800 font-medium line-clamp-2">{bookmark.question}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            {bookmark.subject && (
+                              <Badge variant={bookmark.subject === 'Physics' ? 'info' : bookmark.subject === 'Math' ? 'success' : 'purple'}>
+                                {bookmark.subject}
+                              </Badge>
+                            )}
+                            {bookmark.difficulty && (
+                              <Badge variant={
+                                bookmark.difficulty === 'Easy' ? 'success' : 
+                                bookmark.difficulty === 'Medium' ? 'warning' : 
+                                'danger'
+                              }>
+                                {bookmark.difficulty}
+                              </Badge>
+                            )}
+                            {bookmark.tags && bookmark.tags.length > 0 && bookmark.tags.map((tag, idx) => (
+                              <Badge key={idx} variant="default">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="w-32 px-6 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleViewQuestion(bookmark)}
+                              className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                              title="View details"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBookmark(bookmark.questionId)}
+                              className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete bookmark"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
