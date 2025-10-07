@@ -274,7 +274,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 
 					{/* Right Side - Scrollable */}
 					<div className="w-1/2 flex-shrink-0 overflow-y-auto p-8">
-						<div className="bg-white/80 backdrop-blur-sm rounded-2xl max-w-2xl mx-auto space-y-6 shadow-lg border border-white/50 p-4 h-full flex flex-col justify-evenly">
+						<div>
 							<div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50">
 								<h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center">
 									<svg className="w-6 h-6 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -417,30 +417,14 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 					                            </svg>
 					                            AI Feedback
 					                        </h2>
-					                        <div className="text-sm sm:text-base text-slate-600 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
+					                        <div className="text-sm sm:text-base text-slate-600 leading-relaxed max-h-44 overflow-auto" style={{ whiteSpace: 'pre-wrap' }}>
 					                            {aiOverallFeedback}
 					                            {isFeedbackLoading && (
 					                                <span className="inline-block w-2 h-4 bg-slate-600 animate-pulse ml-1"></span>
 					                            )}
 					                        </div>
 					                    </div>
-					{/* Action Buttons - Mobile */}
-					<div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-						<button
-							onClick={() => onNavigate('setup')}
-							className="flex-1 relative bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold py-3 px-4 rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 text-sm sm:text-base overflow-hidden group"
-						>
-							<span className="relative z-10">Take New Quiz</span>
-							<div className="absolute inset-0 bg-gradient-to-r from-amber-600 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-						</button>
-						<button
-							onClick={() => onNavigate('story')}
-							className="flex-1 relative bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 px-4 rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 text-sm sm:text-base overflow-hidden group"
-						>
-							<span className="relative z-10">Story Mode</span>
-							<div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-						</button>
-					</div>
+					
 
 					{/* View Solutions Button - Mobile */}
 					<button
