@@ -155,11 +155,9 @@ button:not(:disabled):active {
 
 input {
   outline: none;
-  font-size: 1rem;
 }
 textarea {
   outline: none;
-  font-size: 1rem;
 }
 
 @keyframes shimmer {
@@ -178,4 +176,13 @@ textarea {
   50% {
     transform: translateY(-25%);
   }
+}
+
+/* In your extension's CSS */
+html {
+  font-size: 16px; /* or 20px to match your 125% preference */
+}
+
+body {
+  font-size: .9rem;
 }
