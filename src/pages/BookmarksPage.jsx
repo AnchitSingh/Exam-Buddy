@@ -267,7 +267,7 @@ const BookmarksPage = ({ onNavigate }) => {
         </div>
 
         {/* Main Card Container */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg">
           {/* Toolbar */}
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
