@@ -3,6 +3,9 @@ import GlobalHeader from '../components/ui/GlobalHeader';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
 import Modal from '../components/ui/Modal';
 import examBuddyAPI from '../services/api';
+import { extractFromCurrentPage, extractFromPDFResult, normalizeManualTopic } from '../utils/contentExtractor';
+import { extractTextFromPDF } from '../utils/pdfExtractor';
+import { SOURCE_TYPE } from '../utils/messages';
 
 
 
@@ -13,6 +16,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 	const [aiOverallFeedback, setAiOverallFeedback] = useState('');
 	const [isFeedbackLoading, setIsFeedbackLoading] = useState(true);
 	const feedbackFetched = useRef(false);
+	const [recommendedTopics, setRecommendedTopics] = useState([]);
 
 
 	useEffect(() => {
@@ -64,6 +68,56 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 		return () => {
 			isActive = false;
 		};
+	}, [results]);
+
+	// Fetch recommended topics
+	useEffect(() => {
+		if (!results) return;
+
+		let mounted = true;
+
+		const fetchRecommendedTopics = async () => {
+			try {
+				const statsResponse = await examBuddyAPI.getGlobalStats('all');
+
+				if (!mounted) return;
+
+				if (statsResponse.success && statsResponse.data) {
+					const { topicPerformance } = statsResponse.data;
+
+					// Determine order of recommendations: weak -> moderate -> strong
+					let topicsToRecommend = [];
+
+					// First, add weak topics
+					if (topicPerformance.weak && topicPerformance.weak.length > 0) {
+						topicsToRecommend = [...topicPerformance.weak];
+					}
+					// If no weak topics, add moderate topics
+					else if (topicPerformance.moderate && topicPerformance.moderate.length > 0) {
+						topicsToRecommend = [...topicPerformance.moderate];
+					}
+					// If neither weak nor moderate, add strong topics
+					else if (topicPerformance.strong && topicPerformance.strong.length > 0) {
+						topicsToRecommend = [...topicPerformance.strong];
+					}
+
+					// Limit to top 3 topics
+					setRecommendedTopics(topicsToRecommend.slice(0, 3).map(topic => topic.name));
+				} else {
+					// Fallback to empty array if stats not available
+					setRecommendedTopics([]);
+				}
+			} catch (err) {
+				console.error('Error fetching recommended topics:', err);
+				if (mounted) {
+					// Set empty recommendations if API fails
+					setRecommendedTopics([]);
+				}
+			}
+		};
+
+		fetchRecommendedTopics();
+		return () => { mounted = false; };
 	}, [results]);
 
 	if (!results) {
@@ -248,7 +302,47 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 									<p className="text-lg text-slate-600">Quiz completed successfully</p>
 								)}
 							</div>
+							{/* Recommended Topics */}
+							<div className="text-center">
+								
+								<div className="flex flex-wrap justify-center gap-3">
+									{recommendedTopics.length > 0 ? (
+										recommendedTopics.map((topic, index) => (
+											<button
+												key={topic}
+												onClick={() => {
+													onNavigate('home', { openQuizSetup: true, recommendedTopic: topic });
+												}}
+												className="topic-pill group relative px-5 py-2.5 rounded-xl  backdrop-blur-sm hover:border-amber-400/60 transition-all duration-300 overflow-hidden animate-fade-in-up hover:shadow-lg hover:shadow-amber-200/50"
+												style={{ animationDelay: `${0.5 + index * 0.1}s` }}
+												aria-label={`Start quiz about ${topic}`}
+											>
+												{/* Shimmer effect on hover */}
+												<div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
 
+												{/* Content */}
+												<span className="relative text-sm font-semibold text-slate-700 group-hover:text-amber-800 transition-colors inline-flex items-center gap-2">
+													<span className="relative">
+														{topic}
+														{/* Underline effect */}
+														<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-amber-500 to-orange-500 group-hover:w-full transition-all duration-300"></span>
+													</span>
+													<svg className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+													</svg>
+												</span>
+
+												{/* Glow effect on hover */}
+												<div className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-400/0 via-amber-400/0 to-orange-400/0 group-hover:from-amber-400/20 group-hover:via-orange-400/20 group-hover:to-amber-400/20 transition-all duration-300 -z-10"></div>
+											</button>
+										))
+									) : (
+										<p className="text-slate-500 text-sm italic px-4 py-2">
+											Complete more quizzes to get personalized topic recommendations!
+										</p>
+									)}
+								</div>
+							</div>
 
 							<button className="w-full relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-2 border-amber-200/50 hover:border-amber-300 text-lg font-semibold text-slate-800 hover:shadow-xl hover:shadow-amber-100/30 transform hover:-translate-y-0.5 transition-all duration-300 group">
 								<span className="flex items-center justify-center">
@@ -290,32 +384,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 								</div>
 							</div>
 
-							{/* Quick Stats */}
-							<div className="grid grid-cols-4 gap-2">
-								<div className="bg-white/70 backdrop-blur-sm rounded-2xl p-3 text-center border border-white/50 hover:scale-105 transition-transform duration-300">
-									<div className="text-xl font-bold text-green-600">{score}</div>
-									<p className="text-xs text-slate-500 mt-1">Correct</p>
-								</div>
-								<div className="bg-white/70 backdrop-blur-sm rounded-2xl p-3 text-center border border-white/50 hover:scale-105 transition-transform duration-300">
-									<div className="text-xl font-bold text-red-600">{incorrectCount}</div>
-									<p className="text-xs text-slate-500 mt-1">Incorrect</p>
-								</div>
-								<div className="bg-white/70 backdrop-blur-sm rounded-2xl p-3 text-center border border-white/50 hover:scale-105 transition-transform duration-300">
-									<div className="text-xl font-bold text-slate-400">{unansweredCount}</div>
-									<p className="text-xs text-slate-500 mt-1">Skipped</p>
-								</div>
-								{config?.timerEnabled ? (
-									<div className="bg-white/70 backdrop-blur-sm rounded-2xl p-3 text-center border border-white/50 hover:scale-105 transition-transform duration-300">
-										<div className="text-xl font-bold text-blue-600">{formatTime(timeSpent)}</div>
-										<p className="text-xs text-slate-500 mt-1">Time</p>
-									</div>
-								) : (
-									<div className="bg-white/70 backdrop-blur-sm rounded-2xl p-3 text-center border border-white/50 hover:scale-105 transition-transform duration-300">
-										<div className="text-xl font-bold text-blue-600">-</div>
-										<p className="text-xs text-slate-500 mt-1">No Timer</p>
-									</div>
-								)}
-							</div>
+
 
 
 						</div>
@@ -381,51 +450,45 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 						)}
 					</div>
 
-					{/* Quick Stats - Mobile */}
-					<div className="grid grid-cols-4 gap-2">
-						<div className="bg-white/70 backdrop-blur-sm rounded-xl sm:rounded-2xl p-2 sm:p-3 text-center border border-white/50">
-							<div className="text-lg sm:text-xl font-bold text-green-600">{score}</div>
-							<p className="text-xs text-slate-500">Correct</p>
+					{/* Recommended Topics - Mobile */}
+					<div className="text-center">
+						<div className="flex flex-wrap justify-center gap-2">
+							{recommendedTopics.length > 0 ? (
+								recommendedTopics.map((topic, index) => (
+									<button
+										key={topic}
+										onClick={() => {
+											onNavigate('home', { openQuizSetup: true, recommendedTopic: topic });
+										}}
+										className="topic-pill group relative px-4 py-2 rounded-lg  backdrop-blur-sm hover:border-amber-400/60 transition-all duration-300 overflow-hidden hover:shadow-md hover:shadow-amber-200/50 active:scale-95"
+										aria-label={`Start quiz about ${topic}`}
+									>
+										{/* Shimmer effect on hover */}
+										<div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+
+										{/* Content */}
+										<span className="relative text-xs sm:text-sm font-semibold text-slate-700 group-hover:text-amber-800 transition-colors inline-flex items-center gap-1.5">
+											<span className="relative">
+												{topic}
+												{/* Underline effect */}
+												<span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-gradient-to-r from-amber-500 to-orange-500 group-hover:w-full transition-all duration-300"></span>
+											</span>
+											<svg className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+											</svg>
+										</span>
+
+										{/* Glow effect on hover */}
+										<div className="absolute inset-0 rounded-lg bg-gradient-to-r from-amber-400/0 via-amber-400/0 to-orange-400/0 group-hover:from-amber-400/20 group-hover:via-orange-400/20 group-hover:to-amber-400/20 transition-all duration-300 -z-10"></div>
+									</button>
+								))
+							) : (
+								<p className="text-slate-500 text-xs sm:text-sm italic px-4 py-2">
+									Complete more quizzes to get personalized topic recommendations!
+								</p>
+							)}
 						</div>
-						<div className="bg-white/70 backdrop-blur-sm rounded-xl sm:rounded-2xl p-2 sm:p-3 text-center border border-white/50">
-							<div className="text-lg sm:text-xl font-bold text-red-600">{incorrectCount}</div>
-							<p className="text-xs text-slate-500">Incorrect</p>
-						</div>
-						<div className="bg-white/70 backdrop-blur-sm rounded-xl sm:rounded-2xl p-2 sm:p-3 text-center border border-white/50">
-							<div className="text-lg sm:text-xl font-bold text-slate-400">{unansweredCount}</div>
-							<p className="text-xs text-slate-500">Skipped</p>
-						</div>
-						{config?.timerEnabled ? (
-							<div className="bg-white/70 backdrop-blur-sm rounded-xl sm:rounded-2xl p-2 sm:p-3 text-center border border-white/50">
-								<div className="text-lg sm:text-xl font-bold text-blue-600">{formatTime(timeSpent)}</div>
-								<p className="text-xs text-slate-500">Time</p>
-							</div>
-						) : (
-							<div className="bg-white/70 backdrop-blur-sm rounded-xl sm:rounded-2xl p-2 sm:p-3 text-center border border-white/50">
-								<div className="text-lg sm:text-xl font-bold text-blue-600">-</div>
-								<p className="text-xs text-slate-500">No Timer</p>
-							</div>
-						)}
 					</div>
-
-
-					                    {/* AI Feedback - Mobile */}
-					                    <div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg border border-white/50">
-					                        <h2 className="text-lg sm:text-xl font-bold text-slate-800 mb-3 flex items-center">
-					                            <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-					                            </svg>
-					                            AI Feedback
-					                        </h2>
-					                        <div className="text-sm sm:text-base text-slate-600 leading-relaxed max-h-44 overflow-auto" style={{ whiteSpace: 'pre-wrap' }}>
-					                            {aiOverallFeedback}
-					                            {isFeedbackLoading && (
-					                                <span className="inline-block w-2 h-4 bg-slate-600 animate-pulse ml-1"></span>
-					                            )}
-					                        </div>
-					                    </div>
-					
-
 					{/* View Solutions Button - Mobile */}
 					<button
 						onClick={() => setSolutionsModalOpen(true)}
@@ -438,6 +501,25 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 							View Question Solutions
 						</span>
 					</button>
+
+					{/* AI Feedback - Mobile */}
+					<div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg border border-white/50">
+						<h2 className="text-lg sm:text-xl font-bold text-slate-800 mb-3 flex items-center">
+							<svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+							</svg>
+							AI Feedback
+						</h2>
+						<div className="text-sm sm:text-base text-slate-600 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
+							{aiOverallFeedback}
+							{isFeedbackLoading && (
+								<span className="inline-block w-2 h-4 bg-slate-600 animate-pulse ml-1"></span>
+							)}
+						</div>
+					</div>
+
+
+
 				</div>
 			</main>
 
@@ -571,75 +653,103 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 
 			{/* Custom Styles */}
 			<style>{`
-				@keyframes fadeIn {
-					0% { opacity: 0; }
-					100% { opacity: 1; }
-				}
-				
-				@keyframes scaleIn {
-					0% { transform: scale(0); }
-					50% { transform: scale(1.1); }
-					100% { transform: scale(1); }
-				}
-				
-				@keyframes rotateSlow {
-					from { transform: rotate(0deg); }
-					to { transform: rotate(360deg); }
-				}
-				
-				@keyframes pulseSlow {
-					0%, 100% { opacity: 0.4; }
-					50% { opacity: 0.6; }
-				}
-				
-				.animate-scale-in {
-					animation: scaleIn 0.6s ease-out;
-				}
-				
-				.animate-rotate-slow {
-					animation: rotateSlow 20s linear infinite;
-				}
-				
-				.animate-pulse-slow {
-					animation: pulseSlow 3s ease-in-out infinite;
-				}
-				
-				/* Hide scrollbar but keep functionality */
-				.overflow-x-auto::-webkit-scrollbar {
-					height: 4px;
-				}
-				
-				.overflow-x-auto::-webkit-scrollbar-track {
-					background: #f1f1f1;
-					border-radius: 10px;
-				}
-				
-				.overflow-x-auto::-webkit-scrollbar-thumb {
-					background: #fbbf24;
-					border-radius: 10px;
-				}
-				
-				/* Desktop specific styles */
-				@media (min-width: 1024px) {
-					.overflow-y-auto::-webkit-scrollbar {
-						width: 6px;
-					}
-					
-					.overflow-y-auto::-webkit-scrollbar-track {
-						background: #f1f1f1;
-						border-radius: 10px;
-					}
-					
-					.overflow-y-auto::-webkit-scrollbar-thumb {
-						background: #cbd5e1;
-						border-radius: 10px;
-					}
-					
-					.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-						background: #94a3b8;
-					}
-				}
-			`}</style>
+	@keyframes fadeIn {
+		0% { opacity: 0; }
+		100% { opacity: 1; }
+	}
+	
+	@keyframes fadeInUp {
+		0% { 
+			opacity: 0; 
+			transform: translateY(20px); 
+		}
+		100% { 
+			opacity: 1; 
+			transform: translateY(0); 
+		}
+	}
+	
+	@keyframes scaleIn {
+		0% { transform: scale(0); }
+		50% { transform: scale(1.1); }
+		100% { transform: scale(1); }
+	}
+	
+	@keyframes rotateSlow {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
+	}
+	
+	@keyframes pulseSlow {
+		0%, 100% { opacity: 0.4; }
+		50% { opacity: 0.6; }
+	}
+	
+	.animate-scale-in {
+		animation: scaleIn 0.6s ease-out;
+	}
+	
+	.animate-rotate-slow {
+		animation: rotateSlow 20s linear infinite;
+	}
+	
+	.animate-pulse-slow {
+		animation: pulseSlow 3s ease-in-out infinite;
+	}
+	
+	.animate-fade-in-up {
+		animation: fadeInUp 0.8s ease-out both;
+	}
+	
+	/* Topic Pills Enhanced Hover Effect */
+	.topic-pill {
+		transform: translateY(0);
+	}
+	
+	.topic-pill:hover {
+		transform: translateY(-2px) scale(1.02);
+	}
+	
+	.topic-pill:active {
+		transform: translateY(0) scale(0.98);
+	}
+	
+	/* Hide scrollbar but keep functionality */
+	.overflow-x-auto::-webkit-scrollbar {
+		height: 4px;
+	}
+	
+	.overflow-x-auto::-webkit-scrollbar-track {
+		background: #f1f1f1;
+		border-radius: 10px;
+	}
+	
+	.overflow-x-auto::-webkit-scrollbar-thumb {
+		background: #fbbf24;
+		border-radius: 10px;
+	}
+	
+	/* Desktop specific styles */
+	@media (min-width: 1024px) {
+		.overflow-y-auto::-webkit-scrollbar {
+			width: 6px;
+		}
+		
+		.overflow-y-auto::-webkit-scrollbar-track {
+			background: #f1f1f1;
+			border-radius: 10px;
+		}
+		
+		.overflow-y-auto::-webkit-scrollbar-thumb {
+			background: #cbd5e1;
+			border-radius: 10px;
+		}
+		
+		.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+			background: #94a3b8;
+		}
+	}
+`}</style>
 		</div>
 	);
 };
