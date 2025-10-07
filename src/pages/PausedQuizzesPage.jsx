@@ -358,12 +358,15 @@ const PausedQuizzesPage = ({ onNavigate }) => {
 
   const deleteQuiz = async (quiz) => {
     try {
-      // Assuming there's an API endpoint to delete paused quiz
-      await examBuddyAPI.deletePausedQuiz(quiz.id);
-      setPausedQuizzes(prev => prev.filter(q => q.id !== quiz.id));
-      toast.success('Quiz deleted successfully');
+      const response = await examBuddyAPI.removePausedQuiz(quiz.id);
+      if (response.success) {
+        setPausedQuizzes(prev => prev.filter(q => q.id !== quiz.id));
+        toast.success('Quiz deleted successfully');
+      } else {
+        toast.error('Failed to delete quiz: ' + (response.error || 'Unknown error'));
+      }
     } catch (error) {
-      toast.error('Failed to delete quiz');
+      toast.error('Failed to delete quiz: ' + error.message);
     }
   };
 

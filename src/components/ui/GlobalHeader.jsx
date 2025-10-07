@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 // Centralized icon management function for consistency
 const getIcon = (iconName, isActive = false) => {
-    const className = `w-5 h-5 transition-colors ${isActive ? 'text-amber-600' : 'text-slate-500'}`;
+    const className = `w-5 h-5 transition-colors ${isActive ? 'text-amber-600' : 'text-slate-800'}`;
     const userIconClassName = `w-5 h-5 text-gray-600`;
     const mobileMenuClassName = `w-6 h-6 text-gray-600`;
 
@@ -237,7 +237,7 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             e.preventDefault(); 
                             onNavigate('home'); 
                         }} 
-                        className="flex items-center space-x-2.5 pl-3 pr-2 flex-shrink-0"
+                        className="flex items-center space-x-2.5 pl-3 flex-shrink-0"
                         aria-label="Education Buddy - Home"
                     >
                         <div className="flex items-center">
@@ -245,7 +245,7 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                                 <span className="text-white font-bold text-sm">EB</span>
                             </div>
                         </div>
-                        <span className="font-bold text-xl text-gray-800 hidden sm:block">Buddy</span>
+                        <span className="font-bold text-xl text-gray-800 hidden sm:block mr-2">Buddy</span>
                     </a>
 
                     {/* Right-side container for nav and actions */}
@@ -321,7 +321,7 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                         </div>
 
                         {/* Mobile View Navigation - Expanding Pills */}
-                        <div className="md:hidden flex items-center space-x-1 border-l border-gray-200 ml-2 pl-2">
+                        <div className="md:hidden flex items-center space-x-1 border-l border-gray-200 pl-2">
                             {navigationItems.map((item) => {
                                 const isActive = currentPage === item.id;
                                 return (
