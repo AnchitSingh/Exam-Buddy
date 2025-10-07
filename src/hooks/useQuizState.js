@@ -668,6 +668,7 @@ const useQuizState = (quizConfig = null, answerRef) => {
           explanation: currentQuestion.explanation,
           subject: currentQuestion.subject,
           difficulty: currentQuestion.difficulty,
+          tags: currentQuestion.tags || [],
           quizTitle: quiz?.title
         });
         

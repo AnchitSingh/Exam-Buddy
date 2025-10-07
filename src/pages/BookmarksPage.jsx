@@ -451,6 +451,11 @@ const BookmarksPage = ({ onNavigate }) => {
                               {bookmark.difficulty}
                             </Badge>
                           )}
+                          {bookmark.tags && bookmark.tags.length > 0 && bookmark.tags.map((tag, index) => (
+                            <Badge key={index} variant="default">
+                              {tag}
+                            </Badge>
+                          ))}
                         </div>
                       </td>
                       <td className="px-6 py-4">
