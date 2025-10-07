@@ -100,6 +100,32 @@ const QuizCard = ({ quiz, onResume, onRestart, onDelete }) => {
     return 'text-red-600';
   };
 
+  // Function to get top 3 topic tags from questions
+  const getTopTopicTags = () => {
+    const tagCount = {};
+    
+    if (quiz.questions && Array.isArray(quiz.questions)) {
+      quiz.questions.forEach(question => {
+        if (question.tags && Array.isArray(question.tags)) {
+          question.tags.forEach(tag => {
+            const cleanTag = tag.trim();
+            if (cleanTag) {
+              tagCount[cleanTag] = (tagCount[cleanTag] || 0) + 1;
+            }
+          });
+        }
+      });
+    }
+    
+    // Sort tags by frequency and return top 3
+    return Object.entries(tagCount)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3)
+      .map(([tag]) => tag);
+  };
+
+  const topTags = getTopTopicTags();
+
   return (
     <div 
       className="group relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
@@ -114,13 +140,23 @@ const QuizCard = ({ quiz, onResume, onRestart, onDelete }) => {
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-              <Badge variant={
-                quiz.subject === 'Physics' ? 'info' : 
-                quiz.subject === 'Math' ? 'success' : 
-                'purple'
-              } size="sm">
-                {quiz.subject}
-              </Badge>
+              {topTags.length > 0 ? (
+                // Show top 3 tags as badges
+                topTags.map((tag, index) => (
+                  <Badge key={index} variant="default" size="sm">
+                    {tag}
+                  </Badge>
+                ))
+              ) : (
+                // Fallback to subject badge if no tags
+                <Badge variant={
+                  quiz.subject === 'Physics' ? 'info' : 
+                  quiz.subject === 'Math' ? 'success' : 
+                  'purple'
+                } size="sm">
+                  {quiz.subject}
+                </Badge>
+              )}
               <Badge variant={
                 quiz.difficulty === 'Easy' ? 'success' : 
                 quiz.difficulty === 'Medium' ? 'warning' : 
