@@ -303,7 +303,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 								)}
 							</div>
 							{/* Recommended Topics */}
-							<div className="text-center">
+							<div className="text-center" title="Recommended topics">
 								
 								<div className="flex flex-wrap justify-center gap-3">
 									{recommendedTopics.length > 0 ? (
@@ -344,7 +344,7 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 								</div>
 							</div>
 
-							<button className="w-full relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-2 border-amber-200/50 hover:border-amber-300 text-lg font-semibold text-slate-800 hover:shadow-xl hover:shadow-amber-100/30 transform hover:-translate-y-0.5 transition-all duration-300 group">
+							<button onClick={() => setSolutionsModalOpen(true)} className="w-full relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-2 border-amber-200/50 hover:border-amber-300 text-lg font-semibold text-slate-800 hover:shadow-xl hover:shadow-amber-100/30 transform hover:-translate-y-0.5 transition-all duration-300 group">
 								<span className="flex items-center justify-center">
 									<svg
 										className="w-5 h-5 mr-2 text-amber-600 group-hover:scale-110 transition-transform duration-300"
