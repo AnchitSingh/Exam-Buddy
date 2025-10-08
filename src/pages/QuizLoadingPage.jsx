@@ -7,55 +7,109 @@ import examBuddyAPI from '../services/api';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
 
 const LoadingProgress = ({ steps, currentStep, streamMessage }) => (
-    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-white/50">
-        <div className="p-6 sm:p-8">
-            <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-r from-amber-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                    <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+    <div className="w-full max-w-md">
+        <div className="bg-white/80 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden border border-white/60">
+            {/* Header Section */}
+            <div className="bg-gradient-to-br from-amber-400/10 via-orange-400/5 to-transparent p-6 border-b border-slate-100">
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl blur-md opacity-60"></div>
+                        <div className="relative w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center">
+                            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-xl font-bold text-slate-800">Creating Magic ✨</h3>
+                        <p className="text-slate-500 text-sm">Step {currentStep + 1} of {steps.length}</p>
+                    </div>
                 </div>
-                <h3 className="text-xl font-semibold text-slate-800">Preparing Your Quiz</h3>
-                <p className="text-slate-500 text-sm mt-1">Please wait while we work our magic...</p>
+                
+                {/* Overall Progress Bar */}
+                <div className="mt-4 h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div 
+                        className="h-full bg-gradient-to-r from-amber-400 via-orange-400 to-orange-500 transition-all duration-700 ease-out rounded-full"
+                        style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+                    ></div>
+                </div>
             </div>
             
-            <div className="space-y-4">
+            {/* Steps Section */}
+            <div className="p-6 space-y-3">
                 {steps.map((step, index) => {
                     const isCompleted = index < currentStep;
                     const isCurrent = index === currentStep;
                     
                     return (
-                        <div key={index} className="flex items-center space-x-4 p-3 bg-slate-50/50 rounded-lg">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                                isCompleted 
-                                ? 'bg-green-100 border-2 border-green-500' 
-                                : isCurrent 
-                                    ? 'bg-amber-100 border-2 border-amber-500' 
-                                    : 'bg-slate-100 border-2 border-slate-300'
-                            }`}>
-                                {isCompleted ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" color="#75c520" fill="none">
-                                <path d="M17 3.33782C15.5291 2.48697 13.8214 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 11.3151 21.9311 10.6462 21.8 10" stroke="#75c520" strokeWidth="1.5" strokeLinecap="round"></path>
-                                <path d="M8 12.5C8 12.5 9.5 12.5 11.5 16C11.5 16 17.0588 6.83333 22 5" stroke="#75c520" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                            </svg>
-                            ) : isCurrent ? (
-                                <svg className="animate-spin w-5 h-5 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                ) : (
-                                <div className="w-3 h-3 bg-slate-400 rounded-full"></div>
-                                )}
-                            </div>
+                        <div 
+                            key={index} 
+                            className={`relative overflow-hidden transition-all duration-500 rounded-2xl ${
+                                isCurrent 
+                                    ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 shadow-lg shadow-amber-100' 
+                                    : isCompleted
+                                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200'
+                                        : 'bg-slate-50/50 border border-slate-200'
+                            }`}
+                        >
+                            {/* Animated background for current step */}
+                            {isCurrent && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-amber-200/20 to-orange-200/20 animate-pulse"></div>
+                            )}
                             
-                            <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-semibold transition-colors ${
-                                isCompleted ? 'text-green-800' : 
-                                isCurrent ? 'text-amber-800' : 'text-slate-600'
+                            <div className="relative flex items-center gap-4 p-4">
+                                {/* Icon */}
+                                <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                                    isCompleted 
+                                        ? 'bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg' 
+                                        : isCurrent 
+                                            ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg' 
+                                            : 'bg-white border-2 border-slate-300'
                                 }`}>
-                                {step.title}
-                                {isCurrent && streamMessage && <span className="ml-2 font-normal text-amber-700">{streamMessage}</span>}
-                                </p>
+                                    {isCompleted ? (
+                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    ) : isCurrent ? (
+                                        <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    ) : (
+                                        <div className="w-2.5 h-2.5 bg-slate-400 rounded-full"></div>
+                                    )}
+                                </div>
+                                
+                                {/* Text */}
+                                <div className="flex-1 min-w-0">
+                                    <p className={`text-sm font-semibold transition-colors ${
+                                        isCompleted ? 'text-green-800' : 
+                                        isCurrent ? 'text-amber-900' : 'text-slate-500'
+                                    }`}>
+                                        {step.title}
+                                    </p>
+                                    {isCurrent && streamMessage && (
+                                        <p className="text-xs text-amber-700 mt-1 font-medium animate-pulse">
+                                            {streamMessage}
+                                        </p>
+                                    )}
+                                </div>
+                                
+                                {/* Status Badge */}
+                                {isCompleted && (
+                                    <div className="flex-shrink-0">
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800">
+                                            Done
+                                        </span>
+                                    </div>
+                                )}
+                                {isCurrent && (
+                                    <div className="flex-shrink-0">
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-100 text-amber-800">
+                                            Processing
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     );
