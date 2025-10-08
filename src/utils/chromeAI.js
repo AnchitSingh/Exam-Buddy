@@ -101,6 +101,8 @@ async function promptJSON({ text, schema, validate, fallbackRepair = true }) {
   }
 }
 
+import { sanitizeJSON } from './jsonUtils';
+
 // Fallback repair approach for compatibility
 async function promptJSONWithRepair({ text, schema, validate }) {
   const s = await createSessionIfNeeded();
@@ -113,7 +115,8 @@ ${JSON.stringify(schema, null, 2)}`;
   const raw = await s.prompt(enhancedPrompt);
   
   try {
-    const parsed = JSON.parse(raw);
+    const sanitized = sanitizeJSON(raw);
+    const parsed = JSON.parse(sanitized);
     if (validate && !validate(parsed)) {
       throw new Error('Validation failed');
     }
@@ -131,7 +134,8 @@ ${raw}
 Return corrected JSON only:`;
     
     const repaired = await s.prompt(repairPrompt);
-    const repairedParsed = JSON.parse(repaired);
+    const sanitizedRepaired = sanitizeJSON(repaired);
+    const repairedParsed = JSON.parse(sanitizedRepaired);
     
     if (validate && !validate(repairedParsed)) {
       throw new Error('Repair validation failed');
