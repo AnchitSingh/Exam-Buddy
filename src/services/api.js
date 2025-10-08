@@ -1356,14 +1356,43 @@ class ExamBuddyAPI {
 
     async getUserProfile() {
         await this._loadData();
+        
+        // Try to get the profile from storage first
+        let profileData = null;
+        
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+            // Use chrome.storage for extension
+            profileData = await new Promise((resolve) => {
+                chrome.storage.local.get(['userProfile'], (result) => {
+                    resolve(result.userProfile || null);
+                });
+            });
+        } else {
+            // Fallback to localStorage for development
+            const storedProfile = localStorage.getItem('userProfile');
+            if (storedProfile) {
+                profileData = JSON.parse(storedProfile);
+            }
+        }
+        
+        if (profileData) {
+            return {
+                success: true,
+                data: profileData
+            };
+        }
+        
+        // Return default profile if none found
+        const defaultProfile = {
+            name: 'Study Enthusiast',
+            email: 'exam.buddy@gmail.com',
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
+        };
+        
         return {
             success: true,
-            data: {
-                name: 'John Doe',
-                email: 'john.doe@example.com',
-                createdAt: new Date().toISOString(),
-                lastLogin: new Date().toISOString()
-            }
+            data: defaultProfile
         };
     }
 

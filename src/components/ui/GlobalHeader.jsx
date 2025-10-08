@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useProfile } from '../../contexts/ProfileContext';
 
 // Centralized icon management function for consistency
 const getIcon = (iconName, isActive = false) => {
@@ -188,8 +189,19 @@ const Tooltip = ({ children, content }) => {
     );
 };
 
-const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
+const GlobalHeader = ({ currentPage = 'home', onNavigate, onProfileUpdate }) => {
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    
+    const { profile, updateProfileName, loading } = useProfile();
+    const [localProfileName, setLocalProfileName] = useState(profile?.name || 'Study Enthusiast');
+    
+    // Update local state when profile changes
+    useEffect(() => {
+        if (profile?.name) {
+            setLocalProfileName(profile.name);
+        }
+    }, [profile]);
 
     // Navigation items configuration
     const navigationItems = [
@@ -199,6 +211,18 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
         { id: 'stats', label: 'Stats', icon: 'stats', action: () => onNavigate('stats') },
         { id: 'quiz', label: 'New Quiz', icon: 'plus', action: () => onNavigate('home', { openQuizSetup: true }) },
     ];
+
+    // Handle profile name update
+    const handleProfileNameSubmit = async (e) => {
+        e.preventDefault();
+        await updateProfileName(localProfileName);
+        if (onProfileUpdate && typeof onProfileUpdate === 'function') {
+            onProfileUpdate(localProfileName);
+        }
+        setShowProfileModal(false);
+    };
+
+
 
     // Close mobile menu on escape key
     useEffect(() => {
@@ -290,11 +314,12 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             {/* Profile Icon for Medium screens */}
                             <button
                                 className="relative flex items-center justify-center h-10 w-10 rounded-full transition-all duration-200 text-slate-600 hover:bg-slate-100"
-                                aria-label={userName ? `Profile: ${userName}` : 'Profile'}
+                                aria-label={localProfileName ? `Profile: ${localProfileName}` : 'Profile'}
+                                onClick={() => setShowProfileModal(true)}
                             >
-                                {userName ? (
+                                {localProfileName ? (
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-xs font-semibold text-gray-700 uppercase shadow-sm">
-                                        {userName.charAt(0)}
+                                        {localProfileName.charAt(0)}
                                     </div>
                                 ) : (
                                     <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -308,11 +333,12 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                         <div className="hidden lg:flex items-center pl-3 pr-1">
                             <button
                                 className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center hover:from-gray-200 hover:to-gray-300 transition-all shadow-sm"
-                                aria-label={userName ? `Profile: ${userName}` : 'Profile'}
+                                aria-label={localProfileName ? `Profile: ${localProfileName}` : 'Profile'}
+                                onClick={() => setShowProfileModal(true)}
                             >
-                                {userName ? (
+                                {localProfileName ? (
                                     <span className="font-semibold text-gray-700 uppercase text-sm">
-                                        {userName.charAt(0)}
+                                        {localProfileName.charAt(0)}
                                     </span>
                                 ) : (
                                     getIcon('user')
@@ -337,11 +363,12 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             {/* Profile Icon for Mobile */}
                             <button
                                 className="relative flex items-center justify-center h-10 w-10 rounded-full transition-all duration-200 text-slate-600 hover:bg-slate-100"
-                                aria-label={userName ? `Profile: ${userName}` : 'Profile'}
+                                aria-label={localProfileName ? `Profile: ${localProfileName}` : 'Profile'}
+                                onClick={() => setShowProfileModal(true)}
                             >
-                                {userName ? (
+                                {localProfileName ? (
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-xs font-semibold text-gray-700 uppercase shadow-sm">
-                                        {userName.charAt(0)}
+                                        {localProfileName.charAt(0)}
                                     </div>
                                 ) : (
                                     <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -393,24 +420,76 @@ const GlobalHeader = ({ userName, currentPage = 'home', onNavigate }) => {
                             <div className="border-t border-gray-200 pt-4 mt-2">
                                 <button
                                     className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-base font-medium text-gray-600 hover:bg-gray-50"
-                                    aria-label={userName ? `Profile: ${userName}` : 'Log In / Profile'}
+                                    onClick={() => {
+                                        setShowProfileModal(true);
+                                        setShowMobileMenu(false);
+                                    }}
+                                    aria-label={localProfileName ? `Profile: ${localProfileName}` : 'Profile'}
                                 >
-                                    {userName ? (
+                                    {localProfileName ? (
                                         <>
                                             <div className="w-8 h-8 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                                                <span className="font-semibold text-gray-700 uppercase">{userName.charAt(0)}</span>
+                                                <span className="font-semibold text-gray-700 uppercase">{localProfileName.charAt(0)}</span>
                                             </div>
-                                            <span>{userName}</span>
+                                            <span>{localProfileName}</span>
                                         </>
                                     ) : (
                                         <>
-                                            {getIcon('user')}
-                                            <span>Log In / Profile</span>
+                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                                {getIcon('user')}
+                                            </div>
+                                            <span>Update Profile</span>
                                         </>
                                     )}
                                 </button>
                             </div>
                         </nav>
+                    </div>
+                </div>
+            )}
+
+            {/* Profile Modal */}
+            {showProfileModal && (
+                <div 
+                    className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setShowProfileModal(false)}
+                >
+                    <div 
+                        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">Update Profile</h2>
+                        <form onSubmit={handleProfileNameSubmit}>
+                            <div className="mb-4">
+                                <label htmlFor="profileName" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Your Name
+                                </label>
+                                <input
+                                    type="text"
+                                    id="profileName"
+                                    value={localProfileName}
+                                    onChange={(e) => setLocalProfileName(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                                    placeholder="Enter your name"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowProfileModal(false)}
+                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { ProfileProvider } from './contexts/ProfileContext';
 import LandingPage from './pages/LandingPage';
 import HomePage from './pages/HomePage';
 import QuizPage from './pages/QuizPage';
@@ -97,7 +98,7 @@ const App = () => {
   };
 
   return (
-    <>
+    <ProfileProvider>
       <Toaster position="top-right" toastOptions={{
         duration: 3000,
         style: {
@@ -165,7 +166,7 @@ const App = () => {
       {currentPage === 'stats' && (
         <GlobalStatsPage onNavigate={navigateTo} />
       )}
-    </>
+    </ProfileProvider>
   );
 };
 

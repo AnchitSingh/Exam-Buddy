@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { useProfile } from '../contexts/ProfileContext';
 import QuizSetupModal from '../components/quiz/QuizSetupModal';
 import StorySetupModal from '../components/story/StorySetupModal';
 import GlobalHeader from '../components/ui/GlobalHeader';
@@ -169,7 +170,7 @@ const EmptyState = ({ icon, title, message }) => (
 const HomePage = ({ onNavigate, navigationData }) => {
     const [showQuizSetup, setShowQuizSetup] = useState(false);
     const [showStorySetup, setShowStorySetup] = useState(false);
-    const [userProfile, setUserProfile] = useState(null);
+    const { profile, loading: profileLoading } = useProfile();
     const [pausedQuizzes, setPausedQuizzes] = useState([]);
     const [bookmarks, setBookmarks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -208,7 +209,7 @@ const HomePage = ({ onNavigate, navigationData }) => {
 
                 if (!mounted) return;
 
-                if (profileResponse.success) setUserProfile(profileResponse.data);
+
                 if (pausedResponse.success) setPausedQuizzes(pausedResponse.data);
                 if (bookmarksResponse.success) setBookmarks(bookmarksResponse.data);
 
@@ -327,16 +328,15 @@ const HomePage = ({ onNavigate, navigationData }) => {
                 <BackgroundEffects />
                 {/* Minimal Header */}
                 <GlobalHeader
-                    userName={userProfile?.name}
                     currentPage="home"
                     onNavigate={onNavigate}
                 />
-                <main className="mx-auto min-h-screen flex flex-col justify-center py-12 pt-24 relative z-10">
+                <main className="mx-auto pl-4 pr-4 min-h-screen flex flex-col justify-center py-12 pt-24 relative z-10">
                     <div className="min-h-[76vh] flex flex-col justify-center">
                         {/* Header Section */}
                         <div className="text-center mb-12 animate-fade-in">
                             <h1 className="text-5xl sm:text-6xl font-display font-bold tracking-tight mb-4">
-                                <span className="text-slate-800">Welcome back{userProfile?.name ? `, ${userProfile.name}` : ''}</span>
+                                <span className="text-slate-800">Welcome back{profile?.name ? `, ${profile.name}` : ''}</span>
                                 <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">.</span>
                             </h1>
                             <p className="text-lg text-slate-500">What would you like to learn today?</p>
