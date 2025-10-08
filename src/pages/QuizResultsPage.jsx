@@ -643,7 +643,9 @@ const QuizResultsPage = ({ results, onNavigate }) => {
 							{currentQuestion.answer && !currentAnswer?.unanswered && (
 								<div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
 									<p className="text-sm font-semibold text-blue-800 mb-1">Answer</p>
-									<p className="text-sm text-blue-700 break-words">{currentQuestion.answer}</p>
+									<p className="text-sm text-blue-700 break-words">
+										{Array.isArray(currentQuestion.answer) ? currentQuestion.answer[0]?.text : currentQuestion.answer}
+									</p>
 								</div>
 							)}
 						</div>

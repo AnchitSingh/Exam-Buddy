@@ -99,17 +99,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     }
   }, [currentQuestion, currentQuestionIndex, userAnswers, currentDraft]);
 
-  // Add auto-save on text change (debounced)
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      if (((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Subjective') && textAnswer) ||
-        (currentQuestion?.type === 'Fill in Blank' && fillBlanks.some(b => b))) {
-        saveDraftAnswer();
-      }
-    }, 1000); // Save after 1 second of no typing
 
-    return () => clearTimeout(timer);
-  }, [textAnswer, fillBlanks, currentQuestion, saveDraftAnswer]);
   
   // Add this effect in QuizPage after the other effects
   React.useEffect(() => {
@@ -128,8 +118,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
 
   const handleSubjectiveAnswer = () => {
     if ((currentQuestion?.type === 'Short Answer' || currentQuestion?.type === 'Subjective') && textAnswer.trim()) {
-      const isCorrect = false; // Short answers need AI evaluation
-      selectAnswer(0, isCorrect, false, textAnswer.trim(), false); // Not a draft
+      selectAnswer(0, false, false, textAnswer.trim(), false); // Not a draft
     } else if (currentQuestion?.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
       const isCorrect = currentQuestion.acceptableAnswers?.some(acceptableSet =>
         acceptableSet.every((acceptable, index) =>
@@ -190,8 +179,8 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
       if (currentQuestion) {
         const currentAnswer = finalAnswers[currentQuestionIndex];
 
-        // Check if we need to save a text-based answer
-        if (!currentAnswer || !currentAnswer.textAnswer) {
+        // Check if we need to save a text-based answer that hasn't been evaluated
+        if (!currentAnswer?.aiEvaluated) {
           if ((currentQuestion.type === 'Short Answer' || currentQuestion.type === 'Subjective') && textAnswer.trim()) {
             const answer = {
               questionId: currentQuestion.id,
@@ -418,18 +407,30 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 });
               })()}
             </div>
+            {config.immediateFeedback && selectedAnswer === null && (
+              <Button onClick={handleSubjectiveAnswer} className="w-full sm:w-auto">
+                Submit Answer
+              </Button>
+            )}
           </div>
         );
 
       case 'Short Answer':
         return (
-          <textarea
-            value={textAnswer}
-            onChange={(e) => setTextAnswer(e.target.value)}
-            disabled={selectedAnswer !== null && config.immediateFeedback}
-            placeholder="Type your answer here..."
-            className="w-full p-4 bg-white/80 backdrop-blur-sm border-2 border-white/50 rounded-2xl focus:border-amber-400 outline-none resize-none h-40 text-slate-700 placeholder-slate-400 disabled:opacity-50"
-          />
+          <div>
+            <textarea
+              value={textAnswer}
+              onChange={(e) => setTextAnswer(e.target.value)}
+              disabled={selectedAnswer !== null && config.immediateFeedback}
+              placeholder="Type your answer here..."
+              className="w-full p-4 bg-white/80 backdrop-blur-sm border-2 border-white/50 rounded-2xl focus:border-amber-400 outline-none resize-none h-40 text-slate-700 placeholder-slate-400 disabled:opacity-50"
+            />
+            {config.immediateFeedback && selectedAnswer === null && (
+              <Button onClick={handleSubjectiveAnswer} className="w-full sm:w-auto mt-4">
+                Submit Answer
+              </Button>
+            )}
+          </div>
         );
 
       default:
