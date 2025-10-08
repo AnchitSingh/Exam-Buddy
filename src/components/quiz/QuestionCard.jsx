@@ -3,6 +3,7 @@ import { Clock, Bookmark, Pause, Square } from 'lucide-react';
 import AnswerOption from './AnswerOption';
 import FeedbackSection from './FeedbackSection';
 import Modal from '../ui/Modal';
+import Button from '../ui/Button';
 
 const QuestionCard = ({ question, options, onAnswer, onBookmark, onPause, onStop }) => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -84,18 +85,20 @@ const QuestionCard = ({ question, options, onAnswer, onBookmark, onPause, onStop
       >
         <p className="text-gray-600 mb-6">Your progress has been saved. You can resume anytime from where you left off.</p>
         <div className="flex flex-col space-y-3">
-          <button 
+          <Button 
             onClick={() => setShowPauseModal(false)}
-            className="w-full px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-2xl hover:shadow-lg transition-all duration-200"
+            variant="primary"
+            className="w-full"
           >
             Resume Quiz
-          </button>
-          <button 
+          </Button>
+          <Button 
             onClick={onPause}
-            className="w-full px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-2xl hover:bg-slate-200 transition-colors"
+            variant="secondary"
+            className="w-full"
           >
             Back to Home
-          </button>
+          </Button>
         </div>
       </Modal>
 
@@ -107,18 +110,20 @@ const QuestionCard = ({ question, options, onAnswer, onBookmark, onPause, onStop
       >
         <p className="text-gray-600 mb-6">Are you sure you want to stop this quiz? Your current progress will be saved, but the quiz will end.</p>
         <div className="flex flex-col space-y-3">
-          <button 
+          <Button 
             onClick={onStop}
-            className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors"
+            variant="danger"
+            className="w-full"
           >
             Yes, Stop Quiz
-          </button>
-          <button 
+          </Button>
+          <Button 
             onClick={() => setShowStopModal(false)}
-            className="w-full px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-2xl hover:bg-slate-200 transition-colors"
+            variant="secondary"
+            className="w-full"
           >
             Continue Quiz
-          </button>
+          </Button>
         </div>
       </Modal>
     </div>

@@ -1068,13 +1068,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                     Your progress has been saved. You can resume anytime from where you left off.
                 </p>
                 <div className="flex flex-col space-y-3">
-                    <button
+                    <Button
                         onClick={() => setShowPauseModal(false)}
                         disabled={isPausingQuiz}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-2xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full"
+                        variant="primary"
                     >
                         Resume Quiz
-                    </button>
+                    </Button>
                     <Button
                         onClick={confirmPause}
                         loading={isPausingQuiz}
@@ -1111,13 +1112,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                     >
                         {isStoppingQuiz ? 'Stopping...' : 'Yes, Stop Quiz'}
                     </Button>
-                    <button
+                    <Button
                         onClick={() => setShowStopModal(false)}
                         disabled={isStoppingQuiz}
-                        className="w-full px-6 py-3 bg-slate-100 text-slate-700 font-semibold rounded-2xl hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        variant="secondary"
+                        className="w-full"
                     >
                         Continue Quiz
-                    </button>
+                    </Button>
                 </div>
             </Modal>
 
