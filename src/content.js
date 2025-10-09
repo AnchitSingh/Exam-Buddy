@@ -72,4 +72,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // A log to confirm the script is injected and running during development.
-console.log('✅ Exam Buddy content script loaded and listening.');

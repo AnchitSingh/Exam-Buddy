@@ -378,7 +378,7 @@ useEffect(() => {
 
       // Evaluate answers if needed
       if (answersToEvaluate.length > 0) {
-        console.log(`📊 Evaluating ${answersToEvaluate.length} AI questions...`);
+        
         setIsEvaluating(true);
         setEvaluationProgress({ current: 0, total: answersToEvaluate.length });
 
@@ -386,7 +386,7 @@ useEffect(() => {
           const { index: answerIndex, answer, question } = item;
           setEvaluationProgress({ current: index + 1, total: answersToEvaluate.length });
 
-          console.log(`🤖 Evaluating question ${answerIndex + 1}/${answersToEvaluate.length}: ${question.type}`);
+          
 
           try {
             const response = await examBuddyAPI.submitAnswer(quizIdRef.current, question.id, answer);
@@ -401,7 +401,7 @@ useEffect(() => {
                 aiEvaluated: true,
                 isPending: false,
               };
-              console.log(`✅ Question ${answerIndex + 1} evaluated: ${response.data.isCorrect ? 'Correct' : 'Incorrect'}`);
+              
             }
           } catch (e) {
             console.error(`❌ Failed to evaluate question ${answerIndex + 1}:`, e);
@@ -410,7 +410,7 @@ useEffect(() => {
         }
 
         setIsEvaluating(false);
-        console.log(`✅ All AI questions evaluated`);
+        
       }
 
       // Filter out invalid answers
@@ -631,7 +631,7 @@ useEffect(() => {
       if (currentQ.type === 'Fill in Blank' || 
           currentQ.type === 'Short Answer' || 
           currentQ.type === 'Subjective') {
-        console.log(`✅ Answer saved for ${currentQ.type} question (will be evaluated at quiz completion)`);
+        
         return;
       }
   

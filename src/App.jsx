@@ -26,15 +26,15 @@ const App = () => {
   React.useEffect(() => {
     if (hasInitialized) return;
     
-    console.log('=== EXAM BUDDY INIT ===');
+    
     const hasVisited = localStorage.getItem('exambuddy_visited');
-    console.log('hasVisited:', hasVisited);
+    
     
     if (!hasVisited) {
-      console.log('First time user - showing landing');
+      
       setCurrentPage('landing');
     } else {
-      console.log('Returning user - showing home');
+      
       setCurrentPage('home');
     }
     
@@ -49,11 +49,11 @@ const App = () => {
   }, []);
 
   const navigateTo = (page, data = null) => {
-    console.log('Navigating from', currentPage, 'to', page, data ? 'with data' : '');
+    
     
     if (currentPage === 'landing' && page === 'home') {
       localStorage.setItem('exambuddy_visited', 'true');
-      console.log('Marked user as visited');
+      
     }
     
     // Handle story streaming updates without changing pages
@@ -73,10 +73,10 @@ const App = () => {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
       const messageListener = (message, sender, sendResponse) => {
         if (message.type === 'START_QUIZ_FROM_SELECTION') {
-          console.log('Received START_QUIZ_FROM_SELECTION with text:', message.text);
+          
           navigateTo('home', { openQuizSetup: true, selectionText: message.text });
         } else if (message.type === 'START_STORY_FROM_SELECTION') {
-          console.log('Received START_STORY_FROM_SELECTION with text:', message.text);
+          
           navigateTo('home', { openStorySetup: true, selectionText: message.text });
         }
       };
@@ -94,7 +94,7 @@ const App = () => {
     setHasInitialized(false);
     setCurrentPage('landing');
     setNavigationData(null);
-    console.log('App reset - cleared localStorage');
+    
   };
 
   return (

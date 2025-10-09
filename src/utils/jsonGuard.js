@@ -211,7 +211,7 @@ export async function parseWithRepair({ raw, schema, validate, repairFn }) {
   // Attempt 4: Model-assisted repair if provided
   if (typeof repairFn === 'function') {
     try {
-      console.log('Attempting AI repair of malformed JSON...');
+      
       const repairedText = await repairFn(cleaned || block || raw);
       
       if (repairedText && typeof repairedText === 'string') {
@@ -220,7 +220,7 @@ export async function parseWithRepair({ raw, schema, validate, repairFn }) {
         
         if (result.ok) {
           if (!validate || validate(result.value)) {
-            console.log('AI repair successful');
+            
             return result.value;
           }
           attempts.push({ method: 'AI repair validation', success: false });
@@ -235,7 +235,7 @@ export async function parseWithRepair({ raw, schema, validate, repairFn }) {
         
         if (result.ok) {
           if (!validate || validate(result.value)) {
-            console.log('AI repair with extraction successful');
+            
             return result.value;
           }
           attempts.push({ method: 'AI repair + extract validation', success: false });

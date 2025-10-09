@@ -335,23 +335,13 @@ export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
   - Accept equivalent wording, synonyms, and different order if meaning matches.
   - Penalize: missing core concepts, contradictions, fabricated facts, irrelevance.
   - Partial credit allowed if some key ideas are present.
-  - If the student answer is blank/irrelevant, set isCorrect=false and score=0.0.
-  - Scoring bands:
-    - 0.90-1.00: fully correct and complete
-    - 0.70-0.85: mostly correct; minor gaps
-    - 0.40-0.65: partially correct; key gaps
-    - 0.10-0.35: minimal understanding
-    - 0.00: incorrect/off-topic/blank
+  - If the student answer is blank/irrelevant, set isCorrect=false
   
   OUTPUT:
   Return ONLY valid JSON (no markdown, no prose) with EXACTLY this structure and fields:
   {
     "isCorrect": boolean,
-    "score": number,           // 0.0 to 1.0 inclusive, at most two decimals
-    "feedback": {
-      "message": "string",     // brief, <= 160 chars
-      "explanation": "string"  // 1-3 sentences, concise
-    },
+    "feedback": "string",     // brief, <= 160 chars
     "explanation": "string"    // 1-2 sentences: why correct/incorrect
   }
   - Do NOT add fields. Do NOT rename fields. Do NOT include examples in the output.
@@ -368,22 +358,14 @@ export function buildEvaluatePrompt({ question, canonical, userAnswer }) {
   FORMAT EXAMPLES (for format only; DO NOT copy into your output):
   {
     "isCorrect": true,
-    "score": 0.95,
-    "feedback": {
-      "message": "Accurate and complete.",
-      "explanation": "Covers all core points with correct reasoning and no contradictions."
-    },
-    "explanation": "Matches the reference's key concepts and details."
+    "feedback": "Accurate and complete.",
+    "explanation": "Covers all core points with correct reasoning and no contradictions. Matches the reference's key concepts and details."
   }
   
   {
     "isCorrect": false,
-    "score": 0.30,
-    "feedback": {
-      "message": "Missing core ideas; partial relevance.",
-      "explanation": "Touches on the topic but omits essential concepts stated in the reference."
-    },
-    "explanation": "Key required points are absent or misstated."
+    "feedback": "Missing core ideas; partial relevance.",
+    "explanation": "Touches on the topic but omits essential concepts stated in the reference. Key required points are absent or misstated."
   }
   
   Now return ONLY the final JSON for this student answer.

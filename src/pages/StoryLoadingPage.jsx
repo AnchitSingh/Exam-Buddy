@@ -161,14 +161,14 @@ const StoryLoadingPage = ({ onNavigate, navigationData }) => {
                         // Check if the selected tab is a PDF
                         if (config.selectedTab && config.selectedTab.url && config.selectedTab.url.toLowerCase().endsWith('.pdf')) {
                             try {
-                                console.log('Extracting PDF from tab URL:', config.selectedTab.url);
+                                
                                 const { text, meta } = await extractTextFromPDF(config.selectedTab.url);
                                 extractedSource = await extractFromPDFResult({
                                     text,
                                     fileName: config.selectedTab.url.split('/').pop() || 'PDF Document',
                                     pageCount: meta.pageCount
                                 }, config, progressCallback);
-                                console.log('PDF extraction from tab completed successfully');
+                                
                             } catch (error) {
                                 console.error('Failed to extract PDF from tab URL:', error);
                                 extractedSource = await extractFromCurrentPage(config, progressCallback);

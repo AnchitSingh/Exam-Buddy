@@ -188,7 +188,7 @@ const StorySetupModal = ({ isOpen, onClose, onStartStory, selectionText }) => {
         selectedTab
       };
       
-      console.log('Generating story with config:', finalConfig);
+      
       toast.success('Story configuration complete! Generating story...');
       await onStartStory(finalConfig);
       onClose();

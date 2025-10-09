@@ -248,7 +248,7 @@ const QuizSetupModal = ({ isOpen, onClose, onStartQuiz, selectionText, recommend
         selectedTab: selectedTab // Include selected tab info
       };
       
-      console.log('Starting quiz with config:', finalConfig);
+      
       toast.success('Quiz configuration complete! Starting quiz...');
       await onStartQuiz(finalConfig);
       onClose();

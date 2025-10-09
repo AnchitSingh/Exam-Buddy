@@ -203,20 +203,31 @@ const QuizResultsPage = ({ results, onNavigate }) => {
             }).join('');
 
             let correctAnswerSentence = '';
-            const correctAnswer = Array.isArray(question.acceptableAnswers) && question.acceptableAnswers[0];
+            let correctAnswers = [];
+            
+            // Try acceptableAnswers first, then fall back to the main answer field
+            if (Array.isArray(question.acceptableAnswers) && question.acceptableAnswers[0]) {
+                correctAnswers = question.acceptableAnswers[0];
+            } else if (question.answer) {
+                // For fill-in-the-blank, question.answer might be a string, so we create a single-element array
+                correctAnswers = [question.answer].flat(); // Handle both string and array formats
+            }
 
-            if (!answer.isCorrect && Array.isArray(correctAnswer)) {
+            if (!answer.isCorrect && Array.isArray(correctAnswers) && correctAnswers.length > 0) {
                 blankIndex = 0;
                 correctAnswerSentence = parts.map((part, index) => {
                     if (/_{3,}/.test(part)) {
-                        const blank = correctAnswer[blankIndex]
-                            ? `<strong class="text-green-700 font-semibold">${escapeHtml(correctAnswer[blankIndex])}</strong>`
+                        const blank = correctAnswers[blankIndex]
+                            ? `<strong class="text-green-700 font-semibold">${escapeHtml(correctAnswers[blankIndex])}</strong>`
                             : '_______';
                         blankIndex++;
                         return blank;
                     }
                     return escapeHtml(part);
                 }).join('');
+            } else if (!answer.isCorrect && typeof question.answer === 'string' && !Array.isArray(question.acceptableAnswers)) {
+                // Fallback: if we have a single correct answer as a string and no acceptableAnswers array
+                correctAnswerSentence = question.question.replace(/_{3,}/, `<strong class="text-green-700 font-semibold">${escapeHtml(question.answer)}</strong>`);
             }
 
             return (
@@ -229,23 +240,25 @@ const QuizResultsPage = ({ results, onNavigate }) => {
                         />
                     </div>
                     {answer.aiEvaluated && (
-                    <div className={`p-3 rounded-lg border ${answer.isCorrect
-                            ? 'bg-green-50/80 border-green-200/50'
-                            : 'bg-red-50/80 border-red-200/50'
-                        }`}>
-                        <p className={`text-sm font-semibold mb-1 ${answer.isCorrect ? 'text-green-800' : 'text-red-800'
+                        <div className={`p-3 rounded-lg border ${answer.isCorrect
+                                ? 'bg-green-50/80 border-green-200/50'
+                                : 'bg-red-50/80 border-red-200/50'
                             }`}>
-                            ✨ AI Evaluation: {
-                                answer.feedback?.message ||
-                                (answer.isCorrect ? 'Correct' : 'Incorrect')
-                            }
-                        </p>
-                        <p className={`text-sm ${answer.isCorrect ? 'text-green-700' : 'text-red-700'
-                            } break-words`}>
-                            {answer.feedback?.explanation || 'No answer provided.'}
-                        </p>
-                    </div>
-                )}
+                            <p className={`text-sm font-semibold mb-1 ${answer.isCorrect ? 'text-green-800' : 'text-red-800'
+                                }`}>
+                                ✨ AI Evaluation: {
+                                    answer.feedback?.message ||
+                                    (answer.isCorrect ? 'Correct' : 'Incorrect')
+                                }
+                            </p>
+                            <p className={`text-sm ${answer.isCorrect ? 'text-green-700' : 'text-red-700'
+                                } break-words`}>
+                                {answer.feedback?.explanation || 
+                                 answer.explanation || 
+                                 'No feedback provided.'}
+                            </p>
+                        </div>
+                    )}
                     {correctAnswerSentence && (
                         <div className="bg-green-50/80 backdrop-blur-sm border border-green-200/50 rounded-xl p-3">
                             <p className="text-sm text-green-800 mb-1">Correct answer:</p>
@@ -282,7 +295,9 @@ const QuizResultsPage = ({ results, onNavigate }) => {
                         </p>
                         <p className={`text-sm ${answer.isCorrect ? 'text-green-700' : 'text-red-700'
                             } break-words`}>
-                            {answer.feedback?.explanation || 'No answer provided.'}
+                            {answer.feedback?.explanation || 
+                             answer.explanation || 
+                             'No feedback provided.'}
                         </p>
                     </div>
                 )}

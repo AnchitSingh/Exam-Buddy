@@ -162,14 +162,14 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
                             };
                             
                             try {
-                                console.log('Extracting PDF from tab URL:', config.selectedTab.url);
+                                
                                 const { text, meta } = await extractTextFromPDF(config.selectedTab.url);
                                 extractedSource = await extractFromPDFResult({
                                     text,
                                     fileName: config.selectedTab.url.split('/').pop() || 'PDF Document',
                                     pageCount: meta.pageCount
                                 }, config, progressCallback);
-                                console.log('PDF extraction from tab completed successfully');
+                                
                             } catch (error) {
                                 console.error('Failed to extract PDF from tab URL:', error);
                                 // If PDF extraction fails, fall back to normal page extraction
@@ -199,14 +199,14 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
                             
                             // Treat it as a PDF URL and extract content
                             try {
-                                console.log('Extracting PDF from URL:', config.sourceValue);
+                                
                                 const { text, meta } = await extractTextFromPDF(config.sourceValue);
                                 extractedSource = await extractFromPDFResult({
                                     text,
                                     fileName: config.sourceValue.split('/').pop() || 'PDF Document',
                                     pageCount: meta.pageCount
                                 }, config, progressCallback);
-                                console.log('PDF extraction from URL completed successfully');
+                                
                             } catch (error) {
                                 console.error('Failed to extract PDF from URL:', error);
                                 // If PDF extraction fails, fall back to treating it as a regular URL

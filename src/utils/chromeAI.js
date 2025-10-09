@@ -6,124 +6,124 @@ let modelParams = null;
 
 // Get the LanguageModel API surface (web or extension)
 function getLanguageModel() {
-  // Standard web API (Chrome 127+)
-  if (globalThis.LanguageModel) return globalThis.LanguageModel;
-  // Extension origin trial (experimental)
-  if (typeof chrome !== 'undefined' && chrome?.aiOriginTrial?.languageModel) {
-    return chrome.aiOriginTrial.languageModel;
-  }
-  return null;
+    // Standard web API (Chrome 127+)
+    if (globalThis.LanguageModel) return globalThis.LanguageModel;
+    // Extension origin trial (experimental)
+    if (typeof chrome !== 'undefined' && chrome?.aiOriginTrial?.languageModel) {
+        return chrome.aiOriginTrial.languageModel;
+    }
+    return null;
 }
 
 // Check model availability using official status strings
 async function checkAvailability() {
-  try {
-    const LM = getLanguageModel();
-    if (!LM) return { available: false, status: 'no-api', detail: null };
-    
-    const availability = await LM.availability();
-    return { 
-      available: availability !== 'unavailable', 
-      status: availability, 
-      detail: null 
-    };
-  } catch (error) {
-    return { 
-      available: false, 
-      status: 'error', 
-      detail: null, 
-      error: error?.message || 'Availability check failed' 
-    };
-  }
+    try {
+        const LM = getLanguageModel();
+        if (!LM) return { available: false, status: 'no-api', detail: null };
+
+        const availability = await LM.availability();
+        return {
+            available: availability !== 'unavailable',
+            status: availability,
+            detail: null
+        };
+    } catch (error) {
+        return {
+            available: false,
+            status: 'error',
+            detail: null,
+            error: error?.message || 'Availability check failed'
+        };
+    }
 }
 
 // Create session with proper parameter clamping and user activation handling
 async function createSessionIfNeeded() {
-  if (session) return session;
-  
-  const LM = getLanguageModel();
-  if (!LM) throw new Error('Prompt API not available');
-  
-  const availability = await LM.availability();
-  if (availability === 'unavailable') {
-    throw new Error('Model unavailable on this device/configuration');
-  }
-  
-  if (!modelParams) {
-    modelParams = await LM.params();
-  }
-  
-  session = await LM.create({
-    temperature: Math.min(0.3, modelParams.maxTemperature || 1.0),
-    topK: Math.min(8, modelParams.maxTopK || 40),
-    expectedOutputs: [
-      { type: "text", languages: ["en"] }
-    ],
-    monitor(monitor) {
-      monitor.addEventListener('downloadprogress', (e) => {
-        console.log(`Model download: ${Math.round(e.loaded * 100)}%`);
-      });
+    if (session) return session;
+
+    const LM = getLanguageModel();
+    if (!LM) throw new Error('Prompt API not available');
+
+    const availability = await LM.availability();
+    if (availability === 'unavailable') {
+        throw new Error('Model unavailable on this device/configuration');
     }
-  });
-  
-  return session;
+
+    if (!modelParams) {
+        modelParams = await LM.params();
+    }
+
+    session = await LM.create({
+        temperature: Math.min(0.3, modelParams.maxTemperature || 1.0),
+        topK: Math.min(8, modelParams.maxTopK || 40),
+        expectedOutputs: [
+            { type: "text", languages: ["en"] }
+        ],
+        monitor(monitor) {
+            monitor.addEventListener('downloadprogress', (e) => {
+
+            });
+        }
+    });
+
+    return session;
 }
 
 
 // Prompt with structured JSON output using responseConstraint
 async function promptJSON({ text, schema, validate, fallbackRepair = true }) {
-  try {
-    const s = await createSessionIfNeeded();
-    
-    // Try structured output first (Chrome 137+)
-    const result = await s.prompt(text, {
-      responseConstraint: schema,
-      omitResponseConstraintInput: true
-    });
-    
-    const parsed = JSON.parse(result);
-    
-    // Validate with custom validator if provided
-    if (validate && !validate(parsed)) {
-      if (!fallbackRepair) throw new Error('Validation failed');
-      // Fallback to repair prompt if validation fails
-      return await promptJSONWithRepair({ text, schema, validate });
+    try {
+        const s = await createSessionIfNeeded();
+
+        // Try structured output first (Chrome 137+)
+        const result = await s.prompt(text, {
+            responseConstraint: schema,
+            omitResponseConstraintInput: true
+        });
+
+        const parsed = JSON.parse(result);
+
+        // Validate with custom validator if provided
+        if (validate && !validate(parsed)) {
+            if (!fallbackRepair) throw new Error('Validation failed');
+            // Fallback to repair prompt if validation fails
+            return await promptJSONWithRepair({ text, schema, validate });
+        }
+
+        return parsed;
+    } catch (error) {
+        // Fallback to repair approach for older versions or validation failures
+        if (fallbackRepair && error.name !== 'NotSupportedError') {
+            console.warn('Structured output failed, attempting repair approach:', error.message);
+            return await promptJSONWithRepair({ text, schema, validate });
+        }
+        throw error;
     }
-    
-    return parsed;
-  } catch (error) {
-    // Fallback to repair approach for older versions or validation failures
-    if (fallbackRepair && error.name !== 'NotSupportedError') {
-      console.warn('Structured output failed, attempting repair approach:', error.message);
-      return await promptJSONWithRepair({ text, schema, validate });
-    }
-    throw error;
-  }
 }
 
 import { sanitizeJSON } from './jsonUtils';
 
 // Fallback repair approach for compatibility
 async function promptJSONWithRepair({ text, schema, validate }) {
-  const s = await createSessionIfNeeded();
-  
-  const enhancedPrompt = `${text}
+    const s = await createSessionIfNeeded();
+
+    const enhancedPrompt = `${text}
 
 IMPORTANT: Respond with valid JSON only that matches this schema:
 ${JSON.stringify(schema, null, 2)}`;
-  
-  const raw = await s.prompt(enhancedPrompt);
-  
-  try {
-    const sanitized = sanitizeJSON(raw);
-    const parsed = JSON.parse(sanitized);
-    if (validate && !validate(parsed)) {
-      throw new Error('Validation failed');
-    }
-    return parsed;
-  } catch (parseError) {
-    // Attempt repair
-    const repairPrompt = `The following output was not valid JSON or didn't match the required schema. Please fix it and return valid JSON only:
+
+    const raw = await s.prompt(enhancedPrompt);
+
+    try {
+        const sanitized = sanitizeJSON(raw);
+        const parsed = JSON.parse(sanitized);
+        if (validate && !validate(parsed)) {
+            throw new Error('Validation failed');
+        }
+        return parsed;
+    } catch (parseError) {
+        // Attempt repair
+        const repairPrompt = `The following output was not valid JSON or didn't match the required schema. Please fix it and return valid JSON only:
 
 Schema:
 ${JSON.stringify(schema, null, 2)}
@@ -132,201 +132,249 @@ Broken output:
 ${raw}
 
 Return corrected JSON only:`;
-    
-    const repaired = await s.prompt(repairPrompt);
-    const sanitizedRepaired = sanitizeJSON(repaired);
-    const repairedParsed = JSON.parse(sanitizedRepaired);
-    
-    if (validate && !validate(repairedParsed)) {
-      throw new Error('Repair validation failed');
+
+        const repaired = await s.prompt(repairPrompt);
+        const sanitizedRepaired = sanitizeJSON(repaired);
+        const repairedParsed = JSON.parse(sanitizedRepaired);
+
+        if (validate && !validate(repairedParsed)) {
+            throw new Error('Repair validation failed');
+        }
+
+        return repairedParsed;
     }
-    
-    return repairedParsed;
-  }
 }
 
 // Streaming prompt for long responses
 async function promptStreaming(text) {
-  const s = await createSessionIfNeeded();
-  return s.promptStreaming(text);
+    const s = await createSessionIfNeeded();
+    return s.promptStreaming(text);
 }
 
 // Session management
 export async function resetSession() {
-  if (session) {
-    session.destroy();
-    session = null;
-  }
+    if (session) {
+        session.destroy();
+        session = null;
+    }
 }
 
 export async function cloneSession() {
-  if (!session) throw new Error('No active session to clone');
-  return await session.clone();
+    if (!session) throw new Error('No active session to clone');
+    return await session.clone();
 }
 
 // Public API
 export async function available() {
-  return await checkAvailability();
+    return await checkAvailability();
 }
 
 export async function generateQuizJSON({ extractedSource, config }) {
-  const prompt = buildQuizPrompt({ extractedSource, config });
-  const schema = {
-    type: 'object',
-    required: ['questions'],
-    properties: {
-      questions: {
-        type: 'array',
-        items: {
-          type: 'object',
-          required: ['type', 'question', 'options', 'explanation'],
-          properties: {
-            type: { type: 'string' },
-            question: { type: 'string' },
-            options: {
-              type: 'array',
-              items: {
-                type: 'object',
-                required: ['text', 'isCorrect'],
-                properties: {
-                  text: { type: 'string' },
-                  isCorrect: { type: 'boolean' }
+    const prompt = buildQuizPrompt({ extractedSource, config });
+    const schema = {
+        type: 'object',
+        required: ['questions'],
+        properties: {
+            questions: {
+                type: 'array',
+                items: {
+                    type: 'object',
+                    required: ['type', 'question', 'options', 'explanation'],
+                    properties: {
+                        type: { type: 'string' },
+                        question: { type: 'string' },
+                        options: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                required: ['text', 'isCorrect'],
+                                properties: {
+                                    text: { type: 'string' },
+                                    isCorrect: { type: 'boolean' }
+                                }
+                            }
+                        },
+                        explanation: { type: 'string' },
+                        difficulty: { type: 'string' },
+                        subject: { type: 'string' }
+                    }
                 }
-              }
-            },
-            explanation: { type: 'string' },
-            difficulty: { type: 'string' },
-            subject: { type: 'string' }
-          }
+            }
         }
-      }
-    }
-  };
-  
-  return await promptJSON({
-    text: prompt,
-    schema,
-    validate: validateQuiz
-  });
+    };
+
+    return await promptJSON({
+        text: prompt,
+        schema,
+        validate: validateQuiz
+    });
 }
 
 export async function streamQuiz({ extractedSource, config }) {
-  const prompt = buildQuizPrompt({ extractedSource, config });
-  return await promptStreaming(prompt);
+    const prompt = buildQuizPrompt({ extractedSource, config });
+    return await promptStreaming(prompt);
+}
+
+export async function streamMCQ({ extractedSource, config }) {
+    // Override config to generate only MCQ questions
+    const mcqConfig = {
+        ...config,
+        questionTypes: ['MCQ'],
+        questionCount: config.questionCount || 5
+    };
+    const prompt = buildQuizPrompt({ extractedSource, config: mcqConfig });
+    return await promptStreaming(prompt);
+}
+
+export async function streamFillUp({ extractedSource, config }) {
+    // Override config to generate only FillUp questions
+    const fillUpConfig = {
+        ...config,
+        questionTypes: ['FillUp'],
+        questionCount: config.questionCount || 5
+    };
+    const prompt = buildQuizPrompt({ extractedSource, config: fillUpConfig });
+    return await promptStreaming(prompt);
+}
+
+export async function streamSubjective({ extractedSource, config }) {
+    // Override config to generate only Subjective questions
+    const subjectiveConfig = {
+        ...config,
+        questionTypes: ['Subjective'],
+        questionCount: config.questionCount || 5
+    };
+    const prompt = buildQuizPrompt({ extractedSource, config: subjectiveConfig });
+    return await promptStreaming(prompt);
+}
+
+export async function streamTrueFalse({ extractedSource, config }) {
+    // Override config to generate only TrueFalse questions
+    const trueFalseConfig = {
+        ...config,
+        questionTypes: ['TrueFalse'],
+        questionCount: config.questionCount || 5
+    };
+    const prompt = buildQuizPrompt({ extractedSource, config: trueFalseConfig });
+    return await promptStreaming(prompt);
 }
 
 export async function streamStory({ extractedSource, config }) {
-  const prompt = buildStoryPrompt({ extractedSource, config });
-  return await promptStreaming(prompt);
+    const prompt = buildStoryPrompt({ extractedSource, config });
+    return await promptStreaming(prompt);
 }
 
 export async function evaluateSubjectiveJSON({ question, canonical, userAnswer }) {
-  const prompt = buildEvaluatePrompt({ question, canonical, userAnswer });
-  const schema = {
-    type: 'object',
-    required: ['isCorrect', 'rationale'],
-    properties: {
-      isCorrect: { type: 'boolean' },
-      rationale: { type: 'string' },
-      score: { type: 'number', minimum: 0, maximum: 100 }
-    }
-  };
-  
-  return await promptJSON({
-    text: prompt,
-    schema,
-    validate: validateEvaluation
-  });
+    const prompt = buildEvaluatePrompt({ question, canonical, userAnswer });
+    const schema = {
+        type: 'object',
+        required: ['isCorrect', 'explanation'],
+        properties: {
+            isCorrect: { type: 'boolean' },
+            feedback: { type: 'string' },
+            explanation: { type: 'string' }
+        }
+    };
+
+    return await promptJSON({
+        text: prompt,
+        schema,
+        validate: validateEvaluation
+    });
 }
 
 export async function recommendPlanJSON({ summary }) {
-  const prompt = buildRecommendPrompt({ summary });
-  const schema = {
-    type: 'object',
-    required: ['strengths', 'weaknesses', 'nextSteps'],
-    properties: {
-      strengths: { type: 'array', items: { type: 'string' } },
-      weaknesses: { type: 'array', items: { type: 'string' } },
-      nextSteps: { type: 'array', items: { type: 'string' } },
-      priority: { type: 'string', enum: ['high', 'medium', 'low'] }
-    }
-  };
-  
-  return await promptJSON({
-    text: prompt,
-    schema,
-    validate: validateRecommendations
-  });
+    const prompt = buildRecommendPrompt({ summary });
+    const schema = {
+        type: 'object',
+        required: ['strengths', 'weaknesses', 'nextSteps'],
+        properties: {
+            strengths: { type: 'array', items: { type: 'string' } },
+            weaknesses: { type: 'array', items: { type: 'string' } },
+            nextSteps: { type: 'array', items: { type: 'string' } },
+            priority: { type: 'string', enum: ['high', 'medium', 'low'] }
+        }
+    };
+
+    return await promptJSON({
+        text: prompt,
+        schema,
+        validate: validateRecommendations
+    });
 }
 
 export async function streamOverallFeedback({ quizMeta, stats }) {
-  const prompt = buildOverallStreamingPrompt({ quizMeta, stats });
-  const s = await createSessionIfNeeded();
-  return s.promptStreaming(prompt);
+    const prompt = buildOverallStreamingPrompt({ quizMeta, stats });
+    const s = await createSessionIfNeeded();
+    return s.promptStreaming(prompt);
 }
 
 export async function getQuizRecommendationsJSON({ quizMeta, stats }) {
-  const prompt = buildRecommendationsPrompt({ quizMeta, stats });
-  const schema = {
-    type: 'object',
-    required: ['recommendations'],
-    properties: {
-      recommendations: {
-        type: 'array',
-        items: {
-          type: 'object',
-          required: ['topic', 'reason', 'suggested_count', 'types'],
-          properties: {
-            topic: { type: 'string' },
-            reason: { type: 'string' },
-            suggested_count: { type: 'number' },
-            types: { type: 'array', items: { type: 'string', enum: ["MCQ","TrueFalse","Subjective","FillUp"] } }
-          }
+    const prompt = buildRecommendationsPrompt({ quizMeta, stats });
+    const schema = {
+        type: 'object',
+        required: ['recommendations'],
+        properties: {
+            recommendations: {
+                type: 'array',
+                items: {
+                    type: 'object',
+                    required: ['topic', 'reason', 'suggested_count', 'types'],
+                    properties: {
+                        topic: { type: 'string' },
+                        reason: { type: 'string' },
+                        suggested_count: { type: 'number' },
+                        types: { type: 'array', items: { type: 'string', enum: ["MCQ", "TrueFalse", "Subjective", "FillUp"] } }
+                    }
+                }
+            }
         }
-      }
-    }
-  };
-  
-  const validate = (data) => {
-      return data && Array.isArray(data.recommendations) && data.recommendations.every(r => r.topic && r.reason && typeof r.suggested_count === 'number');
-  };
+    };
 
-  return await promptJSON({
-    text: prompt,
-    schema,
-    validate
-  });
+    const validate = (data) => {
+        return data && Array.isArray(data.recommendations) && data.recommendations.every(r => r.topic && r.reason && typeof r.suggested_count === 'number');
+    };
+
+    return await promptJSON({
+        text: prompt,
+        schema,
+        validate
+    });
 }
 
 // Additional utilities
 export async function getModelInfo() {
-  const LM = getLanguageModel();
-  if (!LM) return null;
-  
-  try {
-    const params = await LM.params();
-    return {
-      defaultTemperature: params.defaultTemperature,
-      maxTemperature: params.maxTemperature,
-      defaultTopK: params.defaultTopK,
-      maxTopK: params.maxTopK
-    };
-  } catch {
-    return null;
-  }
+    const LM = getLanguageModel();
+    if (!LM) return null;
+
+    try {
+        const params = await LM.params();
+        return {
+            defaultTemperature: params.defaultTemperature,
+            maxTemperature: params.maxTemperature,
+            defaultTopK: params.defaultTopK,
+            maxTopK: params.maxTopK
+        };
+    } catch {
+        return null;
+    }
 }
 
 export default {
-  available,
-  generateQuizJSON,
-  streamQuiz,
-  streamStory,
-  evaluateSubjectiveJSON,
-  recommendPlanJSON,
-  promptStreaming,
-  resetSession,
-  cloneSession,
-  getModelInfo,
-  streamOverallFeedback,
-  getQuizRecommendationsJSON
+    available,
+    generateQuizJSON,
+    streamQuiz,
+    streamStory,
+    evaluateSubjectiveJSON,
+    recommendPlanJSON,
+    promptStreaming,
+    resetSession,
+    cloneSession,
+    getModelInfo,
+    streamOverallFeedback,
+    getQuizRecommendationsJSON,
+    streamMCQ,
+    streamFillUp,
+    streamSubjective,
+    streamTrueFalse
 };

@@ -32,10 +32,6 @@ export function generateBookmarkId() {
     return generateId('bookmark');
 }
 
-// Generate study plan IDs
-export function generateStudyPlanId() {
-    return generateId('plan');
-}
 
 /**
  * UUID v4 generator (more robust for production)
@@ -205,7 +201,7 @@ export function createTimer() {
         elapsed: () => Math.round(performance.now() - startTime),
         stop: () => {
             const elapsed = Math.round(performance.now() - startTime);
-            console.log(`⏱️ Operation completed in ${elapsed}ms`);
+            
             return elapsed;
         }
     };
@@ -215,7 +211,7 @@ export function createTimer() {
  * Debug utilities
  */
 export function logWithPrefix(prefix, ...args) {
-    console.log(`[${prefix}]`, ...args);
+    
 }
 
 export function createLogger(prefix) {
