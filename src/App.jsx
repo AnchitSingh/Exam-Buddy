@@ -111,16 +111,6 @@ const App = () => {
         zIndex: 99999,
       }} />
       
-      {/* Debug Controls - Remove for production */}
-      <div className="fixed top-2 right-2 z-50 bg-black/80 text-white p-2 rounded text-xs">
-        <div>Page: <strong>{currentPage}</strong></div>
-        <div>Visited: {localStorage.getItem('exambuddy_visited') || 'null'}</div>
-        <div>Data: {navigationData ? 'Yes' : 'No'}</div>
-        <button onClick={resetApp} className="bg-red-500 px-2 py-1 rounded mt-1 text-xs">
-          Reset App
-        </button>
-      </div>
-      
       {currentPage === 'landing' && (
         <LandingPage onGetStarted={() => navigateTo('home')} />
       )}
