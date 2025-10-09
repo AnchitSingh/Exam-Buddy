@@ -15,7 +15,7 @@ const actionTypes = {
 const initialState = {
   profile: {
     name: 'Study Enthusiast', // Default name
-    email: 'exam.buddy@gmail.com',
+    email: 'exam.buddy@no_email.com',
     createdAt: null,
     lastLogin: new Date().toISOString(),
   },
