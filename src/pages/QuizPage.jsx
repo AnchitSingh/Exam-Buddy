@@ -174,13 +174,23 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
     };
 
     const confirmStop = async () => {
+        console.log('DEBUG: Confirm stop called, current userAnswers:', userAnswers);
+        console.log('DEBUG: Current quiz questions:', quiz?.questions);
+        console.log('DEBUG: Current question index:', currentQuestionIndex);
+        
         setIsStoppingQuiz(true);
         try {
             let finalAnswers = [...userAnswers];
 
             // Save current question's answer if not already saved
             if (currentQuestion && !finalAnswers[currentQuestionIndex]) {
+                console.log('DEBUG: Current question not answered, checking type:', currentQuestion.type);
+                console.log('DEBUG: Current textAnswer:', textAnswer);
+                console.log('DEBUG: Current fillBlanks:', fillBlanks);
+                console.log('DEBUG: Current selectedAnswer:', selectedAnswer);
+                
                 if ((currentQuestion.type === 'Short Answer' || currentQuestion.type === 'Subjective') && textAnswer.trim()) {
+                    console.log('DEBUG: Adding Short Answer/Subjective answer');
                     finalAnswers[currentQuestionIndex] = {
                         questionId: currentQuestion.id,
                         questionType: currentQuestion.type,
@@ -194,6 +204,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                         aiEvaluated: false // ⭐ Mark as not evaluated yet
                     };
                 } else if (currentQuestion.type === 'Fill in Blank' && fillBlanks.some(b => b.trim())) {
+                    console.log('DEBUG: Adding Fill in Blank answer');
                     finalAnswers[currentQuestionIndex] = {
                         questionId: currentQuestion.id,
                         questionType: 'Fill in Blank',
@@ -207,6 +218,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                         aiEvaluated: false // ⭐ Mark as not evaluated yet
                     };
                 } else if ((currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False') && selectedAnswer) {
+                    console.log('DEBUG: Adding MCQ/TrueFalse answer');
                     finalAnswers[currentQuestionIndex] = {
                         questionId: currentQuestion.id,
                         questionType: currentQuestion.type,
@@ -221,10 +233,14 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 }
             }
 
+            console.log('DEBUG: Final answers before stopQuiz:', finalAnswers);
+            console.log('DEBUG: Calling stopQuiz with answers:', finalAnswers);
+
             // ⭐ stopQuiz will batch-evaluate all AI questions
             const results = await stopQuiz(finalAnswers);
 
             if (results) {
+                console.log('DEBUG: Quiz completed results:', results);
                 setQuizResults(results);
                 setShowStopModal(false);
                 setAITask('feedback');
@@ -237,8 +253,7 @@ const QuizPage = ({ onNavigate, quizConfig = null }) => {
                 toast.success('Quiz completed! Generating results...');
             }
         } catch (error) {
-            console.error('Error stopping quiz:', error);
-            toast.error('Failed to complete quiz');
+            console.error('DEBUG: Error in confirmStop:', error);
         } finally {
             setIsStoppingQuiz(false);
         }

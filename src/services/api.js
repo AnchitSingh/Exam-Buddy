@@ -314,6 +314,31 @@ class ExamBuddyAPI {
         }
     }
 
+    async createPracticeQuiz(config) {
+        await this._loadData();
+        try {
+            const validQuestions = config.questions || [];
+
+            const quiz = {
+                id: `practice_${Date.now()}`,
+                title: config.title || 'Practice Quiz',
+                subject: config.subject || 'Mixed',
+                totalQuestions: validQuestions.length,
+                config: this._createQuizConfig(config),
+                questions: validQuestions,
+                createdAt: new Date().toISOString(),
+                timeLimit: config.totalTimer || null,
+            };
+
+            this.activeQuizzes.set(quiz.id, quiz);
+            await this._saveToStorage(STORAGE_KEYS.ACTIVE_QUIZZES, this.activeQuizzes);
+
+            return createSuccessResponse(quiz);
+        } catch (error) {
+            return createErrorResponse(error);
+        }
+    }
+
     async _generateQuizWithAI(config, onProgress) {
         const startTime = performance.now();
         const questionTypes = config.questionTypes || ['MCQ'];
@@ -1333,6 +1358,7 @@ export const {
     streamQuizFeedback,
     getQuizRecommendations,
     getGlobalStats,
+    createPracticeQuiz,
 } = examBuddyAPI;
 
 export default examBuddyAPI;

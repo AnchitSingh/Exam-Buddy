@@ -325,11 +325,15 @@ const BookmarksPage = ({ onNavigate }) => {
   };
 
   const practiceQuestion = (bookmark) => {
+    console.log('DEBUG: Starting practice for bookmarked question:', bookmark);
+    
     const questions = [{
       ...bookmark,
       id: bookmark.questionId,
       type: bookmark.type || 'MCQ',
     }];
+    
+    console.log('DEBUG: Prepared questions for practice:', questions);
     
     setIsModalOpen(false);
     toast('Starting practice quiz...');
@@ -342,7 +346,13 @@ const BookmarksPage = ({ onNavigate }) => {
   };
 
   const practiceSelected = () => {
-    if (selectedBookmarks.size === 0) return;
+    console.log('DEBUG: Starting practice for selected bookmarked questions');
+    console.log('DEBUG: Selected bookmark IDs:', Array.from(selectedBookmarks));
+    
+    if (selectedBookmarks.size === 0) {
+      console.log('DEBUG: No bookmarks selected, returning');
+      return;
+    }
     
     const questions = bookmarks
       .filter(b => selectedBookmarks.has(b.questionId))
@@ -351,6 +361,8 @@ const BookmarksPage = ({ onNavigate }) => {
         id: b.questionId,
         type: b.type || 'MCQ',
       }));
+    
+    console.log('DEBUG: Filtered and mapped questions:', questions);
     
     toast(`Starting practice with ${questions.length} questions...`);
     onNavigate('quiz', {

@@ -185,33 +185,7 @@ useEffect(() => {
 
       // Practice quiz from bookmarks
       if (Array.isArray(config.questions) && config.questions.length > 0) {
-        // Validate questions first
-        const validQuestions = config.questions.filter(q => {
-          if (!q || typeof q !== 'object') return false;
-          if (typeof q.question !== 'string' || !q.question.trim()) return false;
-          if (typeof q.type !== 'string') return false;
-          return true;
-        });
-
-        if (validQuestions.length === 0) {
-          throw new Error('No valid questions found in configuration');
-        }
-
-        response = {
-          success: true,
-          data: {
-            id: `practice_${Date.now()}`,
-            title: config.title || 'Practice Quiz',
-            subject: config.subject || 'Mixed',
-            totalQuestions: validQuestions.length,
-            config: { ...config },
-            questions: validQuestions,
-            createdAt: new Date().toISOString(),
-            timeLimit: config.totalTimer || null,
-          }
-        };
-
-        await new Promise(resolve => setTimeout(resolve, 500));
+        response = await examBuddyAPI.createPracticeQuiz(config);
       } else {
         // Generate new quiz from AI
         response = await examBuddyAPI.generateQuiz(config);
@@ -337,7 +311,12 @@ useEffect(() => {
   };
 
   const stopQuiz = useCallback(async (finalAnswers = null) => {
-    if (isSubmitting) return null;
+    console.log('DEBUG: stopQuiz function called with finalAnswers:', finalAnswers);
+    
+    if (isSubmitting) {
+      console.log('DEBUG: Quiz is already submitting, returning null');
+      return null;
+    }
 
     try {
       setIsSubmitting(true);
@@ -371,8 +350,18 @@ useEffect(() => {
             question.type === 'Subjective') &&
           answer.textAnswer;
 
+        console.log(`DEBUG: Answer ${i} evaluation check:`, {
+          questionType: question.type,
+          notAlreadyEvaluated: !answer.aiEvaluated,
+          hasTextAnswer: !!answer.textAnswer,
+          needsEvaluation
+        });
+
         if (needsEvaluation) {
+          console.log(`DEBUG: Adding answer ${i} for AI evaluation:`, { index: i, answer, question });
           answersToEvaluate.push({ index: i, answer, question });
+        } else {
+          console.log(`DEBUG: Answer ${i} does not need evaluation`);
         }
       }
 
@@ -743,7 +732,8 @@ useEffect(() => {
           subject: currentQuestion.subject || 'General',
           difficulty: currentQuestion.difficulty || 'medium',
           tags: Array.isArray(currentQuestion.tags) ? currentQuestion.tags : [],
-          quizTitle: quiz?.title || 'Untitled Quiz'
+          quizTitle: quiz?.title || 'Untitled Quiz',
+          answer: currentQuestion.answer
         });
 
         if (response && response.success) {
