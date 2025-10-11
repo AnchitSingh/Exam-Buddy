@@ -339,6 +339,16 @@ class ExamBuddyAPI {
         }
     }
 
+    async registerQuiz(quiz) {
+        await this._loadData();
+        if (!quiz || !quiz.id) {
+            return createErrorResponse('Invalid quiz object provided for registration.');
+        }
+        this.activeQuizzes.set(quiz.id, quiz);
+        await this._saveToStorage(STORAGE_KEYS.ACTIVE_QUIZZES, this.activeQuizzes);
+        return createSuccessResponse(quiz);
+    }
+
     async _generateQuizWithAI(config, onProgress) {
         const startTime = performance.now();
         const questionTypes = config.questionTypes || ['MCQ'];
@@ -1359,6 +1369,7 @@ export const {
     getQuizRecommendations,
     getGlobalStats,
     createPracticeQuiz,
+    registerQuiz,
 } = examBuddyAPI;
 
 export default examBuddyAPI;

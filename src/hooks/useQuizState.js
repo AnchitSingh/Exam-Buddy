@@ -268,6 +268,9 @@ useEffect(() => {
         throw new Error(`Loaded quiz validation failed: ${validation.error}`);
       }
 
+      // Re-register the quiz as active before setting the state
+      await examBuddyAPI.registerQuiz(normalizedQuiz);
+
       setQuiz({
         id: normalizedQuiz.id,
         title: normalizedQuiz.title,

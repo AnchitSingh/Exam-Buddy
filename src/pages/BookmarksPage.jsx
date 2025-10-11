@@ -6,6 +6,7 @@ import examBuddyAPI from '../services/api';
 import GlobalHeader from '../components/ui/GlobalHeader';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
 import CustomDropdown from '../components/ui/CustomDropdown';
+import PracticeConfigModal from '../components/quiz/PracticeConfigModal';
 
 // Confirmation Modal Component
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Delete", confirmVariant = "danger" }) => {
@@ -195,6 +196,9 @@ const BookmarksPage = ({ onNavigate }) => {
     onConfirm: () => {},
   });
 
+  const [isPracticeConfigModalOpen, setIsPracticeConfigModalOpen] = useState(false);
+  const [questionsForPractice, setQuestionsForPractice] = useState([]);
+
   const filterMenuRef = useRef(null);
 
   useEffect(() => {
@@ -325,34 +329,18 @@ const BookmarksPage = ({ onNavigate }) => {
   };
 
   const practiceQuestion = (bookmark) => {
-    console.log('DEBUG: Starting practice for bookmarked question:', bookmark);
-    
     const questions = [{
       ...bookmark,
       id: bookmark.questionId,
       type: bookmark.type || 'MCQ',
     }];
-    
-    console.log('DEBUG: Prepared questions for practice:', questions);
-    
-    setIsModalOpen(false);
-    toast('Starting practice quiz...');
-    onNavigate('quiz', {
-      quizConfig: {
-        title: `Practice: ${bookmark.subject}`,
-        questions: questions,
-      },
-    });
+    setQuestionsForPractice(questions);
+    setIsPracticeConfigModalOpen(true);
+    setIsModalOpen(false); // Close the details modal
   };
 
   const practiceSelected = () => {
-    console.log('DEBUG: Starting practice for selected bookmarked questions');
-    console.log('DEBUG: Selected bookmark IDs:', Array.from(selectedBookmarks));
-    
-    if (selectedBookmarks.size === 0) {
-      console.log('DEBUG: No bookmarks selected, returning');
-      return;
-    }
+    if (selectedBookmarks.size === 0) return;
     
     const questions = bookmarks
       .filter(b => selectedBookmarks.has(b.questionId))
@@ -362,15 +350,23 @@ const BookmarksPage = ({ onNavigate }) => {
         type: b.type || 'MCQ',
       }));
     
-    console.log('DEBUG: Filtered and mapped questions:', questions);
-    
-    toast(`Starting practice with ${questions.length} questions...`);
-    onNavigate('quiz', {
-      quizConfig: {
-        title: 'Practice Selected Bookmarks',
-        questions: questions,
-      },
-    });
+    setQuestionsForPractice(questions);
+    setIsPracticeConfigModalOpen(true);
+  };
+
+  const handleStartPractice = (practiceConfig) => {
+    const quizConfig = {
+      title: questionsForPractice.length > 1 ? 'Practice Selected Bookmarks' : `Practice: ${questionsForPractice[0].subject}`,
+      questions: questionsForPractice,
+      ...practiceConfig,
+    };
+
+    toast.success('Starting practice quiz...');
+    onNavigate('quiz', { quizConfig });
+
+    // Cleanup
+    setIsPracticeConfigModalOpen(false);
+    setQuestionsForPractice([]);
   };
 
   return (
@@ -683,6 +679,13 @@ const BookmarksPage = ({ onNavigate }) => {
         message={confirmModalConfig.message}
         confirmText="Delete"
         confirmVariant="danger"
+      />
+
+      <PracticeConfigModal
+        isOpen={isPracticeConfigModalOpen}
+        onClose={() => setIsPracticeConfigModalOpen(false)}
+        onStart={handleStartPractice}
+        questionCount={questionsForPractice.length}
       />
 
       <style>{`
