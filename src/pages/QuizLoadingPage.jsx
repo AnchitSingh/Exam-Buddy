@@ -6,7 +6,7 @@ import { SOURCE_TYPE } from '../utils/messages';
 import examBuddyAPI from '../services/api';
 import BackgroundEffects from '../components/ui/BackgroundEffects';
 
-const LoadingProgress = ({ steps, currentStep, streamMessage }) => (
+const LoadingProgress = ({ steps, currentStep, streamMessage, questionTypes, completedQuestionTypes }) => (
     <div className="w-full max-w-md">
         <div className="bg-white/80 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden border border-white/60">
             {/* Header Section */}
@@ -40,6 +40,7 @@ const LoadingProgress = ({ steps, currentStep, streamMessage }) => (
                 {steps.map((step, index) => {
                     const isCompleted = index < currentStep;
                     const isCurrent = index === currentStep;
+                    const isStep3 = index === 2; // 3rd step (0-indexed)
                     
                     return (
                         <div 
@@ -57,58 +58,114 @@ const LoadingProgress = ({ steps, currentStep, streamMessage }) => (
                                 <div className="absolute inset-0 bg-gradient-to-r from-amber-200/20 to-orange-200/20 animate-pulse"></div>
                             )}
                             
-                            <div className="relative flex items-center gap-4 p-4">
-                                {/* Icon */}
-                                <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                                    isCompleted 
-                                        ? 'bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg' 
-                                        : isCurrent 
-                                            ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg' 
-                                            : 'bg-white border-2 border-slate-300'
-                                }`}>
-                                    {isCompleted ? (
-                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    ) : isCurrent ? (
-                                        <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    ) : (
-                                        <div className="w-2.5 h-2.5 bg-slate-400 rounded-full"></div>
-                                    )}
-                                </div>
-                                
-                                {/* Text */}
-                                <div className="flex-1 min-w-0">
-                                    <p className={`text-sm font-semibold transition-colors ${
-                                        isCompleted ? 'text-green-800' : 
-                                        isCurrent ? 'text-amber-900' : 'text-slate-500'
+                            <div className="relative p-4">
+                                <div className="flex items-center gap-4">
+                                    {/* Icon */}
+                                    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                                        isCompleted 
+                                            ? 'bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg' 
+                                            : isCurrent 
+                                                ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg' 
+                                                : 'bg-white border-2 border-slate-300'
                                     }`}>
-                                        {step.title}
-                                    </p>
-                                    {isCurrent && streamMessage && (
-                                        <p className="text-xs text-amber-700 mt-1 font-medium animate-pulse">
-                                            {streamMessage}
+                                        {isCompleted ? (
+                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        ) : isCurrent ? (
+                                            <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        ) : (
+                                            <div className="w-2.5 h-2.5 bg-slate-400 rounded-full"></div>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Text */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`text-sm font-semibold transition-colors ${
+                                            isCompleted ? 'text-green-800' : 
+                                            isCurrent ? 'text-amber-900' : 'text-slate-500'
+                                        }`}>
+                                            {step.title}
                                         </p>
+                                    </div>
+                                    
+                                    {/* Status Badge */}
+                                    {isCompleted && (
+                                        <div className="flex-shrink-0">
+                                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800">
+                                                Done
+                                            </span>
+                                        </div>
+                                    )}
+                                    {isCurrent && (
+                                        <div className="flex-shrink-0">
+                                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-100 text-amber-800">
+                                                Processing
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
                                 
-                                {/* Status Badge */}
-                                {isCompleted && (
-                                    <div className="flex-shrink-0">
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800">
-                                            Done
-                                        </span>
+                                {/* GitHub-style Question Types List - Only show in step 3 when current */}
+                                {isStep3 && isCurrent && questionTypes && questionTypes.length > 0 && (
+                                    <div className="mt-4 ml-14 space-y-2">
+                                        {questionTypes.map((type, typeIndex) => {
+                                            const isTypeCompleted = completedQuestionTypes.includes(type);
+                                            const isTypeCurrent = !isTypeCompleted && typeIndex === completedQuestionTypes.length;
+                                            const isPending = !isTypeCompleted && !isTypeCurrent;
+                                            
+                                            return (
+                                                <div 
+                                                    key={typeIndex}
+                                                    className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg transition-all ${
+                                                        isTypeCurrent ? 'bg-amber-100/50' : ''
+                                                    }`}
+                                                >
+                                                    {/* Status Icon */}
+                                                    <div className="flex-shrink-0">
+                                                        {isTypeCompleted ? (
+                                                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        ) : isTypeCurrent ? (
+                                                            <svg className="animate-spin w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                        ) : (
+                                                            <div className="w-4 h-4 rounded-full border-2 border-slate-300"></div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {/* Type Name */}
+                                                    <span className={`text-sm font-medium ${
+                                                        isTypeCompleted 
+                                                            ? 'text-green-700' 
+                                                            : isTypeCurrent 
+                                                                ? 'text-amber-800' 
+                                                                : 'text-slate-500'
+                                                    }`}>
+                                                        {type}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                        
+                                        {/* Divider line */}
+                                        <div className="border-t border-slate-200 my-2"></div>
                                     </div>
                                 )}
-                                {isCurrent && (
-                                    <div className="flex-shrink-0">
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-100 text-amber-800">
-                                            Processing
-                                        </span>
-                                    </div>
+                                
+                                {/* Stream Message */}
+                                {isCurrent && streamMessage && (
+                                    <p className={`text-xs font-medium animate-pulse ${
+                                        isStep3 ? 'ml-14 mt-1' : 'ml-14 mt-2'
+                                    } text-amber-700`}>
+                                        {streamMessage}
+                                    </p>
                                 )}
                             </div>
                         </div>
@@ -122,6 +179,7 @@ const LoadingProgress = ({ steps, currentStep, streamMessage }) => (
 const QuizLoadingPage = ({ onNavigate, navigationData }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [streamMessage, setStreamMessage] = useState('');
+    const [completedQuestionTypes, setCompletedQuestionTypes] = useState([]);
     const { config } = navigationData || {};
 
     const steps = [
@@ -130,6 +188,9 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
         { title: 'Generating Questions with AI' },
     ];
 
+    // Determine the question types from config
+    const questionTypes = config?.questionTypes || [];
+
     useEffect(() => {
         if (!config) {
             toast.error("No quiz configuration found.");
@@ -137,9 +198,39 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
             return;
         }
 
+        // Track the question type progress
+        const allQuestionTypes = [...(config.questionTypes || [])];
+        const processedTypes = new Set(); // Track completed types
+        
+        // Initialize the completed types state
+        setCompletedQuestionTypes([]);
+        
+        let lastChunkCount = 0;
+        let chunkCountIncreased = false;
+
         const handleStreamProgress = (progress) => {
             if (progress.status === 'streaming') {
-                setStreamMessage(`(Received ${progress.receivedChunks} data chunks...)`);
+                const currentChunkCount = progress.receivedChunks;
+                
+                // Check if we just started a new question type (chunk count reset)
+                if (currentChunkCount < lastChunkCount) {
+                    // A new question type has started, which means the previous one completed
+                    if (allQuestionTypes.length > 0 && processedTypes.size < allQuestionTypes.length) {
+                        const nextType = allQuestionTypes[processedTypes.size];
+                        if (nextType) {
+                            processedTypes.add(nextType);
+                            setCompletedQuestionTypes(Array.from(processedTypes));
+                        }
+                    }
+                    chunkCountIncreased = false; // Reset since we're starting a new type
+                } 
+                // Check if chunk count has increased for the first time since a reset
+                else if (currentChunkCount > lastChunkCount && !chunkCountIncreased) {
+                    chunkCountIncreased = true; // Mark that we've started receiving data
+                }
+                
+                lastChunkCount = currentChunkCount;
+                setStreamMessage(`Fetching ${currentChunkCount} data chunks...`);
             }
         };
 
@@ -235,10 +326,19 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
                     topic: config.topic || extractedSource.title,
                 };
 
+                // Call the API with a custom progress handler to track question type completion
                 const response = await examBuddyAPI.generateQuiz(finalQuizConfig, handleStreamProgress);
 
                 if (!response.success) {
                     throw new Error(response.error || "Failed to generate quiz questions.");
+                }
+
+                // Mark all remaining types as completed after API call finishes
+                // This handles the case where the last type doesn't trigger a chunk reset
+                if (processedTypes.size < allQuestionTypes.length) {
+                    const remainingTypes = allQuestionTypes.filter(type => !processedTypes.has(type));
+                    remainingTypes.forEach(type => processedTypes.add(type));
+                    setCompletedQuestionTypes(Array.from(processedTypes));
                 }
 
                 // Navigate with the final, generated quiz data
@@ -257,7 +357,13 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
     return (
         <div className="antialiased bg-gradient-to-br from-slate-50 via-white to-amber-50/30 text-slate-900 min-h-screen flex items-center justify-center p-4">
             <BackgroundEffects />
-            <LoadingProgress steps={steps} currentStep={currentStep} streamMessage={streamMessage} />
+            <LoadingProgress 
+                steps={steps} 
+                currentStep={currentStep} 
+                streamMessage={streamMessage} 
+                questionTypes={questionTypes}
+                completedQuestionTypes={completedQuestionTypes}
+            />
         </div>
     );
 };
