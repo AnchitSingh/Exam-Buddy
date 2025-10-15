@@ -2,42 +2,32 @@
 
 // Enhanced extractor with summarization integration
 
-import { cleanToPromptReady, buildExcerpt } from './contentCleaner';
+import cleanSelectionText, {buildExcerpt} from './contentCleaner';
 import { chunkText, shouldSummarize } from './textChunker';
 import { processChunks, assembleSummaries, checkSummarizerAvailability } from './summaryProcessor';
 import { extractReadableFromHTML } from './readabilityClient';
 import { SOURCE_TYPE } from './messages';
 import extractionService from '../services/extraction';
 
-async function finalizeSource({ 
-  sourceType, 
-  title, 
-  url, 
-  rawText, 
+async function finalizeSource({
+  sourceType,
+  title,
+  url,
+  rawText,
   meta = {},
   quizConfig = {},
   onProgress = null
 }) {
-  
-  
-  
-  
-  const text = cleanToPromptReady(rawText || '');
+  const text = cleanSelectionText(rawText || '');
   const wordCount = text ? text.split(/\s+/).length : 0;
-  const excerpt = buildExcerpt(text);
   const chunks = chunkText(text);
-  
-  
-  chunks.forEach((chunk, index) => {
-    
-  });
 
   const domain = (() => {
     try { return url ? new URL(url).hostname : ''; } catch { return ''; }
   })();
 
   let finalText = text;
-  let processingMeta = { 
+  let processingMeta = {
     chunksCreated: chunks.length,
     originalWordCount: wordCount,
     summarizationAttempted: false,
@@ -46,35 +36,35 @@ async function finalizeSource({
 
   // Check if summarization is needed and available
   const needsSummarization = shouldSummarize(chunks);
-  
-  
+
+
   if (needsSummarization) {
-    
+
     try {
       if (onProgress) {
-        onProgress({ 
-          status: 'checking-summarizer', 
-          message: 'Checking AI summarizer availability...' 
+        onProgress({
+          status: 'checking-summarizer',
+          message: 'Checking AI summarizer availability...'
         });
       }
 
       const availability = await checkSummarizerAvailability();
-      
-      
+
+
       if (availability.available) {
-        
+
         if (onProgress) {
-          onProgress({ 
-            status: 'summarizing', 
+          onProgress({
+            status: 'summarizing',
             message: `Processing ${chunks.length} chunks with AI...`,
             chunks: chunks.length
           });
         }
 
         processingMeta.summarizationAttempted = true;
-        
+
         const summaryResults = await processChunks(chunks, quizConfig, (progress) => {
-          
+
           if (onProgress) {
             onProgress({
               status: 'summarizing-chunk',
@@ -84,14 +74,14 @@ async function finalizeSource({
           }
         });
 
-        
+
         const assembled = assembleSummaries(summaryResults);
         console.log('🎯 Assembled summary:', {
           wordCount: assembled.wordCount,
           textLength: assembled.text?.length,
           meta: assembled.meta
         });
-        
+
         if (assembled.text && assembled.wordCount > 50) {
           finalText = assembled.text;
           processingMeta = {
@@ -101,21 +91,21 @@ async function finalizeSource({
             finalWordCount: assembled.wordCount
           };
 
-          
+
           if (onProgress) {
-            onProgress({ 
-              status: 'summarization-complete', 
-              message: `Summarized to ${assembled.wordCount} words (${Math.round(assembled.meta.compressionRatio)}x compression)` 
+            onProgress({
+              status: 'summarization-complete',
+              message: `Summarized to ${assembled.wordCount} words (${Math.round(assembled.meta.compressionRatio)}x compression)`
             });
           }
         } else {
-          
+
         }
       } else {
         console.warn('🎯 Summarizer not available:', availability.reason);
         if (onProgress) {
-          onProgress({ 
-            status: 'summarizer-unavailable', 
+          onProgress({
+            status: 'summarizer-unavailable',
             message: `AI summarizer unavailable: ${availability.reason}. Using first chunk.`,
             warning: true
           });
@@ -126,8 +116,8 @@ async function finalizeSource({
     } catch (error) {
       console.error('🎯 Summarization failed:', error);
       if (onProgress) {
-        onProgress({ 
-          status: 'summarization-failed', 
+        onProgress({
+          status: 'summarization-failed',
           message: `Summarization failed: ${error.message}. Using first chunk.`,
           error: true
         });
@@ -137,20 +127,20 @@ async function finalizeSource({
     }
   } else {
     // Small content, use as-is
-    
+
     if (onProgress) {
-      onProgress({ 
-        status: 'no-summarization-needed', 
-        message: 'Content is small enough, no summarization needed.' 
+      onProgress({
+        status: 'no-summarization-needed',
+        message: 'Content is small enough, no summarization needed.'
       });
     }
   }
 
   // Rechunk the final text for quiz generation
   const finalChunks = chunkText(finalText);
-  
-  
-  
+
+
+
 
   return {
     sourceType,
@@ -182,12 +172,12 @@ export async function extractFromCurrentPage(quizConfig = {}, onProgress = null)
     // Extract from the current active tab
     extractionResult = await extractionService.getDOMHTML();
   }
-  
+
   const { html, title, url } = extractionResult;
-  
+
   if (onProgress) {
-    onProgress({ 
-      status: 'processing-readability', 
+    onProgress({
+      status: 'processing-readability',
       message: `Processing with Readability...`,
       tabTitle: quizConfig.selectedTab?.title || title
     });
@@ -200,8 +190,8 @@ export async function extractFromCurrentPage(quizConfig = {}, onProgress = null)
     title: readable.title || title || (quizConfig.selectedTab?.title),
     url: url || quizConfig.selectedTab?.url || '',
     rawText: readable.text,
-    meta: { 
-      byline: readable.byline || '', 
+    meta: {
+      byline: readable.byline || '',
       length: readable.length || 0,
       selectedTab: quizConfig.selectedTab // Include selected tab info in meta
     },
@@ -248,8 +238,8 @@ export function normalizeManualTopic(topic = '', context = '', quizConfig = {}, 
   if (onProgress) {
     onProgress({ status: 'processing-manual-topic', message: 'Processing custom topic...' });
   }
-  
-  const text = cleanToPromptReady(context || topic);
+
+  const text = cleanSelectionText(context || topic);
   const chunks = chunkText(text);
 
   return {

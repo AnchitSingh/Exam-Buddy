@@ -1,3 +1,5 @@
+import cleanSelectionText from "./contentCleaner";
+
 // src/utils/prompts.js
 function trimAndCap(text, max = 6000) {
     if (!text) return '';
@@ -22,8 +24,9 @@ export function buildQuizPrompt({ extractedSource, config }) {
     if (expandedContent.length < 50) {
         expandedContent = `Topic: ${expandedContent}. Generate questions about this topic using your knowledge.`;
     }
-    const safeSource = trimAndCap(expandedContent, 5500);
-
+    console.log("Expanded Content (before cleanup):",expandedContent);
+    const safeSource = cleanSelectionText(trimAndCap(expandedContent, 5500));
+    console.log("Safe Source (after cleanup):",safeSource);
     // Normalize types to a strict set Gemma follows reliably
     const normalize = (t) => {
         const s = String(t || '').toLowerCase().replace(/[\s/_-]+/g, '');
