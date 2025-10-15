@@ -11,6 +11,7 @@ import StoryLoadingPage from './pages/StoryLoadingPage';
 import StoryPage from './pages/StoryPage';
 import GlobalStatsPage from './pages/GlobalStatsPage';
 import QuizErrorBoundary from './pages/QuizErrorBoundary';
+import { cleanSelectionText } from './utils/contentCleaner';
 import './index.css';
 
 const App = () => {
@@ -73,11 +74,11 @@ const App = () => {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
       const messageListener = (message, sender, sendResponse) => {
         if (message.type === 'START_QUIZ_FROM_SELECTION') {
-          
-          navigateTo('home', { openQuizSetup: true, selectionText: message.text });
+          const cleanedText = cleanSelectionText(message.text);
+          navigateTo('home', { openQuizSetup: true, selectionText: cleanedText });
         } else if (message.type === 'START_STORY_FROM_SELECTION') {
-          
-          navigateTo('home', { openStorySetup: true, selectionText: message.text });
+          const cleanedText = cleanSelectionText(message.text);
+          navigateTo('home', { openStorySetup: true, selectionText: cleanedText });
         }
       };
       

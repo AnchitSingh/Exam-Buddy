@@ -21,10 +21,12 @@ chrome.runtime.onInstalled.addListener(() => {
   // Listener for the context menu
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === "start-quiz-from-selection" && info.selectionText) {
+      // Note: Text cleaning will be handled in the App component when the message is received
       pendingSelectionText = info.selectionText;
       chrome.runtime.sendMessage({ type: 'START_QUIZ_FROM_SELECTION', text: info.selectionText });
       await chrome.sidePanel.open({ windowId: tab.windowId });
     } else if (info.menuItemId === "start-story-from-selection" && info.selectionText) {
+      // Note: Text cleaning will be handled in the App component when the message is received
       pendingStoryText = info.selectionText;
       chrome.runtime.sendMessage({ type: 'START_STORY_FROM_SELECTION', text: info.selectionText });
       await chrome.sidePanel.open({ windowId: tab.windowId });
