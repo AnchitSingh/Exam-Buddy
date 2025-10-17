@@ -1,11 +1,11 @@
-# Exam Buddy: Your AI-powered study buddy for any content
+# Exam Buddy: Stop studying what you already know
 
 ![Prompt API](https://img.shields.io/badge/Chrome-Prompt%20API-4285F4?style=flat&logo=google-chrome&logoColor=white)
 ![Summarizer API](https://img.shields.io/badge/Chrome-Summarizer%20API-34A853?style=flat&logo=google-chrome&logoColor=white)
 ![Privacy First](https://img.shields.io/badge/Privacy-100%25%20On--Device-green)
 
 
-**Know your weak spot? Turn any content into targeted practice quizzes—master specific topics, not generic exam papers. 100% offline, 100% private.**
+**Found knowledge gaps but stuck doing full generic tests? Convert any content—webpages, PDFs, or notes—into targeted, adaptive AI quizzes built for active recall and faster mastery. 100% offline, 100% private.**
 
 ---
 
@@ -74,6 +74,36 @@ It's a precision instrument designed to eliminate your specific knowledge gaps. 
 
 ---
 
+## Quick Start
+
+### Build from Source
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/AnchitSingh/exam-buddy.git
+   cd exam-buddy
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Build the extension:**
+   ```bash
+   npm run build
+   ```
+
+4. **Load in Chrome:**
+   - Navigate to `chrome://extensions`
+   - Enable **Developer mode** (top right)
+   - Click **Load unpacked**
+   - Select the `dist` folder
+   - Pin the extension and start learning! 🎉
+
+---
+
+
 ## Key Features
 
 ### AI-Powered Quiz Generation
@@ -127,35 +157,6 @@ Unlike other AI study tools that require account signups, subscriptions, and sen
 | Language Learners | Practice specific grammar rules or vocabulary sets |
 | Professional Certifications | Create focused quizzes from study guides |
 | Self-Learners | Test yourself on any article, tutorial, or documentation |
-
----
-
-## Quick Start
-
-### Build from Source
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/AnchitSingh/exam-buddy.git
-   cd exam-buddy
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Build the extension:**
-   ```bash
-   npm run build
-   ```
-
-4. **Load in Chrome:**
-   - Navigate to `chrome://extensions`
-   - Enable **Developer mode** (top right)
-   - Click **Load unpacked**
-   - Select the `dist` folder
-   - Pin the extension and start learning! 🎉
 
 ---
 
