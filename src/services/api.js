@@ -160,19 +160,27 @@ const processQuestionOptions = (question) => {
         return question.options;
     }
 
-    // For MCQs, derive isCorrect from the top-level answer
-    if (question.type === QUESTION_TYPES.MCQ && question.answer) {
-        return question.options.map((opt) => ({
-            text: opt.text,
-            isCorrect: opt.text === question.answer,
-        }));
-    }
+    // The AI returns options as strings, so we need to convert them to objects with text and isCorrect properties
+    // The correct answer index is given by question.correct_answer
+    return question.options.map((opt, index) => {
+        let text;
+        let isCorrect = false;
+        
+        if (typeof opt === 'string') {
+            text = opt;
+            // Check if this option matches the correct answer index
+            if (typeof question.correct_answer === 'number' && index === question.correct_answer) {
+                isCorrect = true;
+            }
+        } else if (opt && typeof opt === 'object') {
+            text = opt.text || String(opt);
+            isCorrect = !!(opt.isCorrect ?? opt.correct);
+        } else {
+            text = String(opt);
+        }
 
-    // For other types, handle correct/isCorrect fields
-    return question.options.map((opt) => ({
-        text: opt.text,
-        isCorrect: !!(opt.isCorrect ?? opt.correct),
-    }));
+        return { text, isCorrect };
+    });
 };
 
 /**
@@ -426,7 +434,12 @@ class ExamBuddyAPI {
             try {
                 const aiResult = JSON.parse(jsonBlock);
                 if (aiResult.questions && Array.isArray(aiResult.questions)) {
-                    allQuestions.push(...aiResult.questions);
+                    // Add the type information to each question since AI doesn't provide it
+                    const questionsWithType = aiResult.questions.map(question => ({
+                        ...question,
+                        type: type  // Add the type from the generation context
+                    }));
+                    allQuestions.push(...questionsWithType);
                 }
             } catch (error) {
                 console.error(`Failed to parse JSON for ${type} questions:`, error);

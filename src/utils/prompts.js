@@ -1,281 +1,193 @@
 import cleanSelectionText from "./contentCleaner";
 
-// src/utils/prompts.js
 function trimAndCap(text, max = 6000) {
-    if (!text) return '';
-    return text.length > max ? `${text.slice(0, max)}…` : text;
+  if (!text) return '';
+  return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
 export function buildQuizPrompt({ extractedSource, config }) {
-    const { title, domain, chunks = [], text = '' } = extractedSource || {};
-    const {
-        questionCount = 5,
-        difficulty = 'medium',
-        questionTypes = ['MCQ'],
-        allowedTags = [],
-        immediateFeedback = true
-    } = config || {};
+  const { title, domain, chunks = [], text = '' } = extractedSource || {};
+  const {
+    questionCount = 5,
+    difficulty = 'medium',
+    questionTypes = ['MCQ'],
+    allowedTags = [],
+    immediateFeedback = true
+  } = config || {};
 
-    // Use processed text (summarized or original)
-    let expandedContent = text || '';
-    if (!expandedContent && chunks?.[0]?.text) {
-        expandedContent = chunks[0].text;
-    }
-    if (expandedContent.length < 50) {
-        expandedContent = `Topic: ${expandedContent}. Generate questions about this topic using your knowledge.`;
-    }
-    console.log("Expanded Content (before cleanup):",expandedContent);
-    const safeSource = cleanSelectionText(trimAndCap(expandedContent, 5500));
-    console.log("Safe Source (after cleanup):",safeSource);
-    // Normalize types to a strict set Gemma follows reliably
-    const normalize = (t) => {
-        const s = String(t || '').toLowerCase().replace(/[\s/_-]+/g, '');
-        if (s === 'mcq' || s === 'multiplechoice') return 'MCQ';
-        if (s === 'truefalse' || s === 'tf' || s === 'true' || s === 'false') return 'TrueFalse';
-        if (s === 'subjective' || s === 'shortanswer') return 'Subjective';
-        if (s === 'fillup' || s === 'fillintheblank' || s === 'fillintheblankss' || s === 'fillups' || s === 'fitb' || s === 'fillinblank') return 'FillUp';
-        return 'MCQ';
-    };
-    const dedup = (arr) => Array.from(new Set(arr));
-    const types = dedup((questionTypes || []).map(normalize));
-    const finalTypes = types.length ? types : ['MCQ'];
+  let expandedContent = text || '';
+  if (!expandedContent && chunks?.[0]?.text) {
+    expandedContent = chunks[0].text;
+  }
 
-    // Even distribution with remainder to early types
-    const base = Math.floor(questionCount / finalTypes.length);
-    const remainder = questionCount - base * finalTypes.length;
-    const typeDistribution = finalTypes.map((type, i) => ({
-        type,
-        count: base + (i < remainder ? 1 : 0),
-    }));
-    const distributionText = typeDistribution.map(x => `${x.count} ${x.type}`).join(', ');
+  if (expandedContent.length < 50) {
+    expandedContent = `Topic: ${expandedContent}. Generate questions about this topic using your knowledge.`;
+  }
 
-    // Helper: Get examples for specific question type
-    const getExampleForType = (type) => {
-        const examples = {
-            FillUp: [
-                `{
-  "id": "exF1",
-  "type": "FillUp",
+  console.log("Expanded Content (before cleanup):", expandedContent);
+  const safeSource = cleanSelectionText(trimAndCap(expandedContent, 5500));
+  console.log("Safe Source (after cleanup):", safeSource);
+
+  const normalize = (t) => {
+    const s = String(t || '').toLowerCase().replace(/[\s/_-]+/g, '');
+    if (s === 'mcq' || s === 'multiplechoice') return 'MCQ';
+    if (s === 'truefalse' || s === 'tf' || s === 'true' || s === 'false') return 'TrueFalse';
+    if (s === 'subjective' || s === 'shortanswer') return 'Subjective';
+    if (s === 'fillup' || s === 'fillintheblank' || s === 'fillintheblankss' || s === 'fillups' || s === 'fitb' || s === 'fillinblank') return 'FillUp';
+    return 'MCQ';
+  };
+
+  const dedup = (arr) => Array.from(new Set(arr));
+  const types = dedup((questionTypes || []).map(normalize));
+  const finalTypes = types.length ? types : ['MCQ'];
+
+  const base = Math.floor(questionCount / finalTypes.length);
+  const remainder = questionCount - base * finalTypes.length;
+  const typeDistribution = finalTypes.map((type, i) => ({
+    type,
+    count: base + (i < remainder ? 1 : 0),
+  }));
+
+  const distributionText = typeDistribution.map(x => `${x.count} ${x.type}`).join(', ');
+
+  // SIMPLIFIED EXAMPLES
+  const getExampleForType = (type) => {
+    const examples = {
+      FillUp: [
+        `{
   "question": "The constancy of the speed of light is a postulate of _____.",
   "answer": "special relativity",
-  "explanation": "Special relativity is built on the postulate that light speed in vacuum is constant.",
-  "difficulty": "${difficulty}",
-  "topic": "${title || 'General'}",
-  "tags": ["relativity","speed-of-light"]
-}`,
-                `BAD (do not output this):
-{
-  "id": "bad1",
-  "type": "Fill in Blank",
-  "question": "Special relativity states that the speed of light is constant for all observers.",
-  "options": []
-}
-GOOD (corrected form):
-{
-  "id": "exF2",
-  "type": "FillUp",
-  "question": "According to special relativity, time dilation increases with higher _____.",
-  "answer": "velocity",
-  "explanation": "Greater relative velocity increases time dilation.",
-  "difficulty": "${difficulty}",
-  "topic": "${title || 'General'}",
-  "tags": ["relativity","time-dilation"]
+  "tags": ["relativity", "speed-of-light"]
 }`
-            ],
-            MCQ: [
-                `{
-  "id": "exM1",
-  "type": "MCQ",
+      ],
+      MCQ: [
+        `{
   "question": "Which structure follows FIFO?",
-  "options": [
-    {"text": "Queue", "correct": true},
-    {"text": "Stack", "correct": false},
-    {"text": "Tree", "correct": false},
-    {"text": "Graph", "correct": false}
-  ],
-  "explanation": "A queue is first-in, first-out.",
-  "difficulty": "${difficulty}",
-  "topic": "${title || 'General'}",
-  "tags": ["data-structures","queue"]
+  "options": ["Queue", "Stack", "Tree", "Graph"],
+  "correct_answer": 0,
+  "tags": ["data-structures", "queue"]
 }`
-            ],
-            TrueFalse: [
-                `{
-  "id": "exT1",
-  "type": "TrueFalse",
+      ],
+      TrueFalse: [
+        `{
   "question": "Bubble sort has average complexity O(n^2).",
-  "options": [
-    {"text": "True", "correct": true},
-    {"text": "False", "correct": false}
-  ],
-  "explanation": "Average is quadratic.",
-  "difficulty": "${difficulty}",
-  "topic": "${title || 'General'}",
-  "tags": ["algorithms","sorting","time-complexity"]
+  "options": ["True", "False"],
+  "correct_answer": 0,
+  "tags": ["algorithms", "sorting"]
 }`
-            ],
-            Subjective: [
-                `{
-                    "id": "exS1",
-                    "type": "Subjective",
-                    "question": "Explain spacetime curvature in 30-50 words.",
-                    "answer": "Mass-energy curves spacetime; objects follow geodesics in this curved geometry, producing gravitational effects without invoking a force in the Newtonian sense.",
-                    "explanation": "Must mention mass-energy, curvature, geodesics.",
-                    "difficulty": "${difficulty}",
-                    "topic": "${title || 'General'}",
-                    "tags": ["relativity","spacetime","geodesics"]
-                }`
-            ]
-        };
-        console.log(examples[type])
-        return examples[type] || [];
-    };
-
-    // Helper: Get type-specific validation rules
-    const getRulesForType = (type) => {
-        const rules = {
-            MCQ: '- MCQ must have EXACTLY 4 options with exactly one correct=true.',
-            TrueFalse: '- TrueFalse must have EXACTLY these 2 options: [{"text":"True","correct":true/false}, {"text":"False","correct":true/false}] with exactly one correct=true.',
-            Subjective: '- Subjective must NOT include options; use "answer" as the expected answer.',
-            FillUp: `- FillUp must:
-  - Use type value EXACTLY "FillUp" (no synonyms).
-  - Include EXACTLY one blank placeholder "_____" in "question".
-  - NOT include "options".
-  - Include a non-empty "answer" string (canonical fill).`
-        };
-        return rules[type] || '';
-    };
-
-    // Helper: Get type-specific schema
-    const getSchemaForType = (type) => {
-        const schemas = {
-            MCQ: `    {
-      "id": "q1",
-      "type": "MCQ",
-      "question": "question text",
-      "options": [
-        {"text": "option1", "correct": true},
-        {"text": "option2", "correct": false},
-        {"text": "option3", "correct": false},
-        {"text": "option4", "correct": false}
       ],
-      "explanation": "brief reason or feedback",
-      "difficulty": "${difficulty}",
-      "topic": "${title || 'General'}",
-      "tags": ["tag-1","tag-2"]
-    }`,
-            TrueFalse: `    {
-      "id": "q1",
-      "type": "TrueFalse",
-      "question": "question text",
-      "options": [
-        {"text": "True", "correct": true},
-        {"text": "False", "correct": false}
-      ],
-      "explanation": "brief reason or feedback",
-      "difficulty": "${difficulty}",
-      "topic": "${title || 'General'}",
-      "tags": ["tag-1","tag-2"]
-    }`,
-            Subjective: `    {
-      "id": "q1",
-      "type": "Subjective",
-      "question": "question text",
-      "answer": "expected answer",
-      "explanation": "brief reason or feedback",
-      "difficulty": "${difficulty}",
-      "topic": "${title || 'General'}",
-      "tags": ["tag-1","tag-2"]
-    }`,
-            FillUp: `    {
-      "id": "q1",
-      "type": "FillUp",
-      "question": "question text with _____",
-      "answer": "canonical fill",
-      "explanation": "brief reason or feedback",
-      "difficulty": "${difficulty}",
-      "topic": "${title || 'General'}",
-      "tags": ["tag-1","tag-2"]
-    }`
-        };
-        return schemas[type] || schemas.MCQ;
+      Subjective: [
+        `{
+  "question": "Explain spacetime curvature in 30-50 words.",
+  "answer": "Mass-energy curves spacetime; objects follow geodesics...",
+  "tags": ["relativity", "spacetime"]
+}`
+      ]
     };
+    return examples[type] || [];
+  };
 
-    // Build only relevant examples for requested types
-    const examples = finalTypes
-        .flatMap(type => getExampleForType(type))
-        .join('\n\n');
+  // SIMPLIFIED RULES
+  const getRulesForType = (type) => {
+    const rules = {
+      MCQ: '- MCQ must have "options" array with 4 strings and "correct_answer" as index (0-3).',
+      TrueFalse: '- TrueFalse must have "options": ["True", "False"] and "correct_answer" as 0 or 1.',
+      Subjective: '- Subjective must NOT include options; use "answer" field.',
+      FillUp: '- FillUp must include EXACTLY one "_____" in question and "answer" field.'
+    };
+    return rules[type] || '';
+  };
 
-    // Build only relevant rules for requested types
-    const typeSpecificRules = finalTypes
-        .map(type => getRulesForType(type))
-        .filter(Boolean)
-        .join('\n');
+  // SIMPLIFIED SCHEMA
+  const getSchemaForType = (type) => {
+    const schemas = {
+      MCQ: ` {
+  "question": "question text",
+  "options": ["option1", "option2", "option3", "option4"],
+  "correct_answer": 0,
+  "tags": ["tag-1", "tag-2"]
+}`,
+      TrueFalse: ` {
+  "question": "question text",
+  "options": ["True", "False"],
+  "correct_answer": 0,
+  "tags": ["tag-1", "tag-2"]
+}`,
+      Subjective: ` {
+  "question": "question text",
+  "answer": "expected answer",
+  "tags": ["tag-1", "tag-2"]
+}`,
+      FillUp: ` {
+  "question": "question text with _____",
+  "answer": "canonical fill",
+  "tags": ["tag-1", "tag-2"]
+}`
+    };
+    return schemas[type] || schemas.MCQ;
+  };
 
-    // Build schema - if single type, show specific schema; otherwise show generic
-    const schemaExample = finalTypes.length === 1
-        ? getSchemaForType(finalTypes[0])
-        : `    {
-      "id": "q1",
-      "type": "${finalTypes.join('|')}",
-      "question": "question text",
-      "options": [{"text": "option", "correct": true/false}],  // for MCQ/TrueFalse only
-      "answer": "for Subjective/FillUp only",
-      "explanation": "brief reason or feedback",
-      "difficulty": "${difficulty}",
-      "topic": "${title || 'General'}",
-      "tags": ["tag-1","tag-2"]
-    }`;
+  const examples = finalTypes
+    .flatMap(type => getExampleForType(type))
+    .join('\n\n');
 
-    const allowedTagText = (allowedTags && allowedTags.length)
-        ? `ALLOWED_TAGS (choose only from these; lowercase kebab-case): ${allowedTags.map(t => `"${String(t).toLowerCase().trim().replace(/\s+/g, '-')}"`).join(', ')}`
-        : `ALLOWED_TAGS: []  // empty means infer 1-3 tags per question from CONTENT headings and key terms`;
+  const typeSpecificRules = finalTypes
+    .map(type => getRulesForType(type))
+    .filter(Boolean)
+    .join('\n');
 
-    return `<start_of_turn>user
-Act as a quiz generator for the following content. Generate educational questions that test understanding of key concepts.
+  const schemaExample = finalTypes.length === 1
+    ? getSchemaForType(finalTypes[0])
+    : ` {
+  "question": "question text",
+  "options": ["option1", "option2", ...], // for MCQ/TrueFalse only
+  "correct_answer": 0, // for MCQ/TrueFalse only
+  "answer": "for Subjective/FillUp only",
+  "tags": ["tag-1", "tag-2"]
+}`;
+
+  const allowedTagText = (allowedTags && allowedTags.length)
+    ? `ALLOWED_TAGS: ${allowedTags.map(t => `"${String(t).toLowerCase().trim().replace(/\s+/g, '-')}"`).join(', ')}`
+    : `ALLOWED_TAGS: [] // infer 1-3 tags from content`;
+
+  return `user
+
+Act as a quiz generator. Generate educational questions that test understanding of key concepts.
 
 CONTENT:
 "${safeSource}"
 
 STRICT REQUIREMENTS:
-- Generate EXACTLY ${questionCount} questions with this distribution: ${distributionText}
+- Generate EXACTLY ${questionCount} questions: ${distributionText}
 - Question type(s): ${finalTypes.join(', ')}
-- Difficulty for all questions: ${difficulty}
-- Output ONLY valid JSON. No markdown, no code fences, no prose outside JSON.
-- Use the exact schema below. Do not add or rename properties.
-- Use IDs "q1"..."q${questionCount}" in order.
-- Tagging policy: include "tags": an array of 1-3 short, lowercase, kebab-case tags per question; no duplicates across the same question.
+- Output ONLY valid JSON. No markdown, no code fences, no prose.
+- NO "id", "type", "explanation", "difficulty", or "topic" fields
+- Include "tags": array of 1-3 lowercase kebab-case tags per question
 
 ${allowedTagText}
 
-SCHEMA (one JSON object):
+SIMPLIFIED SCHEMA:
 {
   "questions": [
 ${schemaExample}
-  ],
-  "metadata": {
-    "tagSet": ["all-unique-tags-used-in-questions"]
-  }
+  ]
 }
 
 TYPE-SPECIFIC RULES:
 ${typeSpecificRules}
-- Tags:
-  - 1-3 tags per question.
-  - Lowercase kebab-case (e.g., "first-law", "entropy", "phase-change").
-  - If ALLOWED_TAGS is non-empty, use only from that list; otherwise infer from CONTENT.
-  - Populate metadata.tagSet with all unique tags used.
 
-EXAMPLES (format only; content is illustrative):
+- Options format (MCQ/TrueFalse):
+  - "options" MUST be array of strings (NOT objects)
+  - "correct_answer" MUST be the index (0-based)
+
+EXAMPLES:
 ${examples}
 
-Now return the final JSON for ${distributionText} about the content above.
-<end_of_turn>
-<start_of_turn>model
+Return the final JSON for ${distributionText}.
+
+model
 `;
 }
-
-
 
 
 // Story prompt for Gemma 3n that outputs rich Markdown
