@@ -16,7 +16,7 @@ export function buildExcerpt(text, max = 240) {
   const cut = clean.slice(0, max);
   const lastSpace = cut.lastIndexOf(' ');
   const cutPoint = lastSpace > max * 0.5 ? lastSpace : max;
-  return ` + cut.slice(0, cutPoint).trim() + '…' + `;
+  return cut.slice(0, cutPoint).trim() + '…';
 }
 
 export function dedupeRepeatingLines(text) {
