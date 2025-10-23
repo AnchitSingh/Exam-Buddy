@@ -342,6 +342,30 @@ export async function getQuizRecommendationsJSON({ quizMeta, stats }) {
     });
 }
 
+// Repair function for fixing malformed quiz content
+export async function repairQuizContent({ prompt, schema = null }) {
+    try {
+        // If schema is provided, use the structured JSON approach with repair
+        if (schema) {
+            return await promptJSON({
+                text: prompt,
+                schema,
+                validate: schema.type === 'object' && schema.properties?.questions 
+                    ? validateQuiz  // Use existing quiz validation if it's a quiz schema
+                    : null
+            });
+        } else {
+            // Fallback: just prompt for the content without schema validation
+            const s = await createSessionIfNeeded();
+            return await s.prompt(prompt);
+        }
+    } catch (error) {
+        console.error('Repair content error:', error);
+        // If repair fails, return the error so the calling function can handle it
+        throw error;
+    }
+}
+
 // Additional utilities
 export async function getModelInfo() {
     const LM = getLanguageModel();
@@ -376,5 +400,6 @@ export default {
     streamMCQ,
     streamFillUp,
     streamSubjective,
-    streamTrueFalse
+    streamTrueFalse,
+    repairQuizContent
 };

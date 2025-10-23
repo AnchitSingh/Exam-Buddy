@@ -723,21 +723,27 @@ useEffect(() => {
           toast.error('Failed to remove bookmark');
         }
       } else {
-        const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
-        const correctIndex = options.findIndex(opt => opt && opt.isCorrect === true);
-
-        const response = await examBuddyAPI.addBookmark(questionId, {
+        // Only include options for question types that have options (MCQ/TrueFalse)
+        let bookmarkData = {
           question: currentQuestion.question || '',
-          options: options,
           type: currentQuestion.type || 'MCQ',
-          correctAnswer: correctIndex >= 0 ? correctIndex : 0,
           explanation: currentQuestion.explanation || '',
           subject: currentQuestion.subject || 'General',
           difficulty: currentQuestion.difficulty || 'medium',
           tags: Array.isArray(currentQuestion.tags) ? currentQuestion.tags : [],
           quizTitle: quiz?.title || 'Untitled Quiz',
           answer: currentQuestion.answer
-        });
+        };
+
+        // Add options only for question types that should have them
+        if (currentQuestion.type === 'MCQ' || currentQuestion.type === 'True/False') {
+          const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
+          const correctIndex = options.findIndex(opt => opt && opt.isCorrect === true);
+          bookmarkData.options = options;
+          bookmarkData.correct_answer = correctIndex >= 0 ? correctIndex : 0;  // Use correct naming for schema validation
+        }
+
+        const response = await examBuddyAPI.addBookmark(questionId, bookmarkData);
 
         if (response && response.success) {
           setBookmarkedQuestions(prev => new Set(prev).add(questionId));

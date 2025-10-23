@@ -365,85 +365,276 @@ class ExamBuddyAPI {
         // Calculate distribution of question types
         const typeDistribution = this._distributeQuestions(questionTypes, totalQuestionCount);
         
-        // Generate questions for each type separately
+        // Generate questions for each type in parallel
+        const generationTasks = typeDistribution
+            .filter(typeConfig => typeConfig.count > 0)
+            .map(async (typeConfig) => {
+                const { type, count } = typeConfig;
+                
+                // Prepare config for this specific question type
+                const typeSpecificConfig = {
+                    ...config,
+                    questionTypes: [type],
+                    questionCount: count
+                };
+                
+                // Call appropriate streaming function based on question type
+                let stream;
+                if (type === 'MCQ') {
+                    stream = await chromeAI.streamMCQ({
+                        extractedSource: this._prepareQuizSource(config),
+                        config: this._prepareQuizConfig(typeSpecificConfig),
+                    });
+                } else if (type === 'FillUp') {
+                    stream = await chromeAI.streamFillUp({
+                        extractedSource: this._prepareQuizSource(config),
+                        config: this._prepareQuizConfig(typeSpecificConfig),
+                    });
+                } else if (type === 'Subjective') {
+                    stream = await chromeAI.streamSubjective({
+                        extractedSource: this._prepareQuizSource(config),
+                        config: this._prepareQuizConfig(typeSpecificConfig),
+                    });
+                } else if (type === 'TrueFalse') {
+                    stream = await chromeAI.streamTrueFalse({
+                        extractedSource: this._prepareQuizSource(config),
+                        config: this._prepareQuizConfig(typeSpecificConfig),
+                    });
+                } else {
+                    // For other types, use the general streamQuiz function
+                    stream = await chromeAI.streamQuiz({
+                        extractedSource: this._prepareQuizSource(config),
+                        config: this._prepareQuizConfig(typeSpecificConfig),
+                    });
+                }
+                
+                // Create a custom progress handler that maintains backward compatibility
+                const typeProgressHandler = (progress) => {
+                    if (onProgress) {
+                        // Maintain the original format for backward compatibility
+                        if (progress.status === 'streaming') {
+                            onProgress({ 
+                                status: 'streaming',
+                                receivedChunks: progress.receivedChunks
+                            });
+                        }
+                    }
+                };
+                
+                const jsonString = await this._consumeStream(stream, typeProgressHandler);
+                
+                return {
+                    type,
+                    rawJsonString: jsonString,
+                    expectedCount: count
+                };
+            });
+        
+        // Wait for all types to finish streaming
+        const results = await Promise.all(generationTasks);
+        
+        // Create validation/repair queue
+        const repairQueue = [];
         const allQuestions = [];
         
-        // Process each question type in sequence
-        for (const [index, typeConfig] of typeDistribution.entries()) {
-            const { type, count } = typeConfig;
-            if (count <= 0) continue;
+        // Process each result with validation
+        for (const result of results) {
+            const { type, rawJsonString, expectedCount } = result;
             
-            // Prepare config for this specific question type
-            const typeSpecificConfig = {
-                ...config,
-                questionTypes: [type],
-                questionCount: count
-            };
-            
-            // Call appropriate streaming function based on question type
-            let stream;
-            if (type === 'MCQ') {
-                stream = await chromeAI.streamMCQ({
-                    extractedSource: this._prepareQuizSource(config),
-                    config: this._prepareQuizConfig(typeSpecificConfig),
-                });
-            } else if (type === 'FillUp') {
-                stream = await chromeAI.streamFillUp({
-                    extractedSource: this._prepareQuizSource(config),
-                    config: this._prepareQuizConfig(typeSpecificConfig),
-                });
-            } else if (type === 'Subjective') {
-                stream = await chromeAI.streamSubjective({
-                    extractedSource: this._prepareQuizSource(config),
-                    config: this._prepareQuizConfig(typeSpecificConfig),
-                });
-            } else if (type === 'TrueFalse') {
-                stream = await chromeAI.streamTrueFalse({
-                    extractedSource: this._prepareQuizSource(config),
-                    config: this._prepareQuizConfig(typeSpecificConfig),
-                });
-            } else {
-                // For other types, use the general streamQuiz function
-                stream = await chromeAI.streamQuiz({
-                    extractedSource: this._prepareQuizSource(config),
-                    config: this._prepareQuizConfig(typeSpecificConfig),
-                });
-            }
-            
-            // Create a custom progress handler that maintains backward compatibility
-            const typeProgressHandler = (progress) => {
-                if (onProgress) {
-                    // Maintain the original format for backward compatibility
-                    if (progress.status === 'streaming') {
-                        onProgress({ 
-                            status: 'streaming',
-                            receivedChunks: progress.receivedChunks
-                        });
-                    }
-                }
-            };
-            
-            const jsonString = await this._consumeStream(stream, typeProgressHandler);
-            const jsonBlock = extractJsonFromResponse(jsonString);
+            // Extract JSON block
+            const jsonBlock = extractJsonFromResponse(rawJsonString);
             
             if (!jsonBlock) {
-                console.warn(`Could not extract valid JSON for ${type} questions, skipping...`);
+                console.warn(`Could not extract valid JSON for ${type} questions, adding to repair queue...`);
+                // Add to repair queue
+                repairQueue.push({
+                    type,
+                    rawOutput: rawJsonString,
+                    expectedCount,
+                    reason: 'JSON extraction failed'
+                });
                 continue;
             }
             
             try {
                 const aiResult = JSON.parse(jsonBlock);
-                if (aiResult.questions && Array.isArray(aiResult.questions)) {
-                    // Add the type information to each question since AI doesn't provide it
-                    const questionsWithType = aiResult.questions.map(question => ({
-                        ...question,
-                        type: type  // Add the type from the generation context
-                    }));
-                    allQuestions.push(...questionsWithType);
+                
+                // Validate the structure against schema
+                if (!aiResult.questions || !Array.isArray(aiResult.questions)) {
+                    console.warn(`Invalid structure for ${type} questions, adding to repair queue...`);
+                    repairQueue.push({
+                        type,
+                        rawOutput: rawJsonString,
+                        expectedCount,
+                        reason: 'Invalid structure - missing questions array'
+                    });
+                    continue;
                 }
+                
+                // Validate each question in the array
+                let hasInvalidQuestions = false;
+                for (let i = 0; i < aiResult.questions.length; i++) {
+                    const question = aiResult.questions[i];
+                    
+                    // Check if the question is missing required fields for its type
+                    if (type === 'MCQ' || type === 'TrueFalse') {
+                        if (!question.options || !Array.isArray(question.options) || question.options.length < 2) {
+                            console.warn(`Question ${i} in ${type} missing valid options, will be repaired...`);
+                            hasInvalidQuestions = true;
+                            break;
+                        }
+                        if (typeof question.correct_answer !== 'number' || 
+                            question.correct_answer < 0 || 
+                            question.correct_answer >= question.options.length) {
+                            console.warn(`Question ${i} in ${type} missing or invalid correct_answer, will be repaired...`);
+                            hasInvalidQuestions = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (hasInvalidQuestions) {
+                    repairQueue.push({
+                        type,
+                        rawOutput: rawJsonString,
+                        expectedCount,
+                        reason: 'Questions missing required fields'
+                    });
+                    continue;
+                }
+                
+                // Add valid questions with type information
+                const questionsWithType = aiResult.questions.map(question => ({
+                    ...question,
+                    type: type
+                }));
+                allQuestions.push(...questionsWithType);
+                
             } catch (error) {
                 console.error(`Failed to parse JSON for ${type} questions:`, error);
+                // Add to repair queue
+                repairQueue.push({
+                    type,
+                    rawOutput: rawJsonString,
+                    expectedCount,
+                    reason: `JSON parsing failed: ${error.message}`
+                });
                 continue;
+            }
+        }
+
+        // If there are items in repair queue, process them
+        if (repairQueue.length > 0) {
+            console.log(`Auto-repairing ${repairQueue.length} question types...`);
+            
+            // Notify UI about repair process
+            if (onProgress) {
+                onProgress({ 
+                    status: 'repairing', 
+                    count: repairQueue.length,
+                    message: `Auto-repairing ${repairQueue.length} question types...`
+                });
+            }
+
+            // Process repair queue
+            for (const repairItem of repairQueue) {
+                try {
+                    const { type, rawOutput, expectedCount, reason } = repairItem;
+                    
+                    // Create repair prompt based on question type
+                    let schemaDescription;
+                    if (type === 'MCQ' || type === 'TrueFalse') {
+                        schemaDescription = `{
+  "questions": [
+    {
+      "question": "string - the question text",
+      "options": ["option1", "option2", "option3", "option4"] - array of option strings,
+      "correct_answer": "number - index of correct option (0-based)",
+      "explanation": "string - explanation for the answer",
+      "tags": ["tag1", "tag2"] - array of topic tags
+    }
+  ]
+}`;
+                    } else if (type === 'FillUp' || type === 'Subjective') {
+                        schemaDescription = `{
+  "questions": [
+    {
+      "question": "string - the question text",
+      "answer": "string - expected answer for fill-in-the-blank or subjective questions",
+      "explanation": "string - explanation for the answer",
+      "tags": ["tag1", "tag2"] - array of topic tags
+    }
+  ]
+}`;
+                    } else {
+                        // Default schema
+                        schemaDescription = `{
+  "questions": [
+    {
+      "question": "string - the question text",
+      "options": ["string", "string", ...] - array of options (for MCQ/TrueFalse) or omitted,
+      "correct_answer": "number - index of correct option (for MCQ/TrueFalse) or omitted",
+      "answer": "string - expected answer (for FillUp/Subjective) or omitted",
+      "explanation": "string - explanation for the answer",
+      "tags": ["tag1", "tag2"] - array of topic tags
+    }
+  ]
+}`;
+                    }
+
+                    // Create repair prompt
+                    const repairPrompt = `The following quiz data for ${type} questions has issues: ${reason}. Please fix it and return valid JSON only.
+
+Expected JSON schema for ${type} questions:
+${schemaDescription}
+
+Current (problematic) output:
+${rawOutput}
+
+Return only the corrected JSON with valid ${type} questions following the schema above with approximately ${expectedCount} questions. Do not include any explanations or additional text.`;
+
+                    // Get Chrome AI to repair the data
+                    const repairResult = await chromeAI.repairQuizContent({ 
+                        prompt: repairPrompt,
+                        schema: JSON.parse(schemaDescription)  // Pass schema for potential structured output
+                    });
+                    
+                    // Extract and parse the repaired JSON
+                    let repairedJsonBlock;
+                    if (typeof repairResult === 'string') {
+                        repairedJsonBlock = extractJsonFromResponse(repairResult);
+                    } else {
+                        // If repairResult is already parsed, validate it directly
+                        repairedJsonBlock = JSON.stringify(repairResult);
+                    }
+                    
+                    if (repairedJsonBlock) {
+                        let repairedResult;
+                        if (typeof repairResult === 'object') {
+                            repairedResult = repairResult;
+                        } else {
+                            repairedResult = JSON.parse(repairedJsonBlock);
+                        }
+                        
+                        if (repairedResult.questions && Array.isArray(repairedResult.questions)) {
+                            // Add repaired questions with type information
+                            const repairedQuestionsWithType = repairedResult.questions.map(question => ({
+                                ...question,
+                                type: type
+                            }));
+                            allQuestions.push(...repairedQuestionsWithType);
+                            console.log(`Successfully repaired ${repairedResult.questions.length} ${type} questions`);
+                        } else {
+                            console.warn(`Repair failed for ${type} - invalid structure after repair`);
+                        }
+                    } else {
+                        console.warn(`Repair failed for ${type} - could not extract JSON after repair`);
+                    }
+                } catch (repairError) {
+                    console.error(`Repair failed for ${type} questions:`, repairError);
+                    // Skip this type and continue with others
+                    continue;
+                }
             }
         }
         

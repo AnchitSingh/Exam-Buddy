@@ -121,20 +121,36 @@ const QuestionDetailModal = ({ isOpen, onClose, question, onDelete, onPractice }
               <p className="text-slate-700 leading-relaxed">{question.question}</p>
             </div>
 
-            {/* Options */}
-            <div className="mb-6">
-              <h4 className="text-base font-semibold text-slate-800 mb-3">Options:</h4>
-              <div className="space-y-2">
-                {question.options.map((option, index) => (
-                  <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-slate-50">
-                    <span className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-600 font-medium text-sm border border-slate-200">
-                      {String.fromCharCode(65 + index)}
-                    </span>
-                    <span className="text-slate-700 flex-1">{option.text}</span>
-                  </div>
-                ))}
+            {/* Options - only show for question types that have options */}
+            {(question.type === 'MCQ' || question.type === 'True/False') && (
+              <div className="mb-6">
+                <h4 className="text-base font-semibold text-slate-800 mb-3">Options:</h4>
+                <div className="space-y-2">
+                  {Array.isArray(question.options) && question.options.length > 0 ? (
+                    question.options.map((option, index) => (
+                      <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-slate-50">
+                        <span className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-600 font-medium text-sm border border-slate-200">
+                          {String.fromCharCode(65 + index)}
+                        </span>
+                        <span className="text-slate-700 flex-1">{option.text}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-slate-500 italic">No options available for this question</p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
+            
+            {/* Answer - show for question types that have answers (Short Answer, FillUp) */}
+            {(question.type === 'Short Answer' || question.type === 'Subjective' || question.type === 'Fill in Blank') && question.answer && (
+              <div className="mb-6">
+                <h4 className="text-base font-semibold text-slate-800 mb-3">Expected Answer:</h4>
+                <div className="p-3 rounded-lg bg-slate-50">
+                  <p className="text-slate-700">{question.answer}</p>
+                </div>
+              </div>
+            )}
 
             {/* Topic Tags (Replaced metadata section) */}
             {question.tags && question.tags.length > 0 && (

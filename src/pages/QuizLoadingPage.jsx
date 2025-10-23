@@ -41,6 +41,7 @@ const LoadingProgress = ({ steps, currentStep, streamMessage, questionTypes, com
                     const isCompleted = index < currentStep;
                     const isCurrent = index === currentStep;
                     const isStep3 = index === 2; // 3rd step (0-indexed)
+                    const isStep4 = index === 3; // 4th step (repair step, 0-indexed)
                     
                     return (
                         <div 
@@ -159,10 +160,25 @@ const LoadingProgress = ({ steps, currentStep, streamMessage, questionTypes, com
                                     </div>
                                 )}
                                 
+                                {/* Show a special indicator for repair step */}
+                                {isStep4 && isCurrent && (
+                                    <div className="mt-4 ml-14">
+                                        <div className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg bg-amber-100/50">
+                                            <svg className="animate-spin w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            <span className="text-sm font-medium text-amber-800">
+                                                Repairing invalid data...
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                                
                                 {/* Stream Message */}
                                 {isCurrent && streamMessage && (
                                     <p className={`text-xs font-medium animate-pulse ${
-                                        isStep3 ? 'ml-14 mt-1' : 'ml-14 mt-2'
+                                        isStep3 || isStep4 ? 'ml-14 mt-1' : 'ml-14 mt-2'
                                     } text-amber-700`}>
                                         {streamMessage}
                                     </p>
@@ -186,6 +202,7 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
         { title: 'Analyzing Content Source' },
         { title: 'Extracting Key Information' },
         { title: 'Generating Questions with AI' },
+        { title: 'Validating & Repairing Data' }, // Added repair step
     ];
 
     // Determine the question types from config
@@ -207,6 +224,7 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
         
         let lastChunkCount = 0;
         let chunkCountIncreased = false;
+        let isRepairing = false; // Track if we're in repair mode
 
         const handleStreamProgress = (progress) => {
             if (progress.status === 'streaming') {
@@ -231,6 +249,15 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
                 
                 lastChunkCount = currentChunkCount;
                 setStreamMessage(`Fetching ${currentChunkCount} data chunks...`);
+            }
+            // Handle repair status
+            else if (progress.status === 'repairing') {
+                // Switch to repair step if not already there
+                if (!isRepairing) {
+                    isRepairing = true;
+                    setCurrentStep(3); // Set to repair step (4th step, 0-indexed as 3)
+                }
+                setStreamMessage(progress.message || `Auto-repairing ${progress.count} question types...`);
             }
         };
 
@@ -339,6 +366,11 @@ const QuizLoadingPage = ({ onNavigate, navigationData }) => {
                     const remainingTypes = allQuestionTypes.filter(type => !processedTypes.has(type));
                     remainingTypes.forEach(type => processedTypes.add(type));
                     setCompletedQuestionTypes(Array.from(processedTypes));
+                }
+                
+                // If repair was done, mark repair step as completed 
+                if (isRepairing) {
+                    setCurrentStep(3); // Ensure we show the repair step as completed
                 }
 
                 // Navigate with the final, generated quiz data

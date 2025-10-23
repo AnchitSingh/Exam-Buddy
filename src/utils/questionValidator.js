@@ -107,20 +107,27 @@ export const sanitizeQuestion = (question, index = 0) => {
     }));
 
     // Handle correct_answer index (NEW FORMAT -> OLD FORMAT)
+    let correctAnswerIndex;
     if (typeof question.correct_answer === 'number' && 
         question.correct_answer >= 0 && 
         question.correct_answer < sanitized.options.length) {
       sanitized.options[question.correct_answer].isCorrect = true;
+      correctAnswerIndex = question.correct_answer;
     } else {
       // Try to find from OLD FORMAT
       const correctIndex = findCorrectAnswerIndex(question.options);
       if (correctIndex !== -1) {
         sanitized.options[correctIndex].isCorrect = true;
+        correctAnswerIndex = correctIndex;
       } else {
         console.warn(`Question ${index}: No correct answer found, defaulting to first option`);
         sanitized.options[0].isCorrect = true;
+        correctAnswerIndex = 0;
       }
     }
+    
+    // Preserve the correct_answer field for validation and other processes
+    sanitized.correct_answer = correctAnswerIndex;
   }
 
   // Sanitize answer field (for Subjective/FillUp)
