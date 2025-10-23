@@ -30,10 +30,18 @@ export const validateQuestionStructure = (question) => {
         errors.push('Must have at least 2 options');
       }
 
-      // Validate each option is a string
+      // Validate each option is a string or object with text property
       question.options.forEach((option, index) => {
-        if (typeof option !== 'string' || !option.trim()) {
-          errors.push(`Option ${index + 1} must be a non-empty string`);
+        let isValid = false;
+        
+        if (typeof option === 'string' && option.trim()) {
+          isValid = true;
+        } else if (typeof option === 'object' && option !== null && typeof option.text === 'string' && option.text.trim()) {
+          isValid = true;
+        }
+        
+        if (!isValid) {
+          errors.push(`Option ${index + 1} must be a non-empty string or object with text property`);
         }
       });
 
