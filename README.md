@@ -76,6 +76,15 @@ It's a precision instrument designed to eliminate your specific knowledge gaps. 
 
 ## Quick Start
 
+### pre-build extension for ready to use
+
+Download the latest release from [Releases](https://github.com/AnchitSingh/exam-buddy/releases) and install in Chrome:
+1. Extract the zip file
+2. Go to `chrome://extensions`
+3. Enable "Developer mode"
+4. Click "Load unpacked" and select the extracted folder
+
+
 ### Build from Source
 
 1. **Clone the repository:**
